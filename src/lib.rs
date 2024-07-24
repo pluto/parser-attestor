@@ -1,38 +1,86 @@
 pub const EXAMPLE_JSON: &[u8] = include_bytes!("../example.json");
 pub const VENMO_JSON: &[u8] = include_bytes!("../venmo_response.json");
 
-pub struct Machine<const MATCH_LENGTH: usize> {
-    pub key_byte_match: [u8; MATCH_LENGTH],
+pub mod item;
+
+pub struct Machine<'a> {
+    pub keys: Vec<&'a [u8]>,
+    depth: usize,
+    pointer: usize,
 }
 
-impl<const MATCH_LENGTH: usize> Machine<MATCH_LENGTH> {
-    pub fn new(key_byte_match: [u8; MATCH_LENGTH]) -> Self {
-        Machine { key_byte_match }
+#[derive(Debug)]
+pub enum Instruction {
+    IncreaseDepth(usize),
+    DecreaseDepth(usize),
+    EOF,
+}
+
+impl<'a> Machine<'a> {
+    pub fn new(keys: Vec<&'a [u8]>) -> Self {
+        Machine {
+            keys,
+            depth: 0,
+            pointer: 0,
+        }
     }
 
-    pub fn extract<'a>(&self, data_bytes: &'a [u8]) -> Option<&'a [u8]> {
-        assert!(data_bytes.len() > MATCH_LENGTH);
-        let mut flag = false;
-        'outer: for i in 0..(data_bytes.len() - MATCH_LENGTH) {
-            for j in 0..MATCH_LENGTH {
-                if self.key_byte_match[j] ^ data_bytes[i..i + MATCH_LENGTH][j] != 0 {
-                    continue 'outer;
+    pub fn extract(&mut self, data_bytes: &'a [u8]) -> Option<&'a [u8]> {
+        // Make sure that there is more data in the JSON than what we have expressed in all of our keys else this makes no sense at all.
+        assert!(data_bytes.len() > self.keys.iter().map(|k| k.len()).sum());
+        // Make sure the JSON begins with an opening bracket
+        assert_eq!(data_bytes[0] ^ b"{"[0], 0);
+
+        while self.depth < self.keys.len() {
+            match get_key(self.keys[self.depth], &data_bytes[self.pointer..]) {
+                Instruction::EOF => return None,
+                _inst @ Instruction::DecreaseDepth(offset) => {
+                    // dbg!(inst);
+                    self.depth -= 1;
+                    self.pointer += offset;
+                    // dbg!(String::from_utf8_lossy(&[data_bytes[self.pointer]]));
                 }
-                flag = true;
-            }
-            if flag {
-                let start_index = i + MATCH_LENGTH + 1;
-                let mut value_length = 0;
-                while data_bytes[start_index + value_length] != b"}"[0] {
-                    value_length += 1;
+                _inst @ Instruction::IncreaseDepth(offset) => {
+                    // dbg!(inst);
+                    self.depth += 1;
+                    self.pointer += offset;
+                    // dbg!(String::from_utf8_lossy(&[data_bytes[self.pointer]]));
                 }
-                return Some(&data_bytes[start_index..start_index + value_length]);
-            } else {
-                return None;
             }
         }
-        unreachable!()
+
+        // Get the value as a raw str at this location in the JSON and offset by one to bypass a ":"
+        let value_start = self.pointer + 1;
+        let mut value_length = 0;
+        while data_bytes[value_start + value_length] != b"}"[0] {
+            value_length += 1;
+        }
+        Some(&data_bytes[value_start..value_start + value_length])
     }
+}
+
+fn get_key(key: &[u8], data_bytes: &[u8]) -> Instruction {
+    let key_length = key.len();
+
+    // dbg!(String::from_utf8_lossy(key));
+
+    'outer: for i in 0..(data_bytes.len() - key_length) {
+        #[allow(clippy::needless_range_loop)]
+        for j in 0..key_length {
+            // dbg!(String::from_utf8_lossy(&[data_bytes[i..i + key_length][j]]));
+            if data_bytes[i..i + key_length][j] == b"}"[0] {
+                // Hit an end brace "}" so we need to return the current pointer as an offset and decrease depth
+                return Instruction::DecreaseDepth(i + j);
+            }
+            if key[j] ^ data_bytes[i..i + key_length][j] != 0 {
+                continue 'outer;
+            }
+        }
+        // If we hit here then we must have fully matched a key so we return the current pointer as an offset
+        return Instruction::IncreaseDepth(i + key_length);
+    }
+    // If we hit here, we must have hit EOF (which is actually an error?)
+    Instruction::EOF
 }
 
 #[cfg(test)]
@@ -42,9 +90,16 @@ mod tests {
 
     #[test]
     fn get_value() {
-        let key_byte_match = *b"\"value\"";
-        let machine = Machine::new(key_byte_match);
+        let keys = vec![
+            b"\"data\"".as_slice(),
+            b"\"profile\"".as_slice(),
+            b"\"identity\"".as_slice(),
+            b"\"balance\"".as_slice(),
+            b"\"userBalance\"".as_slice(),
+            b"\"value\"".as_slice(),
+        ];
+        let mut machine = Machine::new(keys);
         let value = String::from_utf8_lossy(machine.extract(VENMO_JSON).unwrap());
-        println!("{value:?}");
+        assert_eq!(value, " 523.69\n                    ")
     }
 }
