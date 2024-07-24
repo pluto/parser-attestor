@@ -49,10 +49,13 @@ impl<'a> Machine<'a> {
             }
         }
 
-        // Get the value as a raw str at this location in the JSON and offset by one to bypass a ":"
+        // Get the value as a raw str at this location in the JSON and offset by one to bypass a `:`
         let value_start = self.pointer + 1;
         let mut value_length = 0;
-        while data_bytes[value_start + value_length] != b"}"[0] {
+        // Grab the value up to the next delimiter doken (TODO: if a `,` or `}` is present in a string, we are doomed, so we need to track these objects better!)
+        while (data_bytes[value_start + value_length] != b"}"[0])
+            & (data_bytes[value_start + value_length] != b","[0])
+        {
             value_length += 1;
         }
         Some(&data_bytes[value_start..value_start + value_length])
@@ -89,7 +92,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn get_value() {
+    fn get_value_venmo() {
         let keys = vec![
             b"\"data\"".as_slice(),
             b"\"profile\"".as_slice(),
@@ -101,5 +104,17 @@ mod tests {
         let mut machine = Machine::new(keys);
         let value = String::from_utf8_lossy(machine.extract(VENMO_JSON).unwrap());
         assert_eq!(value, " 523.69\n                    ")
+    }
+
+    #[test]
+    fn get_value_example() {
+        let keys = vec![
+            b"\"glossary\"".as_slice(),
+            b"\"GlossDiv\"".as_slice(),
+            b"\"title\"".as_slice(),
+        ];
+        let mut machine = Machine::new(keys);
+        let value = String::from_utf8_lossy(machine.extract(EXAMPLE_JSON).unwrap());
+        assert_eq!(value, " \"S\"")
     }
 }
