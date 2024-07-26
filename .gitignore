@@ -1,1 +1,4 @@
 /target
+circuit/extractor_*/*
+circuit/extractor.r1cs
+circuit/extractor.sym
