@@ -27,3 +27,28 @@ Then we get `snarkjs` by:
 ```
 npm install -g snarkjs
 ```
+
+### Running an example
+```
+circom extractor.circom --r1cs --wasm
+
+node extractor_js/generate_witness.js extractor_js/extractor.wasm input.json witness.wtns
+
+##
+# IF YOU NEED A NEW pot (works for all circuits)
+snarkjs powersoftau new bn128 14 pot14_0000.ptau -v
+snarkjs powersoftau contribute pot14_0000.ptau pot14_0001.ptau --name="First contribution" -v
+##
+
+snarkjs powersoftau prepare phase2 pot14_0001.ptau pot14_final.ptau -v
+
+snarkjs groth16 setup extractor.r1cs pot14_final.ptau extractor_0000.zkey
+
+snarkjs zkey contribute extractor_0000.zkey extractor_0001.zkey --name="1st Contributor Name" -v
+
+snarkjs zkey export verificationkey extractor_0001.zkey verification_key.json
+
+snarkjs groth16 prove extractor_0001.zkey witness.wtns proof.json public.json
+
+snarkjs groth16 verify verification_key.json public.json proof.json
+```
