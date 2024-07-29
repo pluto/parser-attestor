@@ -115,6 +115,6 @@ mod tests {
         ];
         let mut machine = Machine::new(keys);
         let value = String::from_utf8_lossy(machine.extract(EXAMPLE_JSON).unwrap());
-        assert_eq!(value, " \"S\"")
+        assert_eq!(value, " \"S\"a")
     }
 }
