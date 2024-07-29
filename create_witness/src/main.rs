@@ -1,19 +1,54 @@
 use std::io::Write;
 
-pub const BYTES: &[u8] = include_bytes!("../../example.json");
+pub const KEYS: &[&[u8]] = &[
+    b"\"glossary\"".as_slice(),
+    b"\"GlossDiv\"".as_slice(),
+    b"\"title\"".as_slice(),
+];
+pub const DATA: &[u8] = include_bytes!("../../example.json");
 
 #[derive(serde::Serialize)]
 pub struct Witness {
+    num_keys: usize,
+    // keys: Vec<Vec<u8>>, // Actually will contain bits on the inside vec
+    num_data_bits: usize,
     data: Vec<u8>, // Actually will always be bits
 }
 
 pub fn main() {
-    let bits = get_bits(BYTES);
-    println!("length: {}", bits.len());
+    // Properly serialize information about the keys we want to extract
+    let mut max_num_keys = 0;
+    let mut max_num_key_bits = 0;
+    let mut keys = vec![];
+    for &key in KEYS {
+        let key = get_bits(key)
+            .into_iter()
+            .map(|b| b as u8)
+            .collect::<Vec<u8>>();
+        if key.len() > max_num_key_bits {
+            max_num_key_bits = key.len();
+        }
+        keys.push(key);
+        max_num_keys += 1;
+    }
+    println!("MAX_NUM_KEYS: {max_num_keys}");
+    println!("MAX_NUM_KEY_BITS: {max_num_key_bits}");
+
+    // Properly serialize information about the data we extract from
+    let data = get_bits(DATA)
+        .into_iter()
+        .map(|b| b as u8)
+        .collect::<Vec<u8>>();
+    println!("MAX_NUM_DATA_BITS: {}", data.len());
+
+    // Create a witness file as `input.json`
     let witness = Witness {
-        data: bits.into_iter().map(|b| b as u8).collect::<Vec<u8>>(),
+        num_keys: max_num_keys, // For now we can set this to be the same
+        // keys,
+        num_data_bits: data.len(), // For now we can set this to be the same
+        data,
     };
-    let mut file = std::fs::File::create("witness.json").unwrap();
+    let mut file = std::fs::File::create("circuit/input.json").unwrap();
     file.write_all(serde_json::to_string_pretty(&witness).unwrap().as_bytes())
         .unwrap();
 }
@@ -37,7 +72,7 @@ mod tests {
     // ASCII code for `\n` 00001010
     #[test]
     fn test_get_bits() {
-        let bits = get_bits(BYTES);
+        let bits = get_bits(DATA);
         #[allow(clippy::inconsistent_digit_grouping)]
         let compare_bits: Vec<bool> = vec![0, 1, 1, 1, 1, 0, 1, 1_, 0, 0, 0, 0, 1, 0, 1, 0]
             .into_iter()
