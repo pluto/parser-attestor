@@ -19,7 +19,7 @@ template Extractor(MAX_NUM_KEYS, MAX_NUM_KEY_BITS, MAX_NUM_DATA_BITS) {
     //-CONSTRAINTS--------------------------------------------------------------------------------//
 
     // TODO: don't use some MAX if possible, and base this off the real length of the key/data
-    // Constrain that every element of `key` is a bit
+    // Constrain that every `key` inside of `keys` is an array of bits
     for(var key_idx = 0; key_idx < MAX_NUM_KEYS; key_idx++) {
         for(var key_bit_idx = 0; key_bit_idx < MAX_NUM_KEY_BITS; key_bit_idx++) {
             keys[key_idx][key_bit_idx] * (keys[key_idx][key_bit_idx] - 1) === 0;
