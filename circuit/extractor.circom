@@ -7,6 +7,7 @@ template Extractor(MAX_NUM_KEYS, MAX_NUM_KEY_BITS, MAX_NUM_DATA_BITS) {
     signal input data[MAX_NUM_DATA_BITS];
     var pointer = 0;
     var depth = 0;
+    signal output out;
 
     // Make sure there are some keys to use
     assert(num_keys > 0);
@@ -42,13 +43,11 @@ template Extractor(MAX_NUM_KEYS, MAX_NUM_KEY_BITS, MAX_NUM_DATA_BITS) {
 
     // // Loop over all the data byte by byte
     for(var data_byte_idx = 0; data_byte_idx < MAX_NUM_DATA_BITS - 8; data_byte_idx = data_byte_idx + 8) {
-
         // Scan each byte bit by bit
         for(var bit = 0; bit < 8; bit++){
             // Constrain that every element of `data` is a bit
             data[data_byte_idx + bit] * (data[data_byte_idx + bit] - 1) === 0;
         }
-
     }
     //--------------------------------------------------------------------------------------------//
 
@@ -56,6 +55,8 @@ template Extractor(MAX_NUM_KEYS, MAX_NUM_KEY_BITS, MAX_NUM_DATA_BITS) {
     //--------------------------------------------------------------------------------------------//
     //-SUBSTRING_MATCH----------------------------------------------------------------------------//
     // TODO
+
+    out <== 1;
  }
 
 
