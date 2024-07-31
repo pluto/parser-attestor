@@ -10,7 +10,8 @@ pub const DATA: &[u8] = include_bytes!("../../example.json");
 #[derive(serde::Serialize)]
 pub struct Witness {
     num_keys: usize,
-    keys: Vec<Vec<u8>>, // Actually will contain bits on the inside vec
+    key_sizes: Vec<usize>, // Needed so we know the actual size in bits of the keys in the below array
+    keys: Vec<Vec<u8>>,    // Actually will contain bits on the inside vec
     num_data_bits: usize,
     data: Vec<u8>, // Actually will always be bits
 }
@@ -19,14 +20,17 @@ pub fn main() {
     // Properly serialize information about the keys we want to extract
     let mut max_num_keys = 0;
     let mut max_num_key_bits = 0;
+    let mut key_sizes = vec![];
     let mut keys = vec![];
     for &key in KEYS {
         let key = get_bits(key)
             .into_iter()
             .map(|b| b as u8)
             .collect::<Vec<u8>>();
-        if key.len() > max_num_key_bits {
-            max_num_key_bits = key.len();
+        let key_len = key.len();
+        if key_len > max_num_key_bits {
+            key_sizes.push(key_len);
+            max_num_key_bits = key_len;
         }
         keys.push(key);
         max_num_keys += 1;
@@ -49,6 +53,7 @@ pub fn main() {
     // Create a witness file as `input.json`
     let witness = Witness {
         num_keys: max_num_keys, // For now we can set this to be the same
+        key_sizes,
         keys,
         num_data_bits: data.len(), // For now we can set this to be the same
         data,
