@@ -1,5 +1,7 @@
 pragma circom 2.1.9;
-pragma custom_templates;
+
+// TODO: Adding a `to bytes` kind of function could be helpful
+
 
 template Extractor(MAX_NUM_KEYS, MAX_NUM_KEY_BITS, MAX_NUM_DATA_BITS) {
     signal input num_keys;
@@ -65,14 +67,16 @@ template Extractor(MAX_NUM_KEYS, MAX_NUM_KEY_BITS, MAX_NUM_DATA_BITS) {
     var to_break = 0;
     var instruction_counter = 0;
     while(depth < num_keys || to_break == 1) {
-        var next_instruction[2] = getNextInstruction(data);
-        
-        if(next_instruction[0] == INCREASE_DEPTH) {
+        var next_instruction[2] = getNextInstruction(data, pointer, MAX_NUM_DATA_BITS);
 
+        if(next_instruction[0] == INCREASE_DEPTH) {
+            depth +=1;
+            pointer += next_instruction[1];
         } 
 
         if(next_instruction[0] == DECREASE_DEPTH) {
-
+            depth -=1;
+            pointer += next_instruction[1];
         }
 
         if(next_instruction[0] == BREAK_LOOP) {
@@ -80,12 +84,10 @@ template Extractor(MAX_NUM_KEYS, MAX_NUM_KEY_BITS, MAX_NUM_DATA_BITS) {
         }
 
         if(next_instruction[0] == EOF) {
-
+            to_break = 1;
         }
         instruction_counter++;
     }
-
-
     //--------------------------------------------------------------------------------------------//
  }
 
@@ -97,51 +99,44 @@ template Extractor(MAX_NUM_KEYS, MAX_NUM_KEY_BITS, MAX_NUM_DATA_BITS) {
     }
  }
  
- function getNextInstruction(data) {
+ function getNextInstruction(data, start_pointer, MAX_NUM_DATA_BITS) {
     var INCREASE_DEPTH = 0;    
     var DECREASE_DEPTH = 1;
     var BREAK_LOOP = 2;
     var EOF = 3;
-    var next_instruction;
     var jump_offset = 0;
-    if(data[0] == 1) {
-        next_instruction = BREAK_LOOP;
+
+    var END_BRACE_BITS[8] = [0, 1, 1, 1, 1, 1, 0, 1]; // `}`
+    var COMMA_BITS[8] = [0, 0, 1, 0, 1, 1, 0, 0]; // `,`
+
+    // Loop over all the data byte by byte
+    for(var pointer = start_pointer; pointer < MAX_NUM_DATA_BITS - 8 - start_pointer; pointer = pointer + 8) {
+        //xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx//
+        // 1. Check to see if we bitmatch an end brace `}`
+        var bit_idx = 0;
+        var is_end_brace = 1;
+        var is_key_byte = 1;
+        while(bit_idx < 8 && is_end_brace == 1 && is_key_byte){
+            // Check here if all bits in this current byte are that of an end brace `}`
+            if(data[pointer + bit_idx] != END_BRACE_BITS[bit_idx]) {
+                is_end_brace = 0;
+            }
+            // Check here if all bits in this current byte are that of the current byte of the key (still a bit TODO)
+            if(data[pointer + bit_idx] ^ END_BRACE_BITS[bit_idx] != 0) {
+                is_key_byte = 0;
+           }
+        }
+        if(is_end_brace == 1) {
+            // Hit an end brace "}" so we need to return the current pointer as an offset and decrease depth
+            return [DECREASE_DEPTH, pointer + 8];
+        }
+        if(is_key_byte == 1) {
+            // TODO: increment the current byte of the key we are on.
+        }
+        //xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx//
     }
-    // TODO: Add more conditionals.
-    return [next_instruction, jump_offset];
+    return [EOF, jump_offset];
  }
-    // let key_length = key.len();
-
-    // // dbg!(String::from_utf8_lossy(key));
-
-    // 'outer: for i in 0..(data_bytes.len() - key_length) {
-    //     #[allow(clippy::needless_range_loop)]
-    //     for j in 0..key_length {
-    //         // dbg!(String::from_utf8_lossy(&[data_bytes[i..i + key_length][j]]));
-    //         if data_bytes[i..i + key_length][j] == b"}"[0] {
-    //             // Hit an end brace "}" so we need to return the current pointer as an offset and decrease depth
-    //             return Instruction::DecreaseDepth(i + j);
-    //         }
-    //         if key[j] ^ data_bytes[i..i + key_length][j] != 0 {
-    //             continue 'outer;
-    //         }
-    //     }
-    //     // If we hit here then we must have fully matched a key so we return the current pointer as an offset
-    //     return Instruction::IncreaseDepth(i + key_length);
-    // }
-    // // If we hit here, we must have hit EOF (which is actually an error?)
-    // Instruction::EOF
-//  }
-
-    // // Loop over all the data byte by byte
-    // for(var data_byte_idx = 0; data_byte_idx < MAX_NUM_DATA_BITS - 8; data_byte_idx = data_byte_idx + 8) {
-    //     // Scan each byte bit by bit
-        
-    //     for(var bit = 0; bit < 8; bit++){
-    //         // Constrain that every element of `data` is a bit
-    //         data[data_byte_idx + bit] * (data[data_byte_idx + bit] - 1) === 0;
-    //     }
-    // }
 
 
 // TODO: change max here as needed
