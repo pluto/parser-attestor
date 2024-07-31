@@ -28,8 +28,8 @@ pub fn main() {
             .map(|b| b as u8)
             .collect::<Vec<u8>>();
         let key_len = key.len();
+        key_sizes.push(key_len);
         if key_len > max_num_key_bits {
-            key_sizes.push(key_len);
             max_num_key_bits = key_len;
         }
         keys.push(key);

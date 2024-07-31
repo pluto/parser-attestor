@@ -2,8 +2,9 @@ pragma circom 2.0.0;
 
 template Extractor(MAX_NUM_KEYS, MAX_NUM_KEY_BITS, MAX_NUM_DATA_BITS) {
     signal input num_keys;
-    signal input num_data_bits;
+    signal input key_sizes[MAX_NUM_KEYS];
     signal input keys[MAX_NUM_KEYS][MAX_NUM_KEY_BITS];
+    signal input num_data_bits;
     signal input data[MAX_NUM_DATA_BITS];
     // Used to track the state of the reader
     var pointer = 0;
