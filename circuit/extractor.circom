@@ -1,6 +1,7 @@
 pragma circom 2.1.9;
+pragma custom_templates;
 
-template Extractor(MAX_NUM_KEYS, MAX_NUM_KEY_BITS, MAX_NUM_DATA_BITS, MAX_NUM_INSTRUCTIONS) {
+template Extractor(MAX_NUM_KEYS, MAX_NUM_KEY_BITS, MAX_NUM_DATA_BITS) {
     signal input num_keys;
     signal input key_sizes[MAX_NUM_KEYS];
     signal input keys[MAX_NUM_KEYS][MAX_NUM_KEY_BITS];
@@ -56,26 +57,29 @@ template Extractor(MAX_NUM_KEYS, MAX_NUM_KEY_BITS, MAX_NUM_DATA_BITS, MAX_NUM_IN
     var pointer = 0;
     var depth = 0;
 
-    component instruction = Instruction();
+    var INCREASE_DEPTH = 0;    
+    var DECREASE_DEPTH = 1;
+    var BREAK_LOOP = 2;
+    var EOF = 3;
+
     var to_break = 0;
     var instruction_counter = 0;
-    component instruction_list[MAX_NUM_INSTRUCTIONS];
-    while(depth < num_keys || to_break == 1 || instruction_counter == MAX_NUM_INSTRUCTIONS) {
-        instruction_list[instruction_counter] = Instructor(2);
+    while(depth < num_keys || to_break == 1) {
+        var next_instruction[2] = getNextInstruction(data);
         
-        if(instruction_list[instruction_counter].next_instruction == instruction.INCREASE_DEPTH) {
+        if(next_instruction[0] == INCREASE_DEPTH) {
 
         } 
 
-        if(instruction_list[instruction_counter].next_instruction == instruction.DECREASE_DEPTH) {
+        if(next_instruction[0] == DECREASE_DEPTH) {
 
         }
 
-        if(instruction_list[instruction_counter].next_instruction == instruction.BREAK_LOOP) {
+        if(next_instruction[0] == BREAK_LOOP) {
             to_break = 1;
         }
 
-        if(instruction_list[instruction_counter].next_instruction == instruction.EOF) {
+        if(next_instruction[0] == EOF) {
 
         }
         instruction_counter++;
@@ -92,25 +96,19 @@ template Extractor(MAX_NUM_KEYS, MAX_NUM_KEY_BITS, MAX_NUM_DATA_BITS, MAX_NUM_IN
         bits[i] * (bits[i] - 1) === 0;
     }
  }
-
- // Instructions to match against
-template Instruction() {
-    signal output INCREASE_DEPTH <== 0;    
-    signal output DECREASE_DEPTH <== 1;
-    signal output BREAK_LOOP <== 2;
-    signal output EOF <==  3;
-}
  
- template Instructor(n) {
-    signal input data[n];
-    signal output next_instruction;
-    signal output offset;
-    
-    component instruction = Instruction();
+ function getNextInstruction(data) {
+    var INCREASE_DEPTH = 0;    
+    var DECREASE_DEPTH = 1;
+    var BREAK_LOOP = 2;
+    var EOF = 3;
+    var next_instruction;
+    var jump_offset = 0;
     if(data[0] == 1) {
-        next_instruction <== instruction.BREAK_LOOP;
+        next_instruction = BREAK_LOOP;
     }
-
+    // TODO: Add more conditionals.
+    return [next_instruction, jump_offset];
  }
     // let key_length = key.len();
 
@@ -148,4 +146,4 @@ template Instruction() {
 
 // TODO: change max here as needed
 // The numbers used here come from the `example.json` witnessgen
-component main = Extractor(3, 80, 6296, 100);
+component main = Extractor(3, 80, 6296);
