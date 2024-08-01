@@ -1,9 +1,6 @@
 pragma circom 2.1.9;
 
-// TODO: Adding a `to bytes` kind of function could be helpful
-
-
-template Extractor(MAX_NUM_KEYS, MAX_NUM_KEY_BITS, MAX_NUM_DATA_BITS) {
+template Extractor(MAX_NUM_KEYS, MAX_NUM_KEY_BITS, MAX_NUM_DATA_BITS, MAX_NUM_INSTRUCTIONS) {
     signal input num_keys;
     signal input key_sizes[MAX_NUM_KEYS];
     signal input keys[MAX_NUM_KEYS][MAX_NUM_KEY_BITS];
@@ -13,7 +10,11 @@ template Extractor(MAX_NUM_KEYS, MAX_NUM_KEY_BITS, MAX_NUM_DATA_BITS) {
     // Needed in order to not have a bug when verifying
     signal output out;
     out <== 1;
- 
+
+    // Debugging signals
+    signal output debug_pointer[MAX_NUM_INSTRUCTIONS];
+    signal output debug_depth[MAX_NUM_INSTRUCTIONS];
+    signal output debug_instruction[MAX_NUM_INSTRUCTIONS][2];
 
     // Make sure there are some keys to use
     assert(num_keys > 0);
@@ -26,12 +27,6 @@ template Extractor(MAX_NUM_KEYS, MAX_NUM_KEY_BITS, MAX_NUM_DATA_BITS) {
 
     // Make sure the number of bits of data comes in byte aligned
     assert(num_data_bits % 8 == 0);
-
-    // // Make sure there is more data than each key (NOT IN USE)
-    // assert(num_key_bits < num_data_bits);
-
-    // // Make sure the number of bits of any given key is less than the max (NOT IN USE)
-    // assert(num_key_bits < MAX_NUM_KEY_BITS);
 
     // Make sure that the amount of bits of data is less than the maximum allowed
     assert(num_data_bits <= MAX_NUM_DATA_BITS);
@@ -51,7 +46,6 @@ template Extractor(MAX_NUM_KEYS, MAX_NUM_KEY_BITS, MAX_NUM_DATA_BITS) {
     }
     //--------------------------------------------------------------------------------------------//
 
-
     //--------------------------------------------------------------------------------------------//
     //-SUBSTRING_MATCH----------------------------------------------------------------------------//
     //--------------------------------------------------------------------------------------------//
@@ -64,24 +58,37 @@ template Extractor(MAX_NUM_KEYS, MAX_NUM_KEY_BITS, MAX_NUM_DATA_BITS) {
     var EOF = 2;
 
     var eof_hit = 0;
-    var instruction_counter = 0;
-    while(depth < num_keys || eof_hit == 1) {
+
+    // Debugging initial state
+    // debug_depth <== depth;
+    // debug_pointer <== pointer;
+    // debug_instruction_counter <== instruction_counter;
+    // debug_eof_hit <== eof_hit;
+
+    for(var instruction_counter = 0; instruction_counter < MAX_NUM_INSTRUCTIONS; instruction_counter++) {
         var next_instruction[2] = getNextInstruction(data, pointer, keys[depth], key_sizes[depth], MAX_NUM_DATA_BITS);
 
         if(next_instruction[0] == INCREASE_DEPTH) {
-            depth +=1;
+            depth += 1;
             pointer += next_instruction[1];
         } 
 
         if(next_instruction[0] == DECREASE_DEPTH) {
-            depth -=1;
+            depth -= 1;
             pointer += next_instruction[1];
         }
 
         if(next_instruction[0] == EOF) {
             eof_hit = 1;
-        }
-        instruction_counter++;
+        }   
+
+    debug_pointer[instruction_counter] <== pointer;
+        debug_depth[instruction_counter] <== depth;
+        debug_instruction[instruction_counter][0] <== next_instruction[0];
+        debug_instruction[instruction_counter][1] <== next_instruction[1];
+        // if(depth == num_keys) {
+            debug_pointer[instruction_counter] <== pointer;
+        // }
     }
 
     if(eof_hit == 1) {
@@ -91,17 +98,17 @@ template Extractor(MAX_NUM_KEYS, MAX_NUM_KEY_BITS, MAX_NUM_DATA_BITS) {
         // TODO: Retrieve the value at the given key
     }
     //--------------------------------------------------------------------------------------------//
- }
+}
 
- template BitConstraint(n) {
+template BitConstraint(n) {
     signal input bits[n];
 
     for (var i = 0; i<n; i++) {
         bits[i] * (bits[i] - 1) === 0;
     }
- }
+}
  
- function getNextInstruction(data, start_pointer, key, key_length, MAX_NUM_DATA_BITS) {
+function getNextInstruction(data, start_pointer, key, key_length, MAX_NUM_DATA_BITS) {
     var INCREASE_DEPTH = 0;    
     var DECREASE_DEPTH = 1;
     var EOF = 2;
@@ -140,9 +147,8 @@ template Extractor(MAX_NUM_KEYS, MAX_NUM_KEY_BITS, MAX_NUM_DATA_BITS) {
         //xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx//
     }
     return [EOF, jump_offset];
- }
-
+}
 
 // TODO: change max here as needed
 // The numbers used here come from the `example.json` witnessgen
-component main = Extractor(3, 80, 6296);
+component main = Extractor(3, 80, 6296, 100);

@@ -3,6 +3,8 @@ pub const VENMO_JSON: &[u8] = include_bytes!("../venmo_response.json");
 
 pub mod item;
 
+// TODO: Mark when we're in a key versus in a value, versus whitespace, etc.?
+
 pub struct Machine<'a> {
     pub keys: Vec<&'a [u8]>,
     depth: usize,
