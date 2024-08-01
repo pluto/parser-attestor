@@ -61,13 +61,12 @@ template Extractor(MAX_NUM_KEYS, MAX_NUM_KEY_BITS, MAX_NUM_DATA_BITS) {
 
     var INCREASE_DEPTH = 0;    
     var DECREASE_DEPTH = 1;
-    var BREAK_LOOP = 2;
-    var EOF = 3;
+    var EOF = 2;
 
-    var to_break = 0;
+    var eof_hit = 0;
     var instruction_counter = 0;
-    while(depth < num_keys || to_break == 1) {
-        var next_instruction[2] = getNextInstruction(data, pointer, MAX_NUM_DATA_BITS);
+    while(depth < num_keys || eof_hit == 1) {
+        var next_instruction[2] = getNextInstruction(data, pointer, keys[depth], key_sizes[depth], MAX_NUM_DATA_BITS);
 
         if(next_instruction[0] == INCREASE_DEPTH) {
             depth +=1;
@@ -79,14 +78,17 @@ template Extractor(MAX_NUM_KEYS, MAX_NUM_KEY_BITS, MAX_NUM_DATA_BITS) {
             pointer += next_instruction[1];
         }
 
-        if(next_instruction[0] == BREAK_LOOP) {
-            to_break = 1;
-        }
-
         if(next_instruction[0] == EOF) {
-            to_break = 1;
+            eof_hit = 1;
         }
         instruction_counter++;
+    }
+
+    if(eof_hit == 1) {
+        // TODO: But we should fail?
+    }
+    if(depth == num_keys) {
+        // TODO: Retrieve the value at the given key
     }
     //--------------------------------------------------------------------------------------------//
  }
@@ -99,11 +101,10 @@ template Extractor(MAX_NUM_KEYS, MAX_NUM_KEY_BITS, MAX_NUM_DATA_BITS) {
     }
  }
  
- function getNextInstruction(data, start_pointer, MAX_NUM_DATA_BITS) {
+ function getNextInstruction(data, start_pointer, key, key_length, MAX_NUM_DATA_BITS) {
     var INCREASE_DEPTH = 0;    
     var DECREASE_DEPTH = 1;
-    var BREAK_LOOP = 2;
-    var EOF = 3;
+    var EOF = 2;
     var jump_offset = 0;
 
     var END_BRACE_BITS[8] = [0, 1, 1, 1, 1, 1, 0, 1]; // `}`
@@ -114,24 +115,27 @@ template Extractor(MAX_NUM_KEYS, MAX_NUM_KEY_BITS, MAX_NUM_DATA_BITS) {
         //xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx//
         // 1. Check to see if we bitmatch an end brace `}`
         var bit_idx = 0;
-        var is_end_brace = 1;
-        var is_key_byte = 1;
-        while(bit_idx < 8 && is_end_brace == 1 && is_key_byte){
+        var is_end_brace = 0;
+        var correct_key_bytes = 0;
+        while(bit_idx < 8 && is_end_brace == 0 && correct_key_bytes == key_length / 8){
             // Check here if all bits in this current byte are that of an end brace `}`
             if(data[pointer + bit_idx] != END_BRACE_BITS[bit_idx]) {
-                is_end_brace = 0;
+                is_end_brace = 1;
             }
             // Check here if all bits in this current byte are that of the current byte of the key (still a bit TODO)
             if(data[pointer + bit_idx] ^ END_BRACE_BITS[bit_idx] != 0) {
-                is_key_byte = 0;
-           }
+                correct_key_bytes++;
+            }
+            // Did not hit a byte from intended key, so reset
+            correct_key_bytes = 0;
         }
         if(is_end_brace == 1) {
-            // Hit an end brace "}" so we need to return the current pointer as an offset and decrease depth
+            // Hit an end brace "}" so we need to return the current pointer and decrease depth
             return [DECREASE_DEPTH, pointer + 8];
         }
-        if(is_key_byte == 1) {
-            // TODO: increment the current byte of the key we are on.
+        if(correct_key_bytes == key_length) {
+            // Hit a the correct key so we need to return the current pointer and increase depth
+            return [INCREASE_DEPTH, pointer + 8];
         }
         //xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx//
     }
