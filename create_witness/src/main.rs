@@ -12,7 +12,7 @@ pub struct Witness {
     num_keys: usize,
     key_sizes: Vec<usize>,
     keys: Vec<Vec<u8>>,
-    num_data_bits: usize,
+    num_data_bytes: usize,
     data: Vec<u8>,
 }
 
@@ -47,7 +47,7 @@ pub fn main() {
         num_keys: max_num_keys, // For now we can set this to be the same
         key_sizes,
         keys,
-        num_data_bits: DATA.len(), // For now we can set this to be the same
+        num_data_bytes: DATA.len(), // For now we can set this to be the same
         data: DATA.to_vec(),
     };
     let mut file = std::fs::File::create("circuit/witness.json").unwrap();

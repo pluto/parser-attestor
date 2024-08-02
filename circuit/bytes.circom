@@ -6,7 +6,9 @@ pragma circom 2.1.9;
 template u8ToByte() {
     signal input in;
     signal output out[8];
-    var 1c1 = 0;
+    var lc1 = 0;
+
+    // log("input to u8ToByte: ", in);
 
     var e2 = 1;
     for (var i = 0; i < 8; i++) {
@@ -16,4 +18,20 @@ template u8ToByte() {
         e2 = e2 + e2;
     }
     lc1 === in;
+}
+
+template ASCII(n) {
+    signal input in[n];
+    signal output out[n][8];
+
+    component toByte[n];
+    for(var i = 0; i < n; i++) {
+        toByte[i] = u8ToByte();
+        toByte[i].in <== in[i];
+        // // Debug
+        // for(var j = 1; j < 8; j++) {
+        //     log("toByte[i].out: ", toByte[i].out[j]);
+        // }
+        out[i] <== toByte[i].out;
+    }
 }
