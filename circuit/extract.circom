@@ -19,14 +19,20 @@ template Extract(MAX_NUM_KEYS, MAX_NUM_KEY_BYTES, MAX_NUM_DATA_BYTES) {
     }
     component dataASCII = ASCII(MAX_NUM_DATA_BYTES);
     dataASCII.in <== data;
+    //--------------------------------------------------------------------------------------------//
 
-    // component isByte = u8ToByte();
-    // isByte.in <== 10;
+    // // DEBUG
+    // signal first_key[MAX_NUM_KEY_BYTES];
+    // first_key <== keyASCII[0].out;
+    // for(var i = 0; i < MAX_NUM_KEY_BYTES; i++) {
+    //     log("first_key[", i, "] = ", first_key[i]);
+    // }
 
-    // log("after byte test");
-    // component someASCII = ASCIIToBytes(3);
-    // // signal ascii[3] <== [100, 200, 300];
-    // someASCII.in <== [100, 200, 300];
+    // // DEBUG
+    // for(var i = 0; i < MAX_NUM_DATA_BYTES; i++) {
+    //     log("data[", i, "]", dataASCII.out[i]);
+    // }
+
 }
 
 component main = Extract(3, 10, 787);
