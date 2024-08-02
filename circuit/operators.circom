@@ -25,3 +25,26 @@ template IsEqual() {
 
     isz.out ==> out;
 }
+
+template IsEqualArray(n) {
+    signal input in[n][2];
+    signal output out;
+
+    var accum = 0;
+    component equalComponent[n];
+
+    for(var i = 0; i < n; i++) {
+        equalComponent[i] = IsEqual();
+        equalComponent[i].in[0] <== in[i][0];
+        equalComponent[i].in[1] <== in[i][1];
+    }
+
+    for(var i = 0; i < n; i++) {
+        accum += equalComponent[i].out;
+    }
+
+    component totalEqual = IsEqual();
+    totalEqual.in[0] <== n;
+    totalEqual.in[1] <== accum;
+    out <== totalEqual.out;
+}

@@ -13,20 +13,7 @@ template Extractor(MAX_NUM_KEYS, MAX_NUM_KEY_BITS, MAX_NUM_DATA_BITS, MAX_NUM_IN
     signal output out;
     out <== 1;
 
-    // Make sure there are some keys to use
-    assert(num_keys > 0);
 
-    // Make sure we specify at least a byte
-    assert(MAX_NUM_KEY_BITS > 8);
-
-    // Make sure we specify byte-aligned for the maximum number possible of bits in each key
-    assert(MAX_NUM_KEY_BITS % 8 == 0);
-
-    // Make sure the number of bits of data comes in byte aligned
-    assert(num_data_bits % 8 == 0);
-
-    // Make sure that the amount of bits of data is less than the maximum allowed
-    assert(num_data_bits <= MAX_NUM_DATA_BITS);
     
     //--------------------------------------------------------------------------------------------//
     //-CONSTRAINTS--------------------------------------------------------------------------------//
