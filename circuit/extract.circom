@@ -6,6 +6,7 @@ include "operators.circom";
 template Extract(KEY_BYTES, DATA_BYTES) {
     signal input key[KEY_BYTES];
     signal input data[DATA_BYTES];
+    signal output KeyMatches[DATA_BYTES];
 
     // TODO: Add assertions on the inputs here!
 
@@ -19,18 +20,16 @@ template Extract(KEY_BYTES, DATA_BYTES) {
     component dataASCII = ASCII(DATA_BYTES);
     dataASCII.in <== data;
     //--------------------------------------------------------------------------------------------//
-
     component Matches[DATA_BYTES];
-    for(var data_pointer = 0; data_pointer < 10; data_pointer++) { // DATA_BYTES - KEY_BYTES
+    for(var data_pointer = 0; data_pointer < DATA_BYTES - KEY_BYTES; data_pointer++) {
         Matches[data_pointer] = IsEqualArray(KEY_BYTES);
         for(var key_pointer_offset = 0; key_pointer_offset < KEY_BYTES; key_pointer_offset++) {
             Matches[data_pointer].in[key_pointer_offset][0] <== key[key_pointer_offset];
             Matches[data_pointer].in[key_pointer_offset][1] <== data[data_pointer + key_pointer_offset];
         }
         log("Matches[", data_pointer, "] = ", Matches[data_pointer].out);
+        KeyMatches[data_pointer] <== Matches[data_pointer].out;
     }
-
-
 }
 
 component main = Extract(10, 787);
