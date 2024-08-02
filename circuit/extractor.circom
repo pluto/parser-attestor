@@ -1,5 +1,7 @@
 pragma circom 2.1.9;
 
+// TODO: Mar
+
 template Extractor(MAX_NUM_KEYS, MAX_NUM_KEY_BITS, MAX_NUM_DATA_BITS, MAX_NUM_INSTRUCTIONS) {
     signal input num_keys;
     signal input key_sizes[MAX_NUM_KEYS];
@@ -10,11 +12,6 @@ template Extractor(MAX_NUM_KEYS, MAX_NUM_KEY_BITS, MAX_NUM_DATA_BITS, MAX_NUM_IN
     // Needed in order to not have a bug when verifying
     signal output out;
     out <== 1;
-
-    // Debugging signals
-    signal output debug_pointer[MAX_NUM_INSTRUCTIONS];
-    signal output debug_depth[MAX_NUM_INSTRUCTIONS];
-    signal output debug_instruction[MAX_NUM_INSTRUCTIONS][2];
 
     // Make sure there are some keys to use
     assert(num_keys > 0);
@@ -35,14 +32,14 @@ template Extractor(MAX_NUM_KEYS, MAX_NUM_KEY_BITS, MAX_NUM_DATA_BITS, MAX_NUM_IN
     //-CONSTRAINTS--------------------------------------------------------------------------------//
     //--------------------------------------------------------------------------------------------//
     // Constrain the data comes in all as bits
-    component dataBitConstraint = BitConstraint(MAX_NUM_DATA_BITS);
-    dataBitConstraint.bits <== data;
+    component dataBit = Bit(MAX_NUM_DATA_BITS);
+    dataBit.bits <== data;
 
     // Constrain that the keys come in all as bits
-    component keyBitConstraints[MAX_NUM_KEYS];
+    component keyBits[MAX_NUM_KEYS];
     for(var key_idx = 0; key_idx < MAX_NUM_KEYS; key_idx++) {
-        keyBitConstraints[key_idx] = BitConstraint(MAX_NUM_KEY_BITS);
-        keyBitConstraints[key_idx].bits <== keys[key_idx];
+        keyBits[key_idx] = Bit(MAX_NUM_KEY_BITS);
+        keyBits[key_idx].bits <== keys[key_idx];
     }
     //--------------------------------------------------------------------------------------------//
 
@@ -51,6 +48,7 @@ template Extractor(MAX_NUM_KEYS, MAX_NUM_KEY_BITS, MAX_NUM_DATA_BITS, MAX_NUM_IN
     //--------------------------------------------------------------------------------------------//
     // Used to track the state of the reader
     var pointer = 0;
+    // signal pointer[MAX_NUM_INSTRUCTIONS];
     var depth = 0;
 
     var INCREASE_DEPTH = 0;    
@@ -58,12 +56,6 @@ template Extractor(MAX_NUM_KEYS, MAX_NUM_KEY_BITS, MAX_NUM_DATA_BITS, MAX_NUM_IN
     var EOF = 2;
 
     var eof_hit = 0;
-
-    // Debugging initial state
-    // debug_depth <== depth;
-    // debug_pointer <== pointer;
-    // debug_instruction_counter <== instruction_counter;
-    // debug_eof_hit <== eof_hit;
 
     for(var instruction_counter = 0; instruction_counter < MAX_NUM_INSTRUCTIONS; instruction_counter++) {
         var next_instruction[2] = getNextInstruction(data, pointer, keys[depth], key_sizes[depth], MAX_NUM_DATA_BITS);
@@ -82,30 +74,39 @@ template Extractor(MAX_NUM_KEYS, MAX_NUM_KEY_BITS, MAX_NUM_DATA_BITS, MAX_NUM_IN
             eof_hit = 1;
         }   
 
-    debug_pointer[instruction_counter] <== pointer;
-        debug_depth[instruction_counter] <== depth;
-        debug_instruction[instruction_counter][0] <== next_instruction[0];
-        debug_instruction[instruction_counter][1] <== next_instruction[1];
-        // if(depth == num_keys) {
+        log("value of instruction_counter is", instruction_counter);
+        if(depth == num_keys) {
             debug_pointer[instruction_counter] <== pointer;
-        // }
+        }
     }
 
     if(eof_hit == 1) {
         // TODO: But we should fail?
     }
+
+    // signal s_0 <== num_keys;
+    var test = 5;
+    signal s_0 <== test - num_keys; // pointer and depth are NOT quadratic
+    signal output name <== (s_0 - 1) * data[2];
     if(depth == num_keys) {
         // TODO: Retrieve the value at the given key
+        // out <== data[pointer];
     }
     //--------------------------------------------------------------------------------------------//
 }
 
-template BitConstraint(n) {
+template Bit(n) {
     signal input bits[n];
 
     for (var i = 0; i<n; i++) {
         bits[i] * (bits[i] - 1) === 0;
     }
+}
+
+template Byte() {
+    signal input num;
+    signal output bits[8];
+
 }
  
 function getNextInstruction(data, start_pointer, key, key_length, MAX_NUM_DATA_BITS) {
