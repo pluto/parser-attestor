@@ -45,3 +45,35 @@ template IsEqualArray(n) {
     totalEqual.in[1] <== accum;
     out <== totalEqual.out;
 }
+
+template Not() {
+    signal input in;
+    signal output out;
+
+    in * (in - 1) === 0;
+
+    out <== 1 - in;
+}
+
+// Note that 
+template Contains(n) {
+    signal input in;
+    signal input array[n];
+    signal output out;
+
+    var accum = 0;
+    component equalComponent[n];
+    for(var i = 0; i < n; i++) {
+        equalComponent[i] = IsEqual();
+        equalComponent[i].in[0] <== in;
+        equalComponent[i].in[1] <== array[i];
+        accum = accum + equalComponent[i].out;
+    }
+
+    component someEqual = IsZero();
+    someEqual.in <== accum;
+
+    component not = Not();
+    not.in <== someEqual.out;
+    out <== not.out;
+}
