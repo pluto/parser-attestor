@@ -81,3 +81,6 @@ npm install --save-dev yarn
 ```
 
 which I think can just be salvaged by `npm install` now.
+
+## Notes
+Circomkit can probably be used pretty nicely here if we want to. It could replace the Justfile in many ways or at least make that even easier. Food for thought.
