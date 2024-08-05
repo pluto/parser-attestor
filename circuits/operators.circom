@@ -46,15 +46,6 @@ template IsEqualArray(n) {
     out <== totalEqual.out;
 }
 
-template Not() {
-    signal input in;
-    signal output out;
-
-    in * (in - 1) === 0;
-
-    out <== 1 - in;
-}
-
 // Note that 
 template Contains(n) {
     signal input in;
@@ -73,7 +64,6 @@ template Contains(n) {
     component someEqual = IsZero();
     someEqual.in <== accum;
 
-    component not = Not();
-    not.in <== someEqual.out;
-    out <== not.out;
+    // Apply `not` to this by 1-x
+    out <== 1 - someEqual.out;
 }

@@ -1,36 +1,6 @@
 import { circomkit, WitnessTester } from "./common";
 
 describe("operators", () => {
-    describe("Not", () => {
-        let circuit: WitnessTester<["in"], ["out"]>;
-        before(async () => {
-            circuit = await circomkit.WitnessTester(`Not`, {
-                file: "circuits/operators",
-                template: "Not",
-            });
-            console.log("#constraints:", await circuit.getConstraintCount());
-        });
-
-        it("witness: 0", async () => {
-            await circuit.expectPass(
-                { in: 0 },
-                { out: 1 });
-        });
-
-        it("witness: 1", async () => {
-            await circuit.expectPass(
-                { in: 1 },
-                { out: 0 }
-            );
-        });
-
-        it("witness: 42069", async () => {
-            await circuit.expectFail(
-                { in: 42069 },
-            );
-        });
-    });
-
     describe("IsZero", () => {
         let circuit: WitnessTester<["in"], ["out"]>;
         before(async () => {
