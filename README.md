@@ -71,3 +71,13 @@ which will compile the Circom `extract.circom` program and
 just witness
 ```
 which will do the witness generation for `witness.json`.
+
+## Testing
+You will need `yarn` on your system (brew, or apt-get or something). 
+Then you also need:
+```
+npm install --save-dev circomkit
+npm install --save-dev yarn
+```
+
+which I think can just be salvaged by `npm install` now.

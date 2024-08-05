@@ -5,3 +5,5 @@ circuit/extract.sym
 
 *.ptau
 *.wtns
+
+node_modules/*
