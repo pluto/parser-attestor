@@ -63,4 +63,57 @@ describe("operators", () => {
             );
         });
     });
+
+    describe("IsEqualArray", () => {
+        before(async () => {
+            circuit = await circomkit.WitnessTester(`IsEqualArray`, {
+                file: "circuits/operators",
+                template: "IsEqualArray",
+                params: [3],
+            });
+            console.log("#constraints:", await circuit.getConstraintCount());
+        });
+
+        it("witness [[0,0,0],[0,0,0]]", async () => {
+            await circuit.expectPass(
+                { in: [[0, 0, 0], [0, 0, 0]] },
+                { out: 1 }
+            );
+        });
+
+        it("witness [[1,420,69],[1,420,69]]", async () => {
+            await circuit.expectPass(
+                { in: [[1, 420, 69], [1, 420, 69]] },
+                { out: 1 },
+            );
+        });
+
+        it("witness [[0,0,0],[1,420,69]]", async () => {
+            await circuit.expectPass(
+                { in: [[0, 0, 0], [1, 420, 69]] },
+                { out: 0 },
+            );
+        });
+
+        it("witness [[1,420,0],[1,420,69]]", async () => {
+            await circuit.expectPass(
+                { in: [[1, 420, 0], [1, 420, 69]] },
+                { out: 0 },
+            );
+        });
+
+        it("witness [[1,0,69],[1,420,69]]", async () => {
+            await circuit.expectPass(
+                { in: [[1, 0, 69], [1, 420, 69]] },
+                { out: 0 },
+            );
+        });
+
+        it("witness [[0,420,69],[1,420,69]]", async () => {
+            await circuit.expectPass(
+                { in: [[0, 420, 69], [1, 420, 69]] },
+                { out: 0 },
+            );
+        });
+    });
 });

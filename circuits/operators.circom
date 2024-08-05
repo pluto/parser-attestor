@@ -27,7 +27,7 @@ template IsEqual() {
 }
 
 template IsEqualArray(n) {
-    signal input in[n][2];
+    signal input in[2][n];
     signal output out;
 
     var accum = 0;
@@ -35,11 +35,8 @@ template IsEqualArray(n) {
 
     for(var i = 0; i < n; i++) {
         equalComponent[i] = IsEqual();
-        equalComponent[i].in[0] <== in[i][0];
-        equalComponent[i].in[1] <== in[i][1];
-    }
-
-    for(var i = 0; i < n; i++) {
+        equalComponent[i].in[0] <== in[0][i];
+        equalComponent[i].in[1] <== in[1][i];
         accum += equalComponent[i].out;
     }
 
