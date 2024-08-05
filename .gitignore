@@ -1,4 +1,7 @@
 /target
-circuit/extractor_*/*
-circuit/extractor.r1cs
-circuit/extractor.sym
+circuit/extract_*/*
+circuit/extract.r1cs
+circuit/extract.sym
+
+*.ptau
+*.wtns
