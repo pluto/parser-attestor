@@ -2,6 +2,10 @@ pragma circom 2.1.9;
 
 include "operators.circom";
 
+
+/*
+TODO
+*/
 template Parser() {
     signal input tree_depth;
     signal input parsing_to_key;
@@ -28,6 +32,18 @@ template Parser() {
     var space = 32;
 }
 
+/*
+This function is creates an exhaustive switch statement from `0` up to `n`.
+
+# Inputs:
+- `n`: the number of switch cases
+- `case`: which case of the switch to select
+- `vals[n]`: the value that is emitted for a given switch case (e.g., `val[i]` on `case == i`)
+- `out`: the selected output value
+
+# Constraints:
+- `case`: must be in the range `0, 1, ..., n-1`
+*/
 template Switch(n) {
     assert(n > 0);
     signal input case;
