@@ -6,7 +6,7 @@ include "operators.circom";
 template Extract(KEY_BYTES, DATA_BYTES) {
     signal input key[KEY_BYTES];
     signal input data[DATA_BYTES];
-    signal output KeyMatches[DATA_BYTES];
+    signal output KeyMatches[DATA_BYTES - KEY_BYTES];
 
     // TODO: Add assertions on the inputs here!
 
@@ -31,5 +31,3 @@ template Extract(KEY_BYTES, DATA_BYTES) {
         KeyMatches[data_pointer] <== Matches[data_pointer].out;
     }
 }
-
-// component main = Extract(10, 787);

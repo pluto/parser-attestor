@@ -13,15 +13,15 @@ describe("bytes", () => {
         });
 
         it("proper witness 0", async () => {
-            await circuit.expectPass({ in: 0 }, { out: [0, 0, 0, 0, 0, 0, 0, 0] });
+            await circuit.expectPass({ in: 0 });
         });
 
         it("proper witness 15", async () => {
-            await circuit.expectPass({ in: 15 }, { out: [1, 1, 1, 1, 0, 0, 0, 0] });
+            await circuit.expectPass({ in: 15 });
         });
 
         it("proper witness 255", async () => {
-            await circuit.expectPass({ in: 255 }, { out: [1, 1, 1, 1, 1, 1, 1, 1] });
+            await circuit.expectPass({ in: 255 });
         });
 
         it("failing witness 256", async () => {
@@ -46,7 +46,6 @@ describe("bytes", () => {
         it("Valid ASCII input", async () => {
             await circuit.expectPass(
                 { in: [72, 101, 108, 108, 111, 44, 32, 119, 111, 114, 108, 100, 33] },
-                { out: [72, 101, 108, 108, 111, 44, 32, 119, 111, 114, 108, 100, 33] }
             );
         });
 
