@@ -35,27 +35,27 @@ template Switch(n) {
     signal output out;
 
     // Verify that the `case` is in the possible set of matches (0..n exlusive)
-    signal values[n][n]; 
     var match_array[n];
     for(var i = 0; i < n; i++) {
         match_array[i] = case - i;
-
-        for(var j = 0; j < n; j++) {
-                values[i][j] <-- (j - i)!=0 ? (case - i) / (j - i) : 1;
-        }
     }
     component matchChecker = Contains(n);
     matchChecker.in <== 0;
     matchChecker.array <== match_array;
+    matchChecker.out === 1;
 
-    // Get the output at that match case using lagrange polynomial
+    component indicator[n];
+    signal component_out[n];
+    for(var i = 0; i < n; i++) {
+        indicator[i] = IsZero();
+        indicator[i].in <== case - i; 
+        component_out[i] <== indicator[i].out * vals[i];
+    }
+
     var sum = 0;
     for(var i = 0; i < n; i++) {
-        var product = 1;
-        for(var j = 0; j < n; j++) {
-            product *= values[i][j];
-        }
-        sum += product;
+        sum += component_out[i];
     }
+
     out <== sum;
 }
