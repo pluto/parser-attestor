@@ -72,7 +72,16 @@ npx circomkit compile extract
 ```
 Then you can do 
 ```
-npx circomkit witness witness
+npx circomkit witness extract witness
+```
+And even:
+```
+npx circomkit prove extract witness
+```
+
+To clean up, just run:
+```
+npx circomkit clean extract
 ```
 
 ## Notes
