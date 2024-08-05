@@ -55,32 +55,25 @@ snarkjs groth16 prove extractor_0001.zkey witness.wtns proof.json public.json
 snarkjs groth16 verify verification_key.json public.json proof.json
 ```
 
-### Justfile (WIP)
-To install `justfile` you can do:
-```
-cargo install justfile
-```
-if you have the Rust toolchain already.
-
-Then the working commands are:
-```
-just compile
-```
-which will compile the Circom `extract.circom` program and
-```
-just witness
-```
-which will do the witness generation for `witness.json`.
-
-## Testing
+## Circomkit
 You will need `yarn` on your system (brew, or apt-get or something). 
-Then you also need:
+Then run: `npm install` to get everything else.
+
+### Commands
+To see what you can do, I suggest running:
 ```
-npm install --save-dev circomkit
-npm install --save-dev yarn
+npx circomkit help
 ```
 
-which I think can just be salvaged by `npm install` now.
+#### Compiling and Witnessgen
+For example, to compile the extractor, you can:
+```
+npx circomkit compile extract
+```
+Then you can do 
+```
+npx circomkit witness witness
+```
 
 ## Notes
 Circomkit can probably be used pretty nicely here if we want to. It could replace the Justfile in many ways or at least make that even easier. Food for thought.
