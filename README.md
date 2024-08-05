@@ -64,6 +64,7 @@ To see what you can do, I suggest running:
 ```
 npx circomkit help
 ```
+from the repository root.
 
 #### Compiling and Witnessgen
 For example, to compile the extractor, you can:
@@ -83,6 +84,15 @@ To clean up, just run:
 ```
 npx circomkit clean extract
 ```
+
+All of the above should be ran from repository root.
+
+## Testing
+To test, you can just run
+```
+npx mocha
+```
+from the repository root.
 
 ## Notes
 Circomkit can probably be used pretty nicely here if we want to. It could replace the Justfile in many ways or at least make that even easier. Food for thought.

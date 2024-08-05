@@ -3,7 +3,7 @@
         "ts"
     ],
     "require": "ts-node/register",
-    "spec": "circuit/tests/**/*.test.ts",
+    "spec": "circuits/test/**/*.test.ts",
     "timeout": 100000,
     "exit": true
 }
