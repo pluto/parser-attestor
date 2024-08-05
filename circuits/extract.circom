@@ -24,8 +24,8 @@ template Extract(KEY_BYTES, DATA_BYTES) {
     for(var data_pointer = 0; data_pointer < DATA_BYTES - KEY_BYTES; data_pointer++) {
         Matches[data_pointer] = IsEqualArray(KEY_BYTES);
         for(var key_pointer_offset = 0; key_pointer_offset < KEY_BYTES; key_pointer_offset++) {
-            Matches[data_pointer].in[key_pointer_offset][0] <== key[key_pointer_offset];
-            Matches[data_pointer].in[key_pointer_offset][1] <== data[data_pointer + key_pointer_offset];
+            Matches[data_pointer].in[0][key_pointer_offset] <== key[key_pointer_offset];
+            Matches[data_pointer].in[1][key_pointer_offset] <== data[data_pointer + key_pointer_offset];
         }
         log("Matches[", data_pointer, "] = ", Matches[data_pointer].out);
         KeyMatches[data_pointer] <== Matches[data_pointer].out;
