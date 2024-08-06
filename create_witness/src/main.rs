@@ -7,7 +7,7 @@ pub const KEYS: &[&[u8]] = &[
     b"\"GlossDiv\"".as_slice(),
     b"\"title\"".as_slice(),
 ];
-pub const DATA: &[u8] = include_bytes!("../../example.json");
+pub const DATA: &[u8] = include_bytes!("../../json_examples/example.json");
 
 #[derive(serde::Serialize)]
 pub struct Witness {

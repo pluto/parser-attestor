@@ -1,7 +1,8 @@
 /target
-circuit/extract_*/*
-circuit/extract.r1cs
-circuit/extract.sym
 
-*.ptau
-*.wtns
+node_modules/*
+
+build/*
+ptau/*
+circuits/test/*.circom
+circuits/main/*
