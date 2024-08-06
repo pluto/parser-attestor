@@ -1,5 +1,5 @@
 [workspace]
-members = ["create_witness"]
+members = [ "benches","create_witness"]
 
 [package]
 name = "extractor"

@@ -1,0 +1,10 @@
+[package]
+name = "noir_bench_suite"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tempfile = "3.6.0"
+assert_cmd = "2.0.8"
+serde = { version = "1.0.136", features = ["derive"] }
+serde_json = "1.0"

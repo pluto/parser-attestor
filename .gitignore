@@ -5,3 +5,6 @@ circuit/extract.sym
 
 *.ptau
 *.wtns
+*.zkey
+
+benches/*/target
