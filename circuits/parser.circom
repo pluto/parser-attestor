@@ -16,10 +16,10 @@ template Parser() {
     signal input inside_value;
 
     signal output next_tree_depth;
-    signal output next_parsing_to_key;
-    signal output next_parsing_to_value;
-    signal output next_inside_key;
-    signal output next_inside_value;
+    // signal output next_parsing_to_key;
+    // signal output next_parsing_to_value;
+    // signal output next_inside_key;
+    // signal output next_inside_value;
 
     // Delimeters 
     // - ASCII char: `{`
@@ -40,11 +40,15 @@ template Parser() {
     var space = 32;
 
     // Outputs
-
-    // component matcher = Switch(7, 4); // 7 possible characters above
-    // matcher.branches <== [target_byte, start_brace, end_brace, start_bracket, end_bracket, quote];
-    // matches.vals <== 
+    var increase_depth[2] = [1, 0];
+    var decrease_depth[2] = [-1, 0];
+    var do_nothing[2] = [0, 0];
+    component matcher = Switch(5, 2);
+    matcher.branches <== [start_brace, end_brace, start_bracket, end_bracket, quote];
+    matcher.vals <== [increase_depth, decrease_depth, do_nothing, do_nothing, do_nothing];
+    matcher.case <== byte;
     
+    next_tree_depth <== matcher.out[0];
 }
 
 /*
@@ -58,10 +62,10 @@ This function is creates an exhaustive switch statement from `0` up to `n`.
     (e.g., if `branch[i] == 10` then if `case == 10` we set `out == `vals[i]`)
 - `vals[m][n]`: the value that is emitted for a given switch case 
     (e.g., `val[i]` array is emitted on `case == `branch[i]`)
-- `out[n]`: the selected output value
 
-# Constraints:
-- `case`: must be in the range `0, 1, ..., n-1`
+# Outputs
+- `match`: is set to `0` if `case` does not match on any of `branches`
+- `out[n]`: the selected output value if one of `branches` is selected (should be `[0,0,...]` otherwise)
 */
 template Switch(m, n) {
     assert(m > 0);
@@ -69,9 +73,11 @@ template Switch(m, n) {
     signal input case;
     signal input branches[m];
     signal input vals[m][n];
+    signal output match;
     signal output out[n];
 
-    // Verify that the `case` is in the possible set of matches (0..n exlusive)
+
+    // Verify that the `case` is in the possible set of branches
     var match_array[m];
     component indicator[m];
     signal component_out[m][n];
@@ -88,7 +94,7 @@ template Switch(m, n) {
     component matchChecker = Contains(m);
     matchChecker.in <== 0;
     matchChecker.array <== match_array;
-    matchChecker.out === 1;
+    match <== matchChecker.out;
 
     out <== sum;
 }
