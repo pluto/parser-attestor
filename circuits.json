@@ -4,7 +4,15 @@
         "template": "Extract",
         "params": [
             4,
-            44
+            21
+        ]
+    },
+    "test_extract_hard": {
+        "file": "extract",
+        "template": "Extract",
+        "params": [
+            4,
+            48
         ]
     },
     "extract": {

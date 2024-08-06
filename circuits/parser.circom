@@ -17,10 +17,10 @@ template Parser() {
     signal input inside_value;
 
     signal output next_tree_depth;
-    // signal output next_parsing_to_key;
-    // signal output next_parsing_to_value;
-    // signal output next_inside_key;
-    // signal output next_inside_value;
+    signal output next_parsing_to_key;
+    signal output next_inside_key;
+    signal output next_parsing_to_value;
+    signal output next_inside_value;
 
     // Delimeters 
     // - ASCII char: `{`
@@ -48,16 +48,24 @@ template Parser() {
     // - ASCII char: `\`
     var escape = 92;
 
-    // Outputs
-    var increase_depth[2] = [1, 0];
-    var decrease_depth[2] = [-1, 0];
-    var do_nothing[2] = [0, 0];
-    component matcher = Switch(8, 2);
-    matcher.branches <== [start_brace, end_brace, start_bracket, end_bracket, quote, colon, comma, escape];
-    matcher.vals <== [increase_depth, decrease_depth, do_nothing, do_nothing, do_nothing, do_nothing, do_nothing, do_nothing];
-    matcher.case <== byte;
+    // Output management
+    component matcher = Switch(8, 3);
+    var do_nothing[3]       = [ 0,                             0,         0];
+    var increase_depth[3]   = [ 1,                             0,         0]; 
+    var decrease_depth[3]   = [-1,                             0,         0];
+    var hit_quote[3]        = [ 0,                             1,         0];
+    var hit_colon[3]        = [ 0,                             0,         1];
+
+    matcher.branches      <== [start_brace,    end_brace,      quote,     colon,      start_bracket, end_bracket, comma,      escape    ];
+    matcher.vals          <== [increase_depth, decrease_depth, hit_quote, hit_colon,  do_nothing,    do_nothing,  do_nothing, do_nothing];
+    matcher.case          <== byte;
     
-    next_tree_depth <== tree_depth + matcher.out[0];
+    next_tree_depth       <== tree_depth + parsing_to_key * matcher.out[0];                // Update the tree depth ONLY if we are parsing to a key
+    next_inside_key       <== inside_key + (parsing_to_key - inside_key) * matcher.out[1]; // If we were parsing to key and we hit a quote, then we set to be inside key
+    next_parsing_to_key   <== parsing_to_key * (1 - matcher.out[1]);                       // If we were parsing to key and we hit a quote, then we are not parsing to key
+    signal NOT_PARSING_TO_KEY_AND_NOT_INSIDE_KEY <== (1 - parsing_to_key) * (1 - inside_key);
+    next_parsing_to_value <== parsing_to_value + NOT_PARSING_TO_KEY_AND_NOT_INSIDE_KEY * matcher.out[2];    // If we are NOT parsing to key AND NOT inside key AND hit a colon, then we are parsing to value
+    next_inside_value     <== inside_value + (parsing_to_value - inside_value) * matcher.out[1];
 }
 
 /*
