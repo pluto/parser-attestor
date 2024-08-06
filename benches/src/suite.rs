@@ -23,14 +23,9 @@ pub fn run() -> Result<(), String> {
         .map_err(|c| format!("Error: {}", c))?
         .join("noir_string_search");
 
-    let mut circom = Circom::new();
+    let mut circom = Circom::new(String::from("extract"));
     let mut noir = noir::Noir {};
-    // let tests = fs::read_dir(main_path)
-    //     .unwrap()
-    //     .flatten()
-    //     .filter(|c| c.path().is_dir());
-    // for test in tests {
-    //let test_name = test.file_name();
+
     let circom_bench = benchme(circom_path, &mut circom)?;
     println!(
         "Testing {} with circom:
@@ -63,7 +58,7 @@ pub fn run() -> Result<(), String> {
         noir_bench.exec_duration.as_millis(),
         noir_bench.prove_duration.as_millis()
     );
-    // }
+
     Ok(())
 }
 

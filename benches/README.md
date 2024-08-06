@@ -3,7 +3,7 @@
 run `cargo run` to run the benchmark natively.
 
 > Note: you might need to download tau file using
-> `curl "https://hermez.s3-eu-west-1.amazonaws.com/powersOfTau28_hez_final_19.ptau"`
+> `curl "https://hermez.s3-eu-west-1.amazonaws.com/powersOfTau28_hez_final_19.ptau" -o ../circuit/powersOfTau28_hez_final_19.ptau`
 
 ```
 Testing circuit with circom:

@@ -12,6 +12,7 @@ const CIRCOM_BINARY: &str = "circom";
 
 pub struct Circom {
     temp_dir: Option<TempDir>,
+    circuit_name: String,
 }
 
 impl Language for Circom {
@@ -26,7 +27,7 @@ impl Language for Circom {
 
         let mut command = std::process::Command::new(CIRCOM_BINARY);
         let output = command
-            .arg(entry_point.join("extract.circom"))
+            .arg(entry_point.join(format!("{}.circom", self.circuit_name)))
             .arg("--r1cs")
             .arg("--wasm")
             .arg("--sym")
@@ -47,7 +48,7 @@ impl Language for Circom {
             }
             Err(msg) => return Err(format!("Error running circom: {}", msg)),
         }
-        Ok(temp_directory_path.join("extract.r1cs"))
+        Ok(temp_directory_path.join(format!("{}.r1cs", self.circuit_name)))
     }
 
     /// snarkjs r1cs info mon_fichier.r1cs
@@ -104,14 +105,14 @@ impl Language for Circom {
         let witness_js = self
             .get_temp_dir()
             .path()
-            .join("extract_js")
+            .join(format!("{}_js", self.circuit_name))
             .join("generate_witness.js");
         let witness_js = assert_file(witness_js)?;
         let wasm_file = self
             .get_temp_dir()
             .path()
-            .join("extract_js")
-            .join("extract.wasm");
+            .join(format!("{}_js", self.circuit_name))
+            .join(format!("{}.wasm", self.circuit_name));
         let wasm_file = assert_file(wasm_file)?;
 
         let temp_directory = self.get_temp_dir().path();
@@ -184,8 +185,11 @@ impl Circom {
         self.temp_dir.as_ref().unwrap()
     }
 
-    pub fn new() -> Circom {
-        Circom { temp_dir: None }
+    pub fn new(circuit_name: String) -> Circom {
+        Circom {
+            temp_dir: None,
+            circuit_name,
+        }
     }
 }
 
