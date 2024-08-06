@@ -65,7 +65,7 @@ This function is creates an exhaustive switch statement from `0` up to `n`.
 
 # Outputs
 - `match`: is set to `0` if `case` does not match on any of `branches`
-- `out[n]`: the selected output value if one of `branches` is selected (should be `[0,0,...]` otherwise)
+- `out[n]`: the selected output value if one of `branches` is selected (will be `[0,0,...]` otherwise)
 */
 template Switch(m, n) {
     assert(m > 0);
@@ -78,22 +78,20 @@ template Switch(m, n) {
 
 
     // Verify that the `case` is in the possible set of branches
-    var match_array[m];
     component indicator[m];
+    component matchChecker = Contains(m);
     signal component_out[m][n];
     var sum[n];
     for(var i = 0; i < m; i++) {
-        match_array[i] = case - branches[i];
         indicator[i] = IsZero();
         indicator[i].in <== case - branches[i]; 
+        matchChecker.array[i] <== 1 - indicator[i].out;
         for(var j = 0; j < n; j++) {
             component_out[i][j] <== indicator[i].out * vals[i][j];
             sum[j] += component_out[i][j];
         }
     }
-    component matchChecker = Contains(m);
     matchChecker.in <== 0;
-    matchChecker.array <== match_array;
     match <== matchChecker.out;
 
     out <== sum;
