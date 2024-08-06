@@ -7,11 +7,19 @@ include "operators.circom";
 TODO
 */
 template Parser() {
+    signal input byte;
+
     signal input tree_depth;
     signal input parsing_to_key;
     signal input parsing_to_value;
-    signal input in_key;
-    signal input in_value;
+    signal input inside_key;
+    signal input inside_value;
+
+    signal output next_tree_depth;
+    signal output next_parsing_to_key;
+    signal output next_parsing_to_value;
+    signal output next_inside_key;
+    signal output next_inside_value;
 
     // Delimeters 
     // - ASCII char: `{`
@@ -30,6 +38,10 @@ template Parser() {
     var newline = 10;
     // - ASCII char: ` `
     var space = 32;
+
+    // TODO: Rewrite switch to also take the switch cases instead of enforcing 0,1,...n,
+    component matcher = Switch(8); // 7 possible characters above, 1 case for non-chars above
+    
 }
 
 /*
@@ -47,6 +59,7 @@ This function is creates an exhaustive switch statement from `0` up to `n`.
 template Switch(n) {
     assert(n > 0);
     signal input case;
+    signal input branches[n];
     signal input vals[n];
     signal output out;
 
@@ -56,9 +69,9 @@ template Switch(n) {
     signal component_out[n];
     var sum = 0;
     for(var i = 0; i < n; i++) {
-        match_array[i] = case - i;
+        match_array[i] = case - branches[i];
         indicator[i] = IsZero();
-        indicator[i].in <== case - i; 
+        indicator[i].in <== case - branches[i]; 
         component_out[i] <== indicator[i].out * vals[i];
         sum += component_out[i];
     }

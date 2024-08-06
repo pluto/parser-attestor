@@ -20,14 +20,23 @@ template Extract(KEY_BYTES, DATA_BYTES) {
     component dataASCII = ASCII(DATA_BYTES);
     dataASCII.in <== data;
     //--------------------------------------------------------------------------------------------//
-    component Matches[DATA_BYTES];
-    for(var data_pointer = 0; data_pointer < DATA_BYTES - KEY_BYTES; data_pointer++) {
-        Matches[data_pointer] = IsEqualArray(KEY_BYTES);
-        for(var key_pointer_offset = 0; key_pointer_offset < KEY_BYTES; key_pointer_offset++) {
-            Matches[data_pointer].in[0][key_pointer_offset] <== key[key_pointer_offset];
-            Matches[data_pointer].in[1][key_pointer_offset] <== data[data_pointer + key_pointer_offset];
-        }
-        log("Matches[", data_pointer, "] = ", Matches[data_pointer].out);
-        KeyMatches[data_pointer] <== Matches[data_pointer].out;
+    // Initialze the parser
+    component Instructions[DATA_BYTES];
+    Instructions[0] = Parser();
+    Instructions[0].byte             <== dataASCII[0];
+    Instructions[0].tree_depth       <== 0;
+    Instructions[0].parsing_to_key   <== 0;
+    Instructions[0].parsing_to_value <== 0;
+    Instructions[0].inside_key       <== 0;
+    Instructions[0].inside_value     <== 0;
+
+    for(var data_pointer = 1; data_pointer < DATA_BYTES; data_pointer++) {
+        Instructions[i] = Parser();
+        Instructions[i].byte             <== dataASCII[data_pointer];
+        Instructions[i].tree_depth       <== Instructions[i - 1].tree_depth;
+        Instructions[i].parsing_to_key   <== Instructions[i - 1].parsing_to_key;
+        Instructions[i].parsing_to_value <== Instructions[i - 1].parsing_to_value;
+        Instructions[i].inside_key       <== Instructions[i - 1].inside_key;
+        Instructions[i].inside_value     <== Instructions[i - 1].inside_value;
     }
-}
+} 
