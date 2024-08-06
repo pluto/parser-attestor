@@ -1,5 +1,5 @@
-pub const EXAMPLE_JSON: &[u8] = include_bytes!("../example.json");
-pub const VENMO_JSON: &[u8] = include_bytes!("../venmo_response.json");
+pub const EXAMPLE_JSON: &[u8] = include_bytes!("../json_examples/example.json");
+pub const VENMO_JSON: &[u8] = include_bytes!("../json_examples/venmo_response.json");
 
 pub mod item;
 
