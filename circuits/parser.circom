@@ -48,7 +48,7 @@ template Parser() {
     matcher.vals <== [increase_depth, decrease_depth, do_nothing, do_nothing, do_nothing];
     matcher.case <== byte;
     
-    next_tree_depth <== matcher.out[0];
+    next_tree_depth <== tree_depth + matcher.out[0];
 }
 
 /*

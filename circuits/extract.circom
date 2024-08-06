@@ -35,11 +35,14 @@ template Extract(KEY_BYTES, DATA_BYTES) {
     for(var data_pointer = 1; data_pointer < DATA_BYTES; data_pointer++) {
         Instructions[data_pointer] = Parser();
         Instructions[data_pointer].byte             <== data[data_pointer];
-        Instructions[data_pointer].tree_depth       <== Instructions[data_pointer - 1].tree_depth;
+        Instructions[data_pointer].tree_depth       <== Instructions[data_pointer - 1].next_tree_depth;
+        // TODO: For the next instructions, we should use `next_`, this is only to make this compile for now.
         Instructions[data_pointer].parsing_to_key   <== Instructions[data_pointer - 1].parsing_to_key;
         Instructions[data_pointer].parsing_to_value <== Instructions[data_pointer - 1].parsing_to_value;
         Instructions[data_pointer].inside_key       <== Instructions[data_pointer - 1].inside_key;
         Instructions[data_pointer].inside_value     <== Instructions[data_pointer - 1].inside_value;
+
+        // Debugging
         log("next_tree_depth[", data_pointer, "]", "= ", Instructions[data_pointer].next_tree_depth);
     }
 } 
