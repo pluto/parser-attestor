@@ -1,4 +1,12 @@
 {
+    "test_extract": {
+        "file": "extract",
+        "template": "Extract",
+        "params": [
+            4,
+            44
+        ]
+    },
     "extract": {
         "file": "extract",
         "template": "Extract",

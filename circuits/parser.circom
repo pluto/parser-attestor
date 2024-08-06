@@ -10,6 +10,7 @@ template Parser() {
     signal input byte;
 
     signal input tree_depth;
+    signal input escaping;
     signal input parsing_to_key;
     signal input parsing_to_value;
     signal input inside_key;
@@ -32,20 +33,28 @@ template Parser() {
     var end_bracket = 93;
     // - ASCII char `"`
     var quote = 34;
+    // - ASCII char `:`
+    var colon = 58;
+    // - ASCII char `,`
+    var comma = 44;
 
     // White space
-    // - ASCII char: `/n`
+    // - ASCII char: `\n`
     var newline = 10;
     // - ASCII char: ` `
     var space = 32;
+
+    // Escape
+    // - ASCII char: `\`
+    var escape = 92;
 
     // Outputs
     var increase_depth[2] = [1, 0];
     var decrease_depth[2] = [-1, 0];
     var do_nothing[2] = [0, 0];
-    component matcher = Switch(5, 2);
-    matcher.branches <== [start_brace, end_brace, start_bracket, end_bracket, quote];
-    matcher.vals <== [increase_depth, decrease_depth, do_nothing, do_nothing, do_nothing];
+    component matcher = Switch(8, 2);
+    matcher.branches <== [start_brace, end_brace, start_bracket, end_bracket, quote, colon, comma, escape];
+    matcher.vals <== [increase_depth, decrease_depth, do_nothing, do_nothing, do_nothing, do_nothing, do_nothing, do_nothing];
     matcher.case <== byte;
     
     next_tree_depth <== tree_depth + matcher.out[0];

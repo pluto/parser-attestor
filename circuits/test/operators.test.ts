@@ -132,25 +132,29 @@ describe("operators", () => {
         it("witness: in = 0, array = [0,1,2]", async () => {
             await circuit.expectPass(
                 { in: 0, array: [0, 1, 2] },
-                { out: 1 });
+                { out: 1 }
+            );
         });
 
         it("witness: in = 1, array = [0,1,2]", async () => {
             await circuit.expectPass(
                 { in: 1, array: [0, 1, 2] },
-                { out: 1 });
+                { out: 1 }
+            );
         });
 
         it("witness: in = 2, array = [0,1,2]", async () => {
             await circuit.expectPass(
                 { in: 2, array: [0, 1, 2] },
-                { out: 1 });
+                { out: 1 }
+            );
         });
 
         it("witness: in = 42069, array = [0,1,2]", async () => {
             await circuit.expectPass(
                 { in: 42069, array: [0, 1, 2] },
-                { out: 0 });
+                { out: 0 }
+            );
         });
 
     });

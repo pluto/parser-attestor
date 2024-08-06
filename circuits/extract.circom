@@ -26,6 +26,7 @@ template Extract(KEY_BYTES, DATA_BYTES) {
     State[0] = Parser();
     State[0].byte             <== data[0];
     State[0].tree_depth       <== 0;
+    State[0].escaping         <== 0;
     State[0].parsing_to_key   <== 0;
     State[0].parsing_to_value <== 0;
     State[0].inside_key       <== 0;
@@ -37,6 +38,7 @@ template Extract(KEY_BYTES, DATA_BYTES) {
         State[data_pointer].byte             <== data[data_pointer];
         State[data_pointer].tree_depth       <== State[data_pointer - 1].next_tree_depth;
         // TODO: For the next state, we should use `next_`, this is only to make this compile for now.
+        State[data_pointer].escaping         <== State[data_pointer - 1].escaping;
         State[data_pointer].parsing_to_key   <== State[data_pointer - 1].parsing_to_key;
         State[data_pointer].parsing_to_value <== State[data_pointer - 1].parsing_to_value;
         State[data_pointer].inside_key       <== State[data_pointer - 1].inside_key;
@@ -48,4 +50,6 @@ template Extract(KEY_BYTES, DATA_BYTES) {
 
     log("next_tree_depth[", DATA_BYTES -1, "] = ", State[DATA_BYTES -1].next_tree_depth);
 
+    // Constrain to have valid JSON (TODO: more is needed)
+    State[DATA_BYTES - 1].next_tree_depth === 0;
 } 
