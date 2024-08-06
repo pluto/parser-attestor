@@ -1,0 +1,8 @@
+[package]
+name = "noir_string_search"
+type = "bin"
+authors = [""]
+compiler_version = ">=0.32.0"
+
+[dependencies]
+string_search = { tag = "v0.1", git = "https://github.com/noir-lang/noir_string_search" }
