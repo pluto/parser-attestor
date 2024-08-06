@@ -6,7 +6,7 @@ build/*
 ptau/*
 *.zkey
 
-benches/*/target
+bench/*/target
 
 circuits/test/*.circom
 circuits/main/*

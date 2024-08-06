@@ -18,7 +18,7 @@ pub trait Language {
 pub fn run() -> Result<(), String> {
     let circom_path = env::current_dir()
         .map_err(|c| format!("Error: {}", c))?
-        .join("../circuit");
+        .join("../circuits");
     let noir_path = env::current_dir()
         .map_err(|c| format!("Error: {}", c))?
         .join("noir_string_search");

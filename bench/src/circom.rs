@@ -26,14 +26,19 @@ impl Language for Circom {
         let temp_directory_path = self.get_temp_dir().path();
 
         let mut command = std::process::Command::new(CIRCOM_BINARY);
-        let output = command
-            .arg(entry_point.join(format!("{}.circom", self.circuit_name)))
+        command
+            .arg(
+                entry_point
+                    .join("main")
+                    .join(format!("{}.circom", self.circuit_name)),
+            )
             .arg("--r1cs")
             .arg("--wasm")
             .arg("--sym")
             .arg("-o")
-            .arg(temp_directory_path)
-            .output();
+            .arg(temp_directory_path);
+
+        let output = command.output();
         match output {
             Ok(output) => {
                 if output.status.success() {
@@ -48,6 +53,8 @@ impl Language for Circom {
             }
             Err(msg) => return Err(format!("Error running circom: {}", msg)),
         }
+
+        println!("compilation done!");
         Ok(temp_directory_path.join(format!("{}.r1cs", self.circuit_name)))
     }
 
@@ -68,6 +75,7 @@ impl Language for Circom {
                     let result = line[pos + 13..]
                         .parse::<u32>()
                         .map_err(|c| format!("Error running snarkjs: {}", c))?;
+                    println!("circuit info: {:?}", result);
                     return Ok((None, result as u64));
                 }
             }
@@ -97,6 +105,7 @@ impl Language for Circom {
             .map_err(|c| format!("Error running snarkjs: {}", c))?;
 
         let key_path = assert_file(key_path)?;
+        println!("setup done!!");
         Ok(key_path)
     }
 
@@ -117,8 +126,8 @@ impl Language for Circom {
 
         let temp_directory = self.get_temp_dir().path();
         let witnesses = temp_directory.join("witness.wtns");
-        let inputs = entry_point.join("witness.json");
-
+        // TODO: change this
+        let inputs = entry_point.join(format!("../inputs/{}/witness.json", self.circuit_name));
         let inputs = assert_file(inputs)?;
 
         let mut command = std::process::Command::new("node");
@@ -132,6 +141,7 @@ impl Language for Circom {
 
         if output.status.success() {
             let _str = String::from_utf8_lossy(&output.stdout).to_string();
+            println!("witgen done!");
             Ok(witnesses)
         } else {
             let msg = String::from_utf8_lossy(&output.stderr).to_string(); //string_from_stderr...
@@ -148,7 +158,6 @@ impl Language for Circom {
 
         let mut command = std::process::Command::new("snarkjs");
         let output = command
-            // .arg("snarkjs")
             .arg("groth16")
             .arg("prove")
             .arg(key)
@@ -160,6 +169,7 @@ impl Language for Circom {
 
         if output.status.success() {
             let _str = String::from_utf8_lossy(&output.stdout).to_string();
+            println!("proving done!");
             Ok(proof_path)
         } else {
             let msg = String::from_utf8_lossy(&output.stderr).to_string(); //string_from_stderr...
@@ -195,10 +205,7 @@ impl Circom {
 
 pub fn powers_of_tau() -> Result<PathBuf, String> {
     let path = env::current_dir().map_err(|c| format!("Error: {}", c))?;
-    assert_file(
-        path.join("../circuit")
-            .join("powersOfTau28_hez_final_19.ptau"),
-    )
+    assert_file(path.join("../ptau").join("powersOfTau28_hez_final_16.ptau"))
 }
 
 fn assert_file(file: PathBuf) -> Result<PathBuf, String> {

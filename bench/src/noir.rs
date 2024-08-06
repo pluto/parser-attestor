@@ -30,12 +30,12 @@ impl Language for Noir {
     }
 
     fn info(&self, entry_point: &Path) -> Result<(Option<u64>, u64), String> {
-        let mut cmd = Command::new(NARGO_BINARY);
-        cmd.arg("--program-dir").arg(entry_point);
-        cmd.arg("info");
-        cmd.arg("--json");
-
-        let output = cmd.output().expect("Failed to execute command");
+        let output = Command::new(BARRETENBERG)
+            .arg("gates")
+            .arg("-b")
+            .arg(entry_point.join("target").join("noir_string_search.json"))
+            .output()
+            .unwrap();
         if output.status.success() {
             let json: serde_json::Value =
                 serde_json::from_slice(&output.stdout).unwrap_or_else(|e| {
@@ -46,14 +46,8 @@ impl Language for Noir {
                     )
                 });
 
-            let num_opcodes = json["programs"][0]["functions"][0]["acir_opcodes"]
-                .as_u64()
-                .unwrap();
-            // TODO: get gates from `bb`
-            // let num_gates = json["programs"][0]["functions"][0]["circuit_size"]
-            //     .as_u64()
-            //     .unwrap();
-            let num_gates = 0;
+            let num_opcodes = json["functions"][0]["acir_opcodes"].as_u64().unwrap();
+            let num_gates = json["functions"][0]["circuit_size"].as_u64().unwrap();
             Ok((Some(num_opcodes), num_gates))
         } else {
             Err(format!(
