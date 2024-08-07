@@ -13,16 +13,22 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    - name: Use Node.js
+    - name: use node.js
       uses: actions/setup-node@v3
       with:
         node-version: '16'
 
-    - name: Install dependencies
+    - name: install dependencies
       run: |
         npm install
-        npm install -g circom@2.1.9
         npm install -g snarkjs
 
-    - name: Run tests
+    - name: download Circom
+      run: |
+        CIRCOM_VERSION=2.0.0  # Specify the version you need
+        curl -L https://github.com/iden3/circom/releases/download/v$CIRCOM_VERSION/circom-linux-amd64-$CIRCOM_VERSION.tar.gz -o circom.tar.gz
+        tar -xzf circom.tar.gz
+        sudo mv circom /usr/local/bin/
+        circom --version  # Verify installation
+    - name: run tests
       run: npx mocha
