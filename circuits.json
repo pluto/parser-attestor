@@ -1,4 +1,20 @@
 {
+    "test_extract": {
+        "file": "extract",
+        "template": "Extract",
+        "params": [
+            4,
+            21
+        ]
+    },
+    "test_extract_hard": {
+        "file": "extract",
+        "template": "Extract",
+        "params": [
+            4,
+            48
+        ]
+    },
     "extract": {
         "file": "extract",
         "template": "Extract",

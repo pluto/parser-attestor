@@ -64,6 +64,11 @@ npx mocha
 ```
 from the repository root.
 
+To run specific tests, use the `-g` flag for `mocha`, e.g., to run any proof described with "State" we can pass:
+```
+npx mocha -g State
+```
+
 
 ## (MOSTLY DEPRECATED DUE TO CIRCOMKIT) Running an example
 ```
