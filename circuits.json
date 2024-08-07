@@ -22,5 +22,13 @@
             10,
             787
         ]
+    },
+    "search": {
+        "file": "search",
+        "template": "SubstringMatch",
+        "params": [
+            787,
+            10
+        ]
     }
 }
