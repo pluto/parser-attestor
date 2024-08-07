@@ -32,19 +32,19 @@ Notes:
 /*
 TODO
 */
-template Parser() {
+template StateUpdate() {
     signal input byte;
 
     signal input tree_depth;             // STATUS_INDICATOR -- how deep in a JSON branch we are, e.g., `user.balance.value` key should be at depth `3`. 
                                          // Should always be greater than or equal to `0` (TODO: implement this constraint).
-
-    signal input escaping;               // BIT_FLAG         -- whether we have hit an escape ASCII symbol inside of a key or value. 
 
     signal input parsing_to_key;         // BIT_FLAG         -- whether we are currently parsing bytes until we find the next key (mutally exclusive with `inside_key` and both `*_value flags).
     signal input inside_key;             // BIT_FLAG         -- whether we are currently inside a key (mutually exclusive with `parsing_to_key` and both `*_value` flags).
     
     signal input parsing_to_value;       // BIT_FLAG         -- whether we are currently parsing bytes until we find the next value (mutually exclusive with `inside_value` and both `*_key` flags).
     signal input inside_value;           // BIT_FLAG         -- whether we are currently inside a value (mutually exclusive with `parsing_to_value` and both `*_key` flags).
+
+    signal input escaping;               // BIT_FLAG         -- whether we have hit an escape ASCII symbol inside of a key or value. 
 
     signal input end_of_kv;              // BIT_FLAG         -- reached end of key-value sequence, looking for comma delimiter or end of file signified by `tree_depth == 0`.
 
@@ -54,6 +54,8 @@ template Parser() {
     signal output next_parsing_to_value; // BIT_FLAG         -- next state for `parsing_to_value`.
     signal output next_inside_value;     // BIT_FLAG         -- next state for `inside_value`.
     signal output next_end_of_kv;        // BIT_FLAG         -- next state for `end_of_kv`.
+
+    // signal output escaping; // TODO: Add this in!
 
     //--------------------------------------------------------------------------------------------//
     //-Delimeters---------------------------------------------------------------------------------//
