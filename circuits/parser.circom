@@ -16,10 +16,10 @@ State[13]| :        | PARSING TO VALUE
 -------------------------------------------------
 State[15]| "        | INSIDE VALUE
 -------------------------------------------------
-State[18]| "        | NOT INSIDE VALUE
+State[19]| "        | NOT INSIDE VALUE
 -------------------------------------------------
-State[19]| "        | COMPLETE WITH KV PARSING
-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+State[20]| "        | COMPLETE WITH KV PARSING
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 State[20].next_tree_depth == 0 | VALID JSON
 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
@@ -88,11 +88,11 @@ template Parser() {
     // TODO: ADD CASE FOR `is_number` for in range 48-57 https://www.ascii-code.com since a value may just be a number
     // Output management
     component matcher = Switch(8, 3);
-    var do_nothing[3]       = [ 0,                             0,         0];
-    var increase_depth[3]   = [ 1,                             0,         0]; 
-    var decrease_depth[3]   = [-1,                             0,         0];
-    var hit_quote[3]        = [ 0,                             1,         0];
-    var hit_colon[3]        = [ 0,                             0,         1];
+    var do_nothing[3]       = [ 0,                             0,         0]; // Command returned by switch if we want to do nothing, e.g. read a whitespace char while looking for a key
+    var increase_depth[3]   = [ 1,                             0,         0]; // Command returned by switch if we hit a start brace `{`
+    var decrease_depth[3]   = [-1,                             0,         0]; // Command returned by switch if we hit a end brace `}`
+    var hit_quote[3]        = [ 0,                             1,         0]; // Command returned by switch if we hit a quote `"`
+    var hit_colon[3]        = [ 0,                             0,         1]; // Command returned by switch if we hit a colon `:`
 
     matcher.branches      <== [start_brace,    end_brace,      quote,     colon,      start_bracket, end_bracket, comma,      escape    ];
     matcher.vals          <== [increase_depth, decrease_depth, hit_quote, hit_colon,  do_nothing,    do_nothing,  do_nothing, do_nothing];
@@ -100,6 +100,8 @@ template Parser() {
 
 
     // TODO: These could likely go into a switch statement with the output of the `Switch` above.
+    // TODO: Also could probably clean up things with de Morgan's laws or whatever. 
+    // An `IF ELSE` template would also be handy!
     next_inside_key       <== inside_key + (parsing_to_key - inside_key) * matcher.out[1];       // IF (`parsing_to_key` AND `hit_quote`) THEN `next_inside_key <== 1` ELSEIF (`inside_key` AND `hit_quote`) THEN `next_inside_key <== 0`
                                                                                                  // - note: can rewrite as -> `inside_key * (1-matcher.out[1]) + parsing_to_key * matcher.out[1]`, but this will not be quadratic (according to circom)
     next_parsing_to_key   <== parsing_to_key * (1 - matcher.out[1]);                             // IF (`parsing_to_key` AND `hit_quote`) THEN `parsing_to_key <== 0`
@@ -109,15 +111,14 @@ template Parser() {
     
     signal NOT_PARSING_TO_KEY_AND_NOT_INSIDE_KEY <== (1 - parsing_to_key) * (1 - inside_key);                                                     // (NOT `parsing_to_key`) AND (NOT `inside_key`)
     signal PARSING_TO_VALUE_AND_NOT_HIT_QUOTE    <== parsing_to_value * (1 - matcher.out[1]);                                                     // `parsing_to_value` AND (NOT `hit_quote`)
-    next_parsing_to_value                        <== PARSING_TO_VALUE_AND_NOT_HIT_QUOTE + NOT_PARSING_TO_KEY_AND_NOT_INSIDE_KEY * matcher.out[2]; // If we are NOT parsing to key AND NOT inside key AND hit a colon, then we are parsing to value
+    next_parsing_to_value                        <== PARSING_TO_VALUE_AND_NOT_HIT_QUOTE + NOT_PARSING_TO_KEY_AND_NOT_INSIDE_KEY * matcher.out[2]; // IF (`parsing_to_value` AND (NOT `hit_quote`)) THEN `next_parsing_to_value <== 1 ELSEIF ((NOT `parsing_to_value` AND (NOT `inside_value)) AND `hit_colon`) THEN `next_parsing_to_value <== 1`
 
-
-    signal NOT_PARSING_TO_VALUE_AND_NOT_INSIDE_VALUE <== (1 - parsing_to_value) * (1 - inside_value);
-    next_end_of_kv <== NOT_PARSING_TO_KEY_AND_NOT_INSIDE_KEY * NOT_PARSING_TO_VALUE_AND_NOT_INSIDE_VALUE;
+    signal NOT_PARSING_TO_VALUE_AND_NOT_INSIDE_VALUE <== (1 - parsing_to_value) * (1 - inside_value);                                       // (NOT `parsing_to_value`) AND (NOT `inside_value`)
+    next_end_of_kv                                   <== NOT_PARSING_TO_KEY_AND_NOT_INSIDE_KEY * NOT_PARSING_TO_VALUE_AND_NOT_INSIDE_VALUE; // IF ((NOT `parsing_to_key`) AND (NOT `inside_key`)) AND (NOT(`parsing_to_value`) AND NOT( `inside_value)) THEN `next_end_of_kv <== 1`
 
      
     // TODO: Assert this never goes below zero (mod p)
-    next_tree_depth       <== tree_depth + (parsing_to_key + next_end_of_kv) * matcher.out[0];                // Update the tree depth ONLY if we are parsing to a key
+    next_tree_depth       <== tree_depth + (parsing_to_key + next_end_of_kv) * matcher.out[0]; // IF ((`parsing_to_key` OR `next_end_of_kv`) AND `read_brace` THEN `increase/decrease_depth`
 
     // Constrain bit flags
     next_parsing_to_key * (1 - next_parsing_to_key)     === 0; // - constrain that `next_parsing_to_key` remain a bit flag
