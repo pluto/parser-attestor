@@ -83,6 +83,8 @@ template Parser() {
     matcher.vals          <== [increase_depth, decrease_depth, hit_quote, hit_colon,  do_nothing,    do_nothing,  do_nothing, do_nothing];
     matcher.case          <== byte;
 
+
+    // TODO: These could likely go into a switch statement
     next_inside_key       <== inside_key + (parsing_to_key - inside_key) * matcher.out[1]; // If we were parsing to key and we hit a quote, then we set to be inside key
     next_inside_key * (1 - next_inside_key) === 0;
     next_parsing_to_key   <== parsing_to_key * (1 - matcher.out[1]);                       // If we were parsing to key and we hit a quote, then we are not parsing to key
