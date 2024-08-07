@@ -3,19 +3,25 @@ pragma circom 2.1.9;
 include "operators.circom";
 /*
 Notes: for `test.json`
-         | Read In: | STATE
--------------------
-State[1] | {        | 
--------------------
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+ POINTER | Read In: | STATE
+-------------------------------------------------
+State[1] | {        | PARSING TO KEY
+-------------------------------------------------
 State[7] | "        | INSIDE KEY
--------------------
+-------------------------------------------------
 State[12]| "        | NOT INSIDE KEY
 -------------------------------------------------
 State[13]| :        | PARSING TO VALUE
 -------------------------------------------------
 State[15]| "        | INSIDE VALUE
 -------------------------------------------------
+State[18]| "        | NOT INSIDE VALUE
+-------------------------------------------------
 State[19]| "        | COMPLETE WITH KV PARSING
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+State[20].next_tree_depth == 0 | VALID JSON
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 
 
@@ -29,22 +35,28 @@ TODO
 template Parser() {
     signal input byte;
 
-    signal input tree_depth;
-    signal input escaping;
-    signal input parsing_to_key;
-    signal input parsing_to_value;
-    signal input inside_key;
-    signal input inside_value;
-    signal input end_of_kv;
+    signal input tree_depth;             // STATUS_INDICATOR -- how deep in a JSON branch we are, e.g., `user.balance.value` key should be at depth `3`. 
+                                         // Should always be greater than or equal to `0` (TODO: implement this constraint).
 
-    signal output next_tree_depth;
-    signal output next_parsing_to_key;
-    signal output next_inside_key;
-    signal output next_parsing_to_value;
-    signal output next_inside_value;
-    signal output next_end_of_kv;
+    signal input escaping;               // BIT_FLAG         -- whether we have hit an escape ASCII symbol inside of a key or value. 
 
-    // Delimeters 
+    signal input parsing_to_key;         // BIT_FLAG         -- whether we are currently parsing bytes until we find the next key (mutally exclusive with `inside_key` and both `*_value flags).
+    signal input inside_key;             // BIT_FLAG         -- whether we are currently inside a key (mutually exclusive with `parsing_to_key` and both `*_value` flags).
+    
+    signal input parsing_to_value;       // BIT_FLAG         -- whether we are currently parsing bytes until we find the next value (mutually exclusive with `inside_value` and both `*_key` flags).
+    signal input inside_value;           // BIT_FLAG         -- whether we are currently inside a value (mutually exclusive with `parsing_to_value` and both `*_key` flags).
+
+    signal input end_of_kv;              // BIT_FLAG         -- reached end of key-value sequence, looking for comma delimiter or end of file signified by `tree_depth == 0`.
+
+    signal output next_tree_depth;       // BIT_FLAG         -- next state for `tree_depth`.
+    signal output next_parsing_to_key;   // BIT_FLAG         -- next state for `parsing_to_key`.
+    signal output next_inside_key;       // BIT_FLAG         -- next state for `inside_key`.
+    signal output next_parsing_to_value; // BIT_FLAG         -- next state for `parsing_to_value`.
+    signal output next_inside_value;     // BIT_FLAG         -- next state for `inside_value`.
+    signal output next_end_of_kv;        // BIT_FLAG         -- next state for `end_of_kv`.
+
+    //--------------------------------------------------------------------------------------------//
+    //-Delimeters---------------------------------------------------------------------------------//
     // - ASCII char: `{`
     var start_brace = 123;
     // - ASCII char: `}`
@@ -59,18 +71,21 @@ template Parser() {
     var colon = 58;
     // - ASCII char `,`
     var comma = 44;
-
+    //--------------------------------------------------------------------------------------------//
     // White space
     // - ASCII char: `\n`
     var newline = 10;
     // - ASCII char: ` `
     var space = 32;
-
+    //--------------------------------------------------------------------------------------------//
     // Escape
     // - ASCII char: `\`
     var escape = 92;
+    //--------------------------------------------------------------------------------------------//
 
-    // TODO: Check all the constraints here so state of `Parser` cannot be incorrect.
+    //--------------------------------------------------------------------------------------------//
+    //-MACHINE INSTRUCTIONS-----------------------------------------------------------------------//
+    // TODO: ADD CASE FOR `is_number` for in range 48-57 https://www.ascii-code.com since a value may just be a number
     // Output management
     component matcher = Switch(8, 3);
     var do_nothing[3]       = [ 0,                             0,         0];
@@ -84,28 +99,35 @@ template Parser() {
     matcher.case          <== byte;
 
 
-    // TODO: These could likely go into a switch statement
-    next_inside_key       <== inside_key + (parsing_to_key - inside_key) * matcher.out[1]; // If we were parsing to key and we hit a quote, then we set to be inside key
-    next_inside_key * (1 - next_inside_key) === 0;
-    next_parsing_to_key   <== parsing_to_key * (1 - matcher.out[1]);                       // If we were parsing to key and we hit a quote, then we are not parsing to key
-    next_parsing_to_key * (1 - next_parsing_to_key) === 0;
+    // TODO: These could likely go into a switch statement with the output of the `Switch` above.
+    next_inside_key       <== inside_key + (parsing_to_key - inside_key) * matcher.out[1];       // IF (`parsing_to_key` AND `hit_quote`) THEN `next_inside_key <== 1` ELSEIF (`inside_key` AND `hit_quote`) THEN `next_inside_key <== 0`
+                                                                                                 // - note: can rewrite as -> `inside_key * (1-matcher.out[1]) + parsing_to_key * matcher.out[1]`, but this will not be quadratic (according to circom)
+    next_parsing_to_key   <== parsing_to_key * (1 - matcher.out[1]);                             // IF (`parsing_to_key` AND `hit_quote`) THEN `parsing_to_key <== 0`
 
+    next_inside_value     <== inside_value + (parsing_to_value - inside_value) * matcher.out[1]; // IF (`parsing_to_value` AND `hit_quote`) THEN `next_inside_value <== 1` ELSEIF (`inside_value` AND `hit_quote`) THEN `next_inside_value <==0`
+                                                                                                 // -note: can rewrite as -> `(1 - inside_value) * matcher_out[1] + parsing_to_value * matcher.out[1]
+    
+    signal NOT_PARSING_TO_KEY_AND_NOT_INSIDE_KEY <== (1 - parsing_to_key) * (1 - inside_key);                                                     // (NOT `parsing_to_key`) AND (NOT `inside_key`)
+    signal PARSING_TO_VALUE_AND_NOT_HIT_QUOTE    <== parsing_to_value * (1 - matcher.out[1]);                                                     // `parsing_to_value` AND (NOT `hit_quote`)
+    next_parsing_to_value                        <== PARSING_TO_VALUE_AND_NOT_HIT_QUOTE + NOT_PARSING_TO_KEY_AND_NOT_INSIDE_KEY * matcher.out[2]; // If we are NOT parsing to key AND NOT inside key AND hit a colon, then we are parsing to value
 
-    next_inside_value     <== inside_value + (parsing_to_value - inside_value) * matcher.out[1];
-    next_inside_value * (1 - next_inside_value) === 0;
-    signal NOT_PARSING_TO_KEY_AND_NOT_INSIDE_KEY <== (1 - parsing_to_key) * (1 - inside_key);
-    signal PARSING_TO_VALUE_AND_NOT_HIT_QUOTE <== parsing_to_value * (1 - matcher.out[1]);
-    next_parsing_to_value <== PARSING_TO_VALUE_AND_NOT_HIT_QUOTE + NOT_PARSING_TO_KEY_AND_NOT_INSIDE_KEY * matcher.out[2];    // If we are NOT parsing to key AND NOT inside key AND hit a colon, then we are parsing to value
-    next_parsing_to_value * (1 - next_parsing_to_value) === 0;
 
     signal NOT_PARSING_TO_VALUE_AND_NOT_INSIDE_VALUE <== (1 - parsing_to_value) * (1 - inside_value);
     next_end_of_kv <== NOT_PARSING_TO_KEY_AND_NOT_INSIDE_KEY * NOT_PARSING_TO_VALUE_AND_NOT_INSIDE_VALUE;
-    next_end_of_kv * (1 - next_end_of_kv) === 0;
+
      
     // TODO: Assert this never goes below zero (mod p)
     next_tree_depth       <== tree_depth + (parsing_to_key + next_end_of_kv) * matcher.out[0];                // Update the tree depth ONLY if we are parsing to a key
 
+    // Constrain bit flags
+    next_parsing_to_key * (1 - next_parsing_to_key)     === 0; // - constrain that `next_parsing_to_key` remain a bit flag
+    next_inside_key * (1 - next_inside_key)             === 0; // - constrain that `next_inside_key` remain a bit flag
+    next_parsing_to_value * (1 - next_parsing_to_value) === 0; // - constrain that `next_parsing_to_value` remain a bit flag
+    next_inside_value * (1 - next_inside_value)         === 0; // - constrain that `next_inside_value` remain a bit flag 
+    next_end_of_kv * (1 - next_end_of_kv)               === 0; // - constrain that `next_end_of_kv` remain a bit flag
+
     // TODO: Can hit comma and then be sent to next KV, so comma will engage `parsing_to_key`
+    //--------------------------------------------------------------------------------------------//
 }
 
 /*
