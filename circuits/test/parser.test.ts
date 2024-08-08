@@ -176,7 +176,7 @@ describe("parser", () => {
         in_key_out.next_tree_depth = 1;
         generatePassCase(in_key, in_key_out, "`tree_depth == 1` AND `inside_key == 1 AND `parsing_to_key == 0` setup -> ` ` is read");
 
-        // Test 6: "`tree_depth == 1` AND `inside_key ==1 AND `parsing_to_key == 0` setup -> `"` is read"
+        // Test 6: `tree_depth == 1` AND `inside_key ==1 AND `parsing_to_key == 0` setup -> `"` is read
         let in_key_to_exit = { ...init };
         in_key_to_exit.tree_depth = 1;
         in_key_to_exit.parsing_to_key = 0;
@@ -187,6 +187,24 @@ describe("parser", () => {
         in_key_to_exit_out.next_parsing_to_key = 0;
         in_key_to_exit_out.next_tree_depth = 1;
         generatePassCase(in_key_to_exit, in_key_to_exit_out, "`tree_depth == 1` AND `inside_key == 1 AND `parsing_to_key == 0` setup -> `\"` is read");
+
+        // Test 7: `tree_depth == 1` AND parsed through key` setup -> `:` is read
+        let parsed_key_wait_to_parse_value = { ...init };
+        parsed_key_wait_to_parse_value.tree_depth = 1;
+        parsed_key_wait_to_parse_value.parsing_to_key = 0;
+        parsed_key_wait_to_parse_value.byte = colon;
+        let parsed_key_wait_to_parse_value_out = { ...out };
+        parsed_key_wait_to_parse_value_out.next_tree_depth = 1;
+        parsed_key_wait_to_parse_value_out.next_parsing_to_key = 0;
+        parsed_key_wait_to_parse_value_out.next_parsing_to_value = 1;
+        generatePassCase(parsed_key_wait_to_parse_value, parsed_key_wait_to_parse_value_out, "`tree_depth == 1` AND parsed through key` setup -> `:` is read");
+
+        // State[ 13 ].tree_depth =  1
+        // State[ 13 ].parsing_to_key =  0
+        // State[ 13 ].inside_key =  0
+        // State[ 13 ].parsing_to_value =  1
+        // State[ 13 ].inside_value =  0
+        // State[ 13 ].end_of_kv =  1 <<<< TODO: THIS IS NOT RIGHT
     });
 
 });
