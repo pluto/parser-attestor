@@ -129,6 +129,12 @@ template StateUpdate() {
     next_inside_value * (1 - next_inside_value)         === 0; // - constrain that `next_inside_value` remain a bit flag 
     next_end_of_kv * (1 - next_end_of_kv)               === 0; // - constrain that `next_end_of_kv` remain a bit flag
 
+    component depthIsZero             = IsZero();   
+    depthIsZero.in                  <== tree_depth;     // Determine if `tree_depth` was `0`
+    component isOneLess               = IsEqual();      
+    isOneLess.in[0]                 <== -1;             
+    isOneLess.in[1]                 <== matcher.out[0]; // Determine if instruction was to `decrease_depth`
+    depthIsZero.out * isOneLess.out === 0;              // IF ( `decrease_depth` AND `tree_depth == 0`) THEN FAIL 
     // TODO: Can hit comma and then be sent to next KV, so comma will engage `parsing_to_key`
     //--------------------------------------------------------------------------------------------//
 }

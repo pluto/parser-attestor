@@ -56,29 +56,69 @@ describe("parser", () => {
 
     });
 
+    //--------------------------------------------------------------------------------------------//
+    //-Delimeters---------------------------------------------------------------------------------//
+    // - ASCII char: `{`
+    const start_brace = 123;
+    // - ASCII char: `}`
+    const end_brace = 125;
+    // - ASCII char `[`
+    const start_bracket = 91;
+    // - ASCII char `]`
+    const end_bracket = 93;
+    // - ASCII char `"`
+    const quote = 34;
+    // - ASCII char `:`
+    const colon = 58;
+    // - ASCII char `,`
+    const comma = 44;
+    //--------------------------------------------------------------------------------------------//
+    // White space
+    // - ASCII char: `\n`
+    const newline = 10;
+    // - ASCII char: ` `
+    const space = 32;
+    //--------------------------------------------------------------------------------------------//
+    // Escape
+    // - ASCII char: `\`
+    const escape = 92;
+    //--------------------------------------------------------------------------------------------//
+
     describe("StateUpdate", () => {
         let circuit: WitnessTester<
             ["byte", "tree_depth", "parsing_to_key", "inside_key", "parsing_to_value", "inside_value", "escaping", "end_of_kv"],
             ["next_tree_depth", "next_parsing_to_key", "next_inside_key", "next_parsing_to_value", "next_inside_value", "next_end_of_kv"]
         >;
 
-        function generateTestCase(input: any, expected: any) {
+        function generatePassCase(input: any, expected: any) {
             const description = Object.entries(input)
                 .map(([key, value]) => `${key} = ${value}`)
                 .join(", ");
 
-            it(`witness: ${description}`, async () => {
+            it(`(valid) witness: ${description}`, async () => {
+                circuit = await circomkit.WitnessTester(`StateUpdate`, {
+                    file: "circuits/parser",
+                    template: "StateUpdate",
+                });
+                console.log("#constraints:", await circuit.getConstraintCount());
                 await circuit.expectPass(input, expected);
             });
         }
 
-        before(async () => {
-            circuit = await circomkit.WitnessTester(`StateUpdate`, {
-                file: "circuits/parser",
-                template: "StateUpdate",
+        function generateFailCase(input: any) {
+            const description = Object.entries(input)
+                .map(([key, value]) => `${key} = ${value}`)
+                .join(", ");
+
+            it(`(invalid) witness: ${description}`, async () => {
+                circuit = await circomkit.WitnessTester(`StateUpdate`, {
+                    file: "circuits/parser",
+                    template: "StateUpdate",
+                });
+                console.log("#constraints:", await circuit.getConstraintCount());
+                await circuit.expectFail(input);
             });
-            console.log("#constraints:", await circuit.getConstraintCount());
-        });
+        }
 
         let init = {
             byte: 0,
@@ -98,17 +138,22 @@ describe("parser", () => {
             next_inside_key: init.inside_key,
             next_parsing_to_value: init.parsing_to_value,
             next_inside_value: init.inside_value,
-            next_end_of_kv: init.end_of_kv
+            next_end_of_kv: init.end_of_kv,
         };
-        generateTestCase(init, out);
+
+        generatePassCase(init, out);
 
         // Test 2: init setup -> `{` is read
-        let read_start_brace = init;
-        read_start_brace.byte = 123;
-        let read_start_brace_out = out;
+        let read_start_brace = { ...init };
+        read_start_brace.byte = start_brace;
+        let read_start_brace_out = { ...out };
         read_start_brace_out.next_tree_depth = 1;
-        generateTestCase(read_start_brace, read_start_brace_out);
+        generatePassCase(read_start_brace, read_start_brace_out);
 
+        // Test 3: init setup -> `}` is read (should be INVALID)
+        let read_end_brace = { ...init };
+        read_end_brace.byte = end_brace;
+        generateFailCase(read_end_brace);
     });
 
 });
