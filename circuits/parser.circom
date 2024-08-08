@@ -116,11 +116,11 @@ template StateUpdate() {
     addToState.lhs <== state;
     addToState.rhs <== mulMaskAndOut.out;
 
-    // for(var i = 0; i<6; i++) {
-    //     log("mask[", i,"]: ", mask.mask[i]);
-    //     log("mulMaskAndOut[ ", i,"]: ", mulMaskAndOut.out[i]);
-    //     log("addToState[ ", i,"]: ", addToState.out[i]);
-    // }
+    for(var i = 0; i<6; i++) {
+        log("mask[", i,"]: ", mask.mask[i]);
+        log("mulMaskAndOut[ ", i,"]: ", mulMaskAndOut.out[i]);
+        log("addToState[ ", i,"]: ", addToState.out[i]);
+    }
 
     next_tree_depth       <== addToState.out[0];
     next_parsing_to_key   <== addToState.out[1];
@@ -210,8 +210,8 @@ template StateToMask() {
     signal NOT_PARSING_TO_KEY_AND_NOT_PARSING_TO_VALUE <-- (1 - parsing_to_key) * (1 - parsing_to_value);
     signal NOT_PARSING_TO_VALUE_NOT_INSIDE_VALUE       <-- (1 - parsing_to_value) * (1 - inside_value);
 
-    // `tree_depth` can change: `IF (parsing_to_key XOR parsing_to_value)`
-    mask[0] <== parsing_to_key + parsing_to_value; // TODO: Make sure these are never both 1!
+    // `tree_depth` can change: `IF (parsing_to_key XOR parsing_to_value XOR end_of_kv)`
+    mask[0] <== parsing_to_key + parsing_to_value + end_of_kv; // TODO: Make sure these are never both 1!
     
     // `parsing_to_key` can change: `IF ((NOT inside_key) AND (NOT inside_value) AND (NOT parsing_to_value))`
     mask[1] <== NOT_INSIDE_KEY_AND_NOT_INSIDE_VALUE * (1 - parsing_to_value);

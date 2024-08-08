@@ -261,6 +261,20 @@ describe("parser", () => {
         end_of_kv_to_parse_to_key_out.next_parsing_to_key = 1;
         end_of_kv_to_parse_to_key_out.next_end_of_kv = 0;
         generatePassCase(end_of_kv_to_parse_to_key, end_of_kv_to_parse_to_key_out, "`tree_depth == 1` AND end_of_kv` setup -> ` ` is read");
+
+        // Test 13: `tree_depth == 1` AND end_of_kv` setup ->  `}` is read
+        let end_of_kv_to_exit_json = { ...init };
+        end_of_kv_to_exit_json.tree_depth = 1;
+        end_of_kv_to_exit_json.parsing_to_key = 0;
+        end_of_kv_to_exit_json.end_of_kv = 1;
+        end_of_kv_to_exit_json.byte = end_brace;
+        let end_of_kv_to_exit_json_out = { ...out };
+        end_of_kv_to_exit_json_out.next_tree_depth = 0;
+        end_of_kv_to_exit_json_out.next_parsing_to_key = 0;
+        end_of_kv_to_exit_json_out.next_end_of_kv = 1;
+        generatePassCase(end_of_kv_to_exit_json, end_of_kv_to_exit_json_out, "`tree_depth == 1` AND end_of_kv` setup ->  `}` is read");
+
+        // NOTE: At this point, we can parse JSON that has 2 keys at depth 1!
     });
 
 });
