@@ -211,6 +211,33 @@ describe("parser", () => {
         in_tree_find_value_out.next_parsing_to_value = 0;
         in_tree_find_value_out.next_inside_value = 1;
         generatePassCase(in_tree_find_value, in_tree_find_value_out, "`tree_depth == 1` AND parsing_to_value` setup -> `\"` is read");
+
+        // Test 9: `tree_depth == 1` AND inside_value` setup -> ` ` is read
+        let in_value = { ...init };
+        in_value.tree_depth = 1;
+        in_value.parsing_to_key = 0;
+        in_value.inside_value = 1;
+        in_value.byte = space;
+        let in_value_out = { ...out };
+        in_value_out.next_tree_depth = 1;
+        in_value_out.next_parsing_to_key = 0;
+        in_value_out.next_parsing_to_value = 0;
+        in_value_out.next_inside_value = 1;
+        generatePassCase(in_value, in_value_out, "`tree_depth == 1` AND inside_value` setup -> ` ` is read");
+
+        // Test 10: `tree_depth == 1` AND inside_value` setup -> `"` is read
+        let in_value_to_exit = { ...init };
+        in_value_to_exit.tree_depth = 1;
+        in_value_to_exit.parsing_to_key = 0;
+        in_value_to_exit.inside_value = 1;
+        in_value_to_exit.byte = quote;
+        let in_value_to_exit_out = { ...out };
+        in_value_to_exit_out.next_tree_depth = 1;
+        in_value_to_exit_out.next_parsing_to_key = 0;
+        in_value_to_exit_out.next_parsing_to_value = 0;
+        in_value_to_exit_out.next_inside_value = 0;
+        in_value_to_exit_out.next_end_of_kv = 1;
+        generatePassCase(in_value_to_exit, in_value_to_exit_out, "`tree_depth == 1` AND inside_value` setup -> `\"` is read");
     });
 
 });
