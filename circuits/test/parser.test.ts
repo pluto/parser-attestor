@@ -90,22 +90,22 @@ describe("parser", () => {
             ["next_tree_depth", "next_parsing_to_key", "next_inside_key", "next_parsing_to_value", "next_inside_value", "next_end_of_kv"]
         >;
 
-        function generatePassCase(input: any, expected: any) {
+        function generatePassCase(input: any, expected: any, desc: string) {
             const description = Object.entries(input)
                 .map(([key, value]) => `${key} = ${value}`)
                 .join(", ");
 
-            it(`(valid) witness: ${description}`, async () => {
+            it(`(valid) witness: ${description}\n${desc}`, async () => {
                 await circuit.expectPass(input, expected);
             });
         }
 
-        function generateFailCase(input: any) {
+        function generateFailCase(input: any, desc: string) {
             const description = Object.entries(input)
                 .map(([key, value]) => `${key} = ${value}`)
                 .join(", ");
 
-            it(`(invalid) witness: ${description}`, async () => {
+            it(`(invalid) witness: ${description}\n${desc}`, async () => {
                 await circuit.expectFail(input);
             });
         }
@@ -140,21 +140,29 @@ describe("parser", () => {
             next_end_of_kv: init.end_of_kv
         };
 
-        generatePassCase(init, out);
+        generatePassCase(init, out, "init setup -> `do_nothing` byte");
 
         // Test 2: init setup -> `{` is read
         let read_start_brace = { ...init };
         read_start_brace.byte = start_brace;
         let read_start_brace_out = { ...out };
         read_start_brace_out.next_tree_depth = 1;
-        generatePassCase(read_start_brace, read_start_brace_out);
+        generatePassCase(read_start_brace, read_start_brace_out, "init setup -> `{` is read");
 
         // Test 3: init setup -> `}` is read (should be INVALID)
         let read_end_brace = { ...init };
         read_end_brace.byte = end_brace;
-        generateFailCase(read_end_brace);
+        generateFailCase(read_end_brace, "init setup -> `}` is read (NEGATIVE TREE DEPTH!)");
 
-
+        // Test 4: `tree_depth == 1` setup -> `"` is read
+        let in_tree_find_key = { ...init };
+        in_tree_find_key.tree_depth = 1;
+        in_tree_find_key.byte = quote;
+        let in_tree_find_key_out = { ...out };
+        in_tree_find_key_out.next_inside_key = 1;
+        in_tree_find_key_out.next_parsing_to_key = 0;
+        in_tree_find_key_out.next_tree_depth = 1;
+        generatePassCase(in_tree_find_key, in_tree_find_key_out, "`tree_depth == 1` setup -> `\"` is read");
     });
 
 });
