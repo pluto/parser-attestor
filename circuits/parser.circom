@@ -28,6 +28,7 @@ xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 TODOs:
 - Handle case where the value is an another JSON. Shouldn't be too bad as we should just reset to init state with different tree depth
 - In fact, we might not even need tree depth if we replace it with `inside_value` that is a counter as it represents the same thing!
+   - Actually, this may not work since multiple values exist at same height. Let's not change this yet.
 */
 
 /*
