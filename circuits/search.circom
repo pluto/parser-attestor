@@ -1,9 +1,9 @@
-// RLC algorithm for matching substring modified from <https://github.com/zkemail/zk-email-verify>
-
 pragma circom  2.1.9;
 
 include "operators.circom";
 include "mux1.circom";
+include "chunks.circom";
+include "poseidon.circom";
 
 /// @title SubstringSearch
 /// @notice Calculates the index of a substring within a larger string. Uses a probabilistic algorithm to
@@ -38,6 +38,7 @@ template SubstringSearch(dataLen, keyLen) {
     }
 
     var pos = 0;
+    var num_matches = 0;
 
     // iterate through each substring of length `keyLen` in `data` and find substring that matches.
     for (var i = 0; i < dataLen - keyLen + 1; i++) {
@@ -46,40 +47,57 @@ template SubstringSearch(dataLen, keyLen) {
             found += r[j] * (data[i+j] - key[j]);
         }
 
-        var a = Mux1()([0, i], IsZero()(found));
+        // is substring a match?
+        var is_match_found = IsZero()(found);
+
+        // update total number of matches found
+        num_matches += is_match_found;
+
+        // is substring first match?
+        var is_first_match = IsEqual()([1, num_matches]);
+
+        // should be only first match
+        var is_first_match_and_found = is_match_found * is_first_match;
+
+        // n
+        var a = Mux1()([0, i], is_first_match_and_found);
         pos += a;
     }
 
+    assert(pos < dataLen - keyLen + 1);
     position <== pos;
 }
 
-/// @title SubstringMatch
-/// @notice Matches a substring with an input string and returns the position
-template SubstringMatch(dataLen, keyLen) {
+// RLC algorithm for matching substring with index modified from <https://github.com/zkemail/zk-email-verify>
+template SubstringMatchWithIndex(dataLen, keyLen) {
     signal input data[dataLen];
     signal input key[keyLen];
-    signal output position;
+    signal input r;
+    signal input start;
 
-    // TODO: correct this
-    signal r <== 100;
-
-    signal pos <== SubstringSearch(dataLen, keyLen)(data, key);
-    log(pos);
-
+    // key end index in `data`
     signal end;
-    end <== pos + keyLen;
+    end <== start + keyLen;
 
-    // n
+    // 2n constraints
+    //
+    // create start mask from [pos, dataLen-1]
+    // | 0 | 0 0 0 0 0 0 |1| 1 1 1 |1| 1 1 |1|
+    //   0              start      end   dataLen
     signal startMask[dataLen];
     signal startMaskEq[dataLen];
-    startMaskEq[0] <== IsEqual()([0, pos]);
+    startMaskEq[0] <== IsEqual()([0, start]);
     startMask[0] <== startMaskEq[0];
     for (var i = 1 ; i < dataLen ; i++) {
-        startMaskEq[i] <== IsEqual()([i, pos]);
+        startMaskEq[i] <== IsEqual()([i, start]);
         startMask[i] <== startMask[i-1] + startMaskEq[i];
     }
 
-    // n
+    // 3n constraints
+    //
+    // create end mask from [0, end]
+    // | 1 | 1 1 1 1 1 1 |1| 1 1 1 |1| 0 0 |0|
+    //   0              start      end   dataLen
     signal endMask[dataLen];
     signal endMaskEq[dataLen];
     endMaskEq[0] <== IsEqual()([0, end]);
@@ -89,45 +107,112 @@ template SubstringMatch(dataLen, keyLen) {
         endMask[i] <== endMask[i-1] * (1 - endMaskEq[i]);
     }
 
-    // n
+    // n constraints
+    //
+    // combine start mask and end mask
+    // | 0 | 0 0 0 0 0 0 |1| 1 1 1 |1| 0 0 |0|
+    //   0              start      end   dataLen
     signal mask[dataLen];
     for (var i = 0; i < dataLen; i++) {
         mask[i] <== startMask[i] * endMask[i];
     }
 
-    // n
+    // n constraints
+    //
+    // masked data from mask
     signal maskedData[dataLen];
     for (var i = 0 ; i < dataLen ; i++) {
         maskedData[i] <== data[i] * mask[i];
     }
 
-    // n
+
+    // n constraints
+    //
+    // powers of `r` for masked data
+    // if (masked data == 1) rDataMasked[i] = rDataMasked[i-1] * r
+    // else rDataMasked[i] = rDataMasked[i-1]
     signal rDataMasked[dataLen];
     rDataMasked[0] <== Mux1()([1, r], mask[0]);
     for (var i = 1 ; i < dataLen ; i++) {
         rDataMasked[i] <== Mux1()([rDataMasked[i-1], rDataMasked[i-1] * r], mask[i]);
     }
 
+    // powers of `r` for key
     signal rKeyMasked[keyLen];
     rKeyMasked[0] <== r;
     for (var i = 1; i < keyLen ; i++) {
         rKeyMasked[i] <== rKeyMasked[i-1] * r;
     }
 
-    // n
+    // n constraints
+    //
+    // calculate linear combination with random_num for data: data[i] = data[i-1] + (r^i * data[i])
     signal hashMaskedData[dataLen];
     hashMaskedData[0] <== rDataMasked[0] * maskedData[0];
     for (var i = 1; i < dataLen ; i++) {
         hashMaskedData[i] <== hashMaskedData[i-1] + (rDataMasked[i] * maskedData[i]);
     }
 
+    // calculate linear combination with random_num for key: key[i] = key[i-1] + (r^i * key[i])
     signal hashMaskedKey[keyLen];
     hashMaskedKey[0] <== rKeyMasked[0] * key[0];
     for (var i = 1; i < keyLen ; i++) {
         hashMaskedKey[i] <== hashMaskedKey[i-1] + (rKeyMasked[i] * key[i]);
     }
 
+    // final sum for data and key should be equal
     hashMaskedData[dataLen - 1] === hashMaskedKey[keyLen - 1];
+}
 
-    position <== pos;
+// template SubstringMatchWithChunking(dataLen, keyLen) {
+//     signal input data[dataLen];
+//     signal input key[keyLen];
+//     signal input start;
+
+//     signal initial_chunk_index <== (start/31) * 31;
+//     log(initial_chunk_index);
+
+//     var chunkLength = computeIntChunkLength(dataLen);
+//     signal input_chunks[chunkLength];
+
+//     input_chunks <== PackBytes(dataLen)(data);
+//     log(input_chunks[0]);
+
+//     signal initial_chunk[31];
+//     for (var i=0 ; i<31 ; i++) {
+//         initial_chunk[i] <== Mux1()([])
+//     }
+// }
+
+/// @title SubstringMatch
+/// @notice Matches a substring with an input string and returns the position
+template SubstringMatch(dataLen, keyLen) {
+    signal input data[dataLen];
+    signal input key[keyLen];
+    signal output position;
+
+    // TODO: correct this. r must be secret, so either has to be derived from hash in the circuit or off the circuit
+    // signal r <== 100;
+    signal r;
+    component rHasher;
+    rHasher = PoseidonModular(dataLen + keyLen);
+    // rHasher.in[0] <== start;
+    for (var i = 0; i < keyLen; i++) {
+        rHasher.in[i] <== key[i];
+    }
+    for (var i = 0; i < dataLen; i++) {
+        rHasher.in[i + keyLen] <== data[i];
+    }
+    r <== rHasher.out;
+
+    // find the start position of `key` first match in `data`
+    // NOTE: underconstrained (should be paired with SubstringMatchWithIndex)
+    signal start <== SubstringSearch(dataLen, keyLen)(data, key);
+    log(start);
+
+    // matches a `key` in `data` at `pos`
+    SubstringMatchWithIndex(dataLen, keyLen)(data, key, r, start);
+    // SubstringMatchWithChunking(dataLen, keyLen)(data, key, start);
+
+    position <== start;
 }
