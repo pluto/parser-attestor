@@ -86,7 +86,7 @@ describe("parser", () => {
 
     describe("StateUpdate", () => {
         let circuit: WitnessTester<
-            ["byte", "tree_depth", "parsing_to_key", "inside_key", "parsing_to_value", "inside_value", "escaping", "end_of_kv"],
+            ["byte", "tree_depth", "parsing_to_key", "inside_key", "parsing_to_value", "inside_value", "end_of_kv"],
             ["next_tree_depth", "next_parsing_to_key", "next_inside_key", "next_parsing_to_value", "next_inside_value", "next_end_of_kv"]
         >;
 
@@ -126,7 +126,6 @@ describe("parser", () => {
             inside_key: 0,
             parsing_to_value: 0,
             inside_value: 0,
-            escaping: 0,
             end_of_kv: 0,
         };
 
@@ -176,7 +175,7 @@ describe("parser", () => {
         in_key_out.next_tree_depth = 1;
         generatePassCase(in_key, in_key_out, "`tree_depth == 1` AND `inside_key == 1 AND `parsing_to_key == 0` setup -> ` ` is read");
 
-        // Test 6: `tree_depth == 1` AND `inside_key ==1 AND `parsing_to_key == 0` setup -> `"` is read
+        // Test 6: `tree_depth == 1` AND `inside_key == 1 AND `parsing_to_key == 0` setup -> `"` is read
         let in_key_to_exit = { ...init };
         in_key_to_exit.tree_depth = 1;
         in_key_to_exit.parsing_to_key = 0;
