@@ -198,6 +198,19 @@ describe("parser", () => {
         parsed_key_wait_to_parse_value_out.next_parsing_to_key = 0;
         parsed_key_wait_to_parse_value_out.next_parsing_to_value = 1;
         generatePassCase(parsed_key_wait_to_parse_value, parsed_key_wait_to_parse_value_out, "`tree_depth == 1` AND parsed through key` setup -> `:` is read");
+
+        // Test 8: `tree_depth == 1` AND parsing_to_value` setup -> `"` is read
+        let in_tree_find_value = { ...init };
+        in_tree_find_value.tree_depth = 1;
+        in_tree_find_value.parsing_to_key = 0;
+        in_tree_find_value.parsing_to_value = 1;
+        in_tree_find_value.byte = quote;
+        let in_tree_find_value_out = { ...out };
+        in_tree_find_value_out.next_tree_depth = 1;
+        in_tree_find_value_out.next_parsing_to_key = 0;
+        in_tree_find_value_out.next_parsing_to_value = 0;
+        in_tree_find_value_out.next_inside_value = 1;
+        generatePassCase(in_tree_find_value, in_tree_find_value_out, "`tree_depth == 1` AND parsing_to_value` setup -> `\"` is read");
     });
 
 });
