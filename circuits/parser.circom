@@ -57,8 +57,6 @@ template StateUpdate() {
     signal output next_inside_value;     // BIT_FLAG         -- next state for `inside_value`.
     signal output next_end_of_kv;        // BIT_FLAG         -- next state for `end_of_kv`.
 
-    
-
     // signal output escaping; // TODO: Add this in!
 
     //--------------------------------------------------------------------------------------------//
@@ -95,37 +93,40 @@ template StateUpdate() {
     // Output management
     component matcher = Switch(5, 6);
     component mask = StateToMask();
-    var state =             = [tree_depth, parsing_to_key, inside_key, parsing_to_value, inside_value, end_of_kv];   
-    mask.in               <== state;     
-    var do_nothing[4]       = [ 0,         0,              0,          0,                0,            0        ]; // Command returned by switch if we want to do nothing, e.g. read a whitespace char while looking for a key
-    var hit_start_brace[4]  = [ 1,         0,              0,          0,                0,            0        ]; // Command returned by switch if we hit a start brace `{`
-    var hit_end_brace[4]    = [-1,         0,              0,          0,                0,            0        ]; // Command returned by switch if we hit a end brace `}`
-    var hit_quote[4]        = [ 0,        -1,              1,         -1,                1,            1        ]; // Command returned by switch if we hit a quote `"`
-    var hit_colon[4]        = [ 0,         0,              0,          1,                0,            0        ]; // Command returned by switch if we hit a colon `:`
-    var hit_comma[4]        = [ 0,         1,              0,          0,                0,           -1        ];
+    var state[6]            = [tree_depth, parsing_to_key, inside_key, parsing_to_value, inside_value, end_of_kv];   
+    mask.state            <== state;     
+    var do_nothing[6]       = [ 0,         0,              0,          0,                0,            0        ]; // Command returned by switch if we want to do nothing, e.g. read a whitespace char while looking for a key
+    var hit_start_brace[6]  = [ 1,         0,              0,          0,                0,            0        ]; // Command returned by switch if we hit a start brace `{`
+    var hit_end_brace[6]    = [-1,         0,              0,          0,                0,            0        ]; // Command returned by switch if we hit a end brace `}`
+    var hit_quote[6]        = [ 0,        -1,              1,         -1,                1,            1        ]; // Command returned by switch if we hit a quote `"`
+    var hit_colon[6]        = [ 0,         0,              0,          1,                0,            0        ]; // Command returned by switch if we hit a colon `:`
+    var hit_comma[6]        = [ 0,         1,              0,          0,                0,           -1        ];
     
     matcher.branches      <== [start_brace,     end_brace,      quote,     colon,      comma    ];
     matcher.vals          <== [hit_start_brace, hit_end_brace,  hit_quote, hit_colon,  hit_comma];
     matcher.case          <== byte;
 
     component mulMaskAndOut = ArrayMul(6);
-    mulMaskAndOut.lhs <== mask.out;
+    mulMaskAndOut.lhs <== mask.mask;
     mulMaskAndOut.rhs <== matcher.out;
 
     component addToState = ArrayAdd(6);
     addToState.lhs <== state;
     addToState.rhs <== mulMaskAndOut.out;
 
-    out.next_tree_depth       = addToState.out[0];
-    out.next_parsing_to_key   = addToState.out[1];
-    out.next_inside_key       = addToState.out[2];
-    out.next_parsing_to_value = addToState.out[3];
-    out.next_inside_value     = addToState.out[4];
-    out.next_end_of_kv        = addToState.out[5];
+    for(var i = 0; i<6; i++) {
+        log("mulMaskAndOu[ ", i,"]: ", mulMaskAndOut.out[i]);
+        log("addToState[ ", i,"]: ", addToState.out[i]);
+    }
 
-     
-    // TODO: Assert this never goes below zero (mod p)
-    next_tree_depth  <== tree_depth + (parsing_to_key + next_end_of_kv) * matcher.out[0]; // IF ((`parsing_to_key` OR `next_end_of_kv`) AND `read_brace` THEN `increase/decrease_depth`
+    next_tree_depth       <== addToState.out[0];
+    next_parsing_to_key   <== addToState.out[1];
+    next_inside_key       <== addToState.out[2];
+    next_parsing_to_value <== addToState.out[3];
+    next_inside_value     <== addToState.out[4];
+    next_end_of_kv        <== addToState.out[5];
+
+    log("next_inside_key: ", next_inside_key);
 
     // Constrain bit flags
     next_parsing_to_key * (1 - next_parsing_to_key)     === 0; // - constrain that `next_parsing_to_key` remain a bit flag
@@ -202,18 +203,17 @@ template StateToMask() {
     var inside_value = state[4];
     var end_of_kv = state[5];
 
-    signal NOT_INSIDE_KEY_AND_NOT_INSIDE_VALUE = (1 - inside_key) * (1 - inside_value);
-    signal NOT_PARSING_TO_KEY_AND_NOT_PARSING_TO_VALUE = (1 - parsing_to_key) * (1 - parsing_to_value);
+    signal NOT_INSIDE_KEY_AND_NOT_INSIDE_VALUE         <== (1 - inside_key) * (1 - inside_value);
+    signal NOT_PARSING_TO_KEY_AND_NOT_PARSING_TO_VALUE <== (1 - parsing_to_key) * (1 - parsing_to_value);
 
     // `tree_depth` can change: `IF (parsing_to_key OR parsing_to_value)`
     mask[0] <== parsing_to_key + parsing_to_value; // TODO: Make sure these are never both 1!
-
     
     // `parsing_to_key` can change: `IF ((NOT inside_key) AND (NOT inside_value))`
     mask[1] <== NOT_INSIDE_KEY_AND_NOT_INSIDE_VALUE;
 
-    // `inside_key` can change: `IF ((NOT parsing_to_key) AND (NOT parsing_to_value))`
-    mask[2] <== NOT_PARSING_TO_KEY_AND_NOT_PARSING_TO_VALUE;
+    // `inside_key` can change: `IF (NOT parsing_to_value)`
+    mask[2] <== (1 - parsing_to_value);
 
     // `parsing_to_value` can change: `IF ((NOT inside_key) AND (NOT inside_key) AND (NOT inside_value))`
     mask[3] <== (1 - parsing_to_key) * NOT_INSIDE_KEY_AND_NOT_INSIDE_VALUE;

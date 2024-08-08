@@ -30,7 +30,6 @@ template Extract(KEY_BYTES, DATA_BYTES) {
     State[0].inside_key       <== 0;
     State[0].parsing_to_value <== 0;
     State[0].inside_value     <== 0;
-    // State[0].escaping         <== 0;
     State[0].end_of_kv        <== 0;
 
     for(var data_pointer = 1; data_pointer < DATA_BYTES; data_pointer++) {
@@ -42,9 +41,6 @@ template Extract(KEY_BYTES, DATA_BYTES) {
         State[data_pointer].parsing_to_value <== State[data_pointer - 1].next_parsing_to_value;
         State[data_pointer].inside_value     <== State[data_pointer - 1].next_inside_value;
         State[data_pointer].end_of_kv        <== State[data_pointer - 1].next_end_of_kv;
-        // TODO: For the next state, we should use `next_`, this is only to make this compile for now.
-        // State[data_pointer].escaping         <== State[data_pointer - 1].escaping;
-
 
         // Debugging
         log("State[", data_pointer, "].tree_depth", "= ", State[data_pointer].tree_depth);
