@@ -96,11 +96,6 @@ describe("parser", () => {
                 .join(", ");
 
             it(`(valid) witness: ${description}`, async () => {
-                circuit = await circomkit.WitnessTester(`StateUpdate`, {
-                    file: "circuits/parser",
-                    template: "StateUpdate",
-                });
-                console.log("#constraints:", await circuit.getConstraintCount());
                 await circuit.expectPass(input, expected);
             });
         }
@@ -111,14 +106,18 @@ describe("parser", () => {
                 .join(", ");
 
             it(`(invalid) witness: ${description}`, async () => {
-                circuit = await circomkit.WitnessTester(`StateUpdate`, {
-                    file: "circuits/parser",
-                    template: "StateUpdate",
-                });
-                console.log("#constraints:", await circuit.getConstraintCount());
                 await circuit.expectFail(input);
             });
         }
+
+        before(async () => {
+            circuit = await circomkit.WitnessTester(`StateUpdate`, {
+                file: "circuits/parser",
+                template: "StateUpdate",
+            });
+            console.log("#constraints:", await circuit.getConstraintCount());
+
+        });
 
         let init = {
             byte: 0,
@@ -138,7 +137,7 @@ describe("parser", () => {
             next_inside_key: init.inside_key,
             next_parsing_to_value: init.parsing_to_value,
             next_inside_value: init.inside_value,
-            next_end_of_kv: init.end_of_kv,
+            next_end_of_kv: init.end_of_kv
         };
 
         generatePassCase(init, out);
@@ -154,6 +153,8 @@ describe("parser", () => {
         let read_end_brace = { ...init };
         read_end_brace.byte = end_brace;
         generateFailCase(read_end_brace);
+
+
     });
 
 });
