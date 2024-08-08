@@ -89,35 +89,42 @@ template StateUpdate() {
     //-MACHINE INSTRUCTIONS-----------------------------------------------------------------------//
     // TODO: ADD CASE FOR `is_number` for in range 48-57 https://www.ascii-code.com since a value may just be a number
     // Output management
-    component matcher = Switch(8, 3);
-    var do_nothing[3]       = [ 0,                             0,         0]; // Command returned by switch if we want to do nothing, e.g. read a whitespace char while looking for a key
-    var increase_depth[3]   = [ 1,                             0,         0]; // Command returned by switch if we hit a start brace `{`
-    var decrease_depth[3]   = [-1,                             0,         0]; // Command returned by switch if we hit a end brace `}`
-    var hit_quote[3]        = [ 0,                             1,         0]; // Command returned by switch if we hit a quote `"`
-    var hit_colon[3]        = [ 0,                             0,         1]; // Command returned by switch if we hit a colon `:`
+    component matcher = Switch(8, 4);
+    var do_nothing[4]       = [ 0,                             0,         0,          0]; // Command returned by switch if we want to do nothing, e.g. read a whitespace char while looking for a key
+    var increase_depth[4]   = [ 1,                             0,         0,          0]; // Command returned by switch if we hit a start brace `{`
+    var decrease_depth[4]   = [-1,                             0,         0,          0]; // Command returned by switch if we hit a end brace `}`
+    var hit_quote[4]        = [ 0,                             1,         0,          0]; // Command returned by switch if we hit a quote `"`
+    var hit_colon[4]        = [ 0,                             0,         1,          0]; // Command returned by switch if we hit a colon `:`
+    var hit_comma[4]        = [ 0,                             0,         0,          1];
 
-    matcher.branches      <== [start_brace,    end_brace,      quote,     colon,      start_bracket, end_bracket, comma,      escape    ];
-    matcher.vals          <== [increase_depth, decrease_depth, hit_quote, hit_colon,  do_nothing,    do_nothing,  do_nothing, do_nothing];
+    matcher.branches      <== [start_brace,    end_brace,      quote,     colon,      comma,     start_bracket, end_bracket,  escape    ];
+    matcher.vals          <== [increase_depth, decrease_depth, hit_quote, hit_colon,  hit_comma, do_nothing,    do_nothing,   do_nothing];
     matcher.case          <== byte;
 
 
     // TODO: These could likely go into a switch statement with the output of the `Switch` above.
     // TODO: Also could probably clean up things with de Morgan's laws or whatever. 
+    // TODO: Could also clean this up and reduce constraints using PREV/CURR states like with `end_of_kv`
     // An `IF ELSE` template would also be handy!
-    next_inside_key       <== inside_key + (parsing_to_key - inside_key) * matcher.out[1];       // IF (`parsing_to_key` AND `hit_quote`) THEN `next_inside_key <== 1` ELSEIF (`inside_key` AND `hit_quote`) THEN `next_inside_key <== 0`
-                                                                                                 // - note: can rewrite as -> `inside_key * (1-matcher.out[1]) + parsing_to_key * matcher.out[1]`, but this will not be quadratic (according to circom)
-    next_parsing_to_key   <== parsing_to_key * (1 - matcher.out[1]);                             // IF (`parsing_to_key` AND `hit_quote`) THEN `parsing_to_key <== 0`
-
-    next_inside_value     <== inside_value + (parsing_to_value - inside_value) * matcher.out[1]; // IF (`parsing_to_value` AND `hit_quote`) THEN `next_inside_value <== 1` ELSEIF (`inside_value` AND `hit_quote`) THEN `next_inside_value <==0`
-                                                                                                 // -note: can rewrite as -> `(1 - inside_value) * matcher_out[1] + parsing_to_value * matcher.out[1]
+    signal NOT_PARSING_TO_KEY_AND_NOT_INSIDE_KEY <== (1 - parsing_to_key) * (1 - inside_key);  
+    signal NOT_PARSING_TO_VALUE_AND_PREV_INSIDE_VALUE <== (1 - parsing_to_value) * inside_value; // (NOT `parsing_to_value`) AND (NOT `inside_value`)
+    next_inside_value  <== inside_value + (parsing_to_value - inside_value) * matcher.out[1]; // IF (`parsing_to_value` AND `hit_quote`) THEN `next_inside_value <== 1` ELSEIF (`inside_value` AND `hit_quote`) THEN `next_inside_value <==0`
+                                                                                              // -note: can rewrite as -> `(1 - inside_value) * matcher_out[1] + parsing_to_value * matcher.out[1]
+    signal NOT_PARSING_TO_VALUE_AND_PREV_INSIDE_VALUE_AND_NOT_CURR_INSIDE_VALUE <== NOT_PARSING_TO_VALUE_AND_PREV_INSIDE_VALUE * (1 - next_inside_value);
+    signal NOT_PARSING_TO_KEY_AND_NOT_INSIDE_KEY_AND_NOT_PARSING_TO_VALUE_AND_PREV_INSIDE_VALUE_AND_NOT_CURR_INSIDE_VALUE <== NOT_PARSING_TO_KEY_AND_NOT_INSIDE_KEY * NOT_PARSING_TO_VALUE_AND_PREV_INSIDE_VALUE_AND_NOT_CURR_INSIDE_VALUE;
+    next_end_of_kv <== (end_of_kv - matcher.out[3]) + NOT_PARSING_TO_KEY_AND_NOT_INSIDE_KEY_AND_NOT_PARSING_TO_VALUE_AND_PREV_INSIDE_VALUE_AND_NOT_CURR_INSIDE_VALUE; // IF ((NOT `parsing_to_key`) AND (NOT `inside_key`)) AND (NOT(`parsing_to_value`) AND NOT( `inside_value)) THEN `next_end_of_kv <== 1`
     
-    signal NOT_PARSING_TO_KEY_AND_NOT_INSIDE_KEY <== (1 - parsing_to_key) * (1 - inside_key);                                                     // (NOT `parsing_to_key`) AND (NOT `inside_key`)
+
+    next_inside_key <== inside_key + (parsing_to_key - inside_key) * matcher.out[1];  // IF (`parsing_to_key` AND `hit_quote`) THEN `next_inside_key <== 1` ELSEIF (`inside_key` AND `hit_quote`) THEN `next_inside_key <== 0`
+                                                                                      // - note: can rewrite as -> `inside_key * (1-matcher.out[1]) + parsing_to_key * matcher.out[1]`, but this will not be quadratic (according to circom)
+    signal END_OF_KV_AND_HIT_COMMA <== end_of_kv * (matcher.out[3]);
+    next_parsing_to_key  <== parsing_to_key * (1 - matcher.out[1]) + END_OF_KV_AND_HIT_COMMA; // IF (`parsing_to_key` AND `hit_quote`) THEN `parsing_to_key <== 0`
+
+
+    
+                                                       // (NOT `parsing_to_key`) AND (NOT `inside_key`)
     signal PARSING_TO_VALUE_AND_NOT_HIT_QUOTE    <== parsing_to_value * (1 - matcher.out[1]);                                                     // `parsing_to_value` AND (NOT `hit_quote`)
     next_parsing_to_value                        <== PARSING_TO_VALUE_AND_NOT_HIT_QUOTE + NOT_PARSING_TO_KEY_AND_NOT_INSIDE_KEY * matcher.out[2]; // IF (`parsing_to_value` AND (NOT `hit_quote`)) THEN `next_parsing_to_value <== 1 ELSEIF ((NOT `parsing_to_value` AND (NOT `inside_value)) AND `hit_colon`) THEN `next_parsing_to_value <== 1`
-
-    signal NOT_PARSING_TO_VALUE_AND_PREV_INSIDE_VALUE                           <== (1 - parsing_to_value) * inside_value;                                                                                    // (NOT `parsing_to_value`) AND (NOT `inside_value`)
-    signal NOT_PARSING_TO_VALUE_AND_PREV_INSIDE_VALUE_AND_NOT_CURR_INSIDE_VALUE <== NOT_PARSING_TO_VALUE_AND_PREV_INSIDE_VALUE * (1 - next_inside_value);
-    next_end_of_kv                                                              <== end_of_kv + NOT_PARSING_TO_KEY_AND_NOT_INSIDE_KEY * NOT_PARSING_TO_VALUE_AND_PREV_INSIDE_VALUE_AND_NOT_CURR_INSIDE_VALUE; // IF ((NOT `parsing_to_key`) AND (NOT `inside_key`)) AND (NOT(`parsing_to_value`) AND NOT( `inside_value)) THEN `next_end_of_kv <== 1`
 
      
     // TODO: Assert this never goes below zero (mod p)
