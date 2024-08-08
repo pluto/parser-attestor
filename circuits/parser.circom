@@ -106,6 +106,8 @@ template StateUpdate() {
     matcher.vals          <== [hit_start_brace, hit_end_brace,  hit_quote, hit_colon,  hit_comma];
     matcher.case          <== byte;
 
+    // log("byte: ", byte);
+
     component mulMaskAndOut = ArrayMul(6);
     mulMaskAndOut.lhs <== mask.mask;
     mulMaskAndOut.rhs <== matcher.out;
@@ -114,10 +116,11 @@ template StateUpdate() {
     addToState.lhs <== state;
     addToState.rhs <== mulMaskAndOut.out;
 
-    for(var i = 0; i<6; i++) {
-        log("mulMaskAndOu[ ", i,"]: ", mulMaskAndOut.out[i]);
-        log("addToState[ ", i,"]: ", addToState.out[i]);
-    }
+    // for(var i = 0; i<6; i++) {
+    //     log("mask[", i,"]: ", mask.mask[i]);
+    //     log("mulMaskAndOut[ ", i,"]: ", mulMaskAndOut.out[i]);
+    //     log("addToState[ ", i,"]: ", addToState.out[i]);
+    // }
 
     next_tree_depth       <== addToState.out[0];
     next_parsing_to_key   <== addToState.out[1];
@@ -126,7 +129,7 @@ template StateUpdate() {
     next_inside_value     <== addToState.out[4];
     next_end_of_kv        <== addToState.out[5];
 
-    log("next_inside_key: ", next_inside_key);
+    // log("next_inside_key: ", next_inside_key);
 
     // Constrain bit flags
     next_parsing_to_key * (1 - next_parsing_to_key)     === 0; // - constrain that `next_parsing_to_key` remain a bit flag
@@ -205,22 +208,24 @@ template StateToMask() {
 
     signal NOT_INSIDE_KEY_AND_NOT_INSIDE_VALUE         <== (1 - inside_key) * (1 - inside_value);
     signal NOT_PARSING_TO_KEY_AND_NOT_PARSING_TO_VALUE <== (1 - parsing_to_key) * (1 - parsing_to_value);
+    signal NOT_PARSING_TO_VALUE_NOT_INSIDE_VALUE       <== (1 - parsing_to_value) * (1 - inside_value);
 
-    // `tree_depth` can change: `IF (parsing_to_key OR parsing_to_value)`
+    // `tree_depth` can change: `IF (parsing_to_key XOR parsing_to_value)`
     mask[0] <== parsing_to_key + parsing_to_value; // TODO: Make sure these are never both 1!
     
     // `parsing_to_key` can change: `IF ((NOT inside_key) AND (NOT inside_value))`
-    mask[1] <== NOT_INSIDE_KEY_AND_NOT_INSIDE_VALUE;
+    mask[1] <== NOT_INSIDE_KEY_AND_NOT_INSIDE_VALUE * (1 - parsing_to_value);
 
     // `inside_key` can change: `IF (NOT parsing_to_value)`
-    mask[2] <== (1 - parsing_to_value);
+    signal inside_key_toggle <-- (-1)**inside_key;
+    mask[2] <== NOT_PARSING_TO_VALUE_NOT_INSIDE_VALUE * inside_key_toggle;
 
     // `parsing_to_value` can change: `IF ((NOT inside_key) AND (NOT inside_key) AND (NOT inside_value))`
     mask[3] <== (1 - parsing_to_key) * NOT_INSIDE_KEY_AND_NOT_INSIDE_VALUE;
 
     // `inside_value` can change: `IF ((NOT parsing_to_key) AND (NOT parsing to value))`
-    mask[4] <== NOT_PARSING_TO_KEY_AND_NOT_PARSING_TO_VALUE;
+    mask[4] <== (1 - parsing_to_key) * (parsing_to_value - inside_value);
 
-    // `end_of_kv` can change: `IF ((NOT inside_key) AND (NOT inside_value) AND (NOT parsing_to_key) AND (NOT parsing_to_value)
-    mask[5] <== NOT_INSIDE_KEY_AND_NOT_INSIDE_VALUE * NOT_PARSING_TO_KEY_AND_NOT_PARSING_TO_VALUE;
+    // `end_of_kv` can change: `IF ((NOT inside_key) AND (NOT parsing_to_key) AND (NOT parsing_to_value)
+    mask[5] <== (1 - inside_key) * NOT_PARSING_TO_KEY_AND_NOT_PARSING_TO_VALUE;
 }
