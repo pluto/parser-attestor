@@ -115,12 +115,13 @@ template StateUpdate() {
     signal PARSING_TO_VALUE_AND_NOT_HIT_QUOTE    <== parsing_to_value * (1 - matcher.out[1]);                                                     // `parsing_to_value` AND (NOT `hit_quote`)
     next_parsing_to_value                        <== PARSING_TO_VALUE_AND_NOT_HIT_QUOTE + NOT_PARSING_TO_KEY_AND_NOT_INSIDE_KEY * matcher.out[2]; // IF (`parsing_to_value` AND (NOT `hit_quote`)) THEN `next_parsing_to_value <== 1 ELSEIF ((NOT `parsing_to_value` AND (NOT `inside_value)) AND `hit_colon`) THEN `next_parsing_to_value <== 1`
 
-    signal NOT_PARSING_TO_VALUE_AND_NOT_INSIDE_VALUE <== (1 - parsing_to_value) * (1 - inside_value);                                       // (NOT `parsing_to_value`) AND (NOT `inside_value`)
-    next_end_of_kv                                   <== NOT_PARSING_TO_KEY_AND_NOT_INSIDE_KEY * NOT_PARSING_TO_VALUE_AND_NOT_INSIDE_VALUE; // IF ((NOT `parsing_to_key`) AND (NOT `inside_key`)) AND (NOT(`parsing_to_value`) AND NOT( `inside_value)) THEN `next_end_of_kv <== 1`
+    signal NOT_PARSING_TO_VALUE_AND_PREV_INSIDE_VALUE                           <== (1 - parsing_to_value) * inside_value;                                                                                    // (NOT `parsing_to_value`) AND (NOT `inside_value`)
+    signal NOT_PARSING_TO_VALUE_AND_PREV_INSIDE_VALUE_AND_NOT_CURR_INSIDE_VALUE <== NOT_PARSING_TO_VALUE_AND_PREV_INSIDE_VALUE * (1 - next_inside_value);
+    next_end_of_kv                                                              <== end_of_kv + NOT_PARSING_TO_KEY_AND_NOT_INSIDE_KEY * NOT_PARSING_TO_VALUE_AND_PREV_INSIDE_VALUE_AND_NOT_CURR_INSIDE_VALUE; // IF ((NOT `parsing_to_key`) AND (NOT `inside_key`)) AND (NOT(`parsing_to_value`) AND NOT( `inside_value)) THEN `next_end_of_kv <== 1`
 
      
     // TODO: Assert this never goes below zero (mod p)
-    next_tree_depth       <== tree_depth + (parsing_to_key + next_end_of_kv) * matcher.out[0]; // IF ((`parsing_to_key` OR `next_end_of_kv`) AND `read_brace` THEN `increase/decrease_depth`
+    next_tree_depth  <== tree_depth + (parsing_to_key + next_end_of_kv) * matcher.out[0]; // IF ((`parsing_to_key` OR `next_end_of_kv`) AND `read_brace` THEN `increase/decrease_depth`
 
     // Constrain bit flags
     next_parsing_to_key * (1 - next_parsing_to_key)     === 0; // - constrain that `next_parsing_to_key` remain a bit flag

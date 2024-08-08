@@ -198,13 +198,6 @@ describe("parser", () => {
         parsed_key_wait_to_parse_value_out.next_parsing_to_key = 0;
         parsed_key_wait_to_parse_value_out.next_parsing_to_value = 1;
         generatePassCase(parsed_key_wait_to_parse_value, parsed_key_wait_to_parse_value_out, "`tree_depth == 1` AND parsed through key` setup -> `:` is read");
-
-        // State[ 13 ].tree_depth =  1
-        // State[ 13 ].parsing_to_key =  0
-        // State[ 13 ].inside_key =  0
-        // State[ 13 ].parsing_to_value =  1
-        // State[ 13 ].inside_value =  0
-        // State[ 13 ].end_of_kv =  1 <<<< TODO: THIS IS NOT RIGHT
     });
 
 });
