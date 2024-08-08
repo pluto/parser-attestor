@@ -25,8 +25,9 @@ xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 
 
-Notes:
-- If there is no comma after leaving a value, then we should not be parsing to key. If anything breaks here, JSON was bad.
+TODOs:
+- Handle case where the value is an another JSON. Shouldn't be too bad as we should just reset to init state with different tree depth
+- In fact, we might not even need tree depth if we replace it with `inside_value` that is a counter as it represents the same thing!
 */
 
 /*
@@ -124,7 +125,8 @@ template StateUpdate() {
     
                                                        // (NOT `parsing_to_key`) AND (NOT `inside_key`)
     signal PARSING_TO_VALUE_AND_NOT_HIT_QUOTE    <== parsing_to_value * (1 - matcher.out[1]);                                                     // `parsing_to_value` AND (NOT `hit_quote`)
-    next_parsing_to_value                        <== PARSING_TO_VALUE_AND_NOT_HIT_QUOTE + NOT_PARSING_TO_KEY_AND_NOT_INSIDE_KEY * matcher.out[2]; // IF (`parsing_to_value` AND (NOT `hit_quote`)) THEN `next_parsing_to_value <== 1 ELSEIF ((NOT `parsing_to_value` AND (NOT `inside_value)) AND `hit_colon`) THEN `next_parsing_to_value <== 1`
+    signal PARSING_TO_VALUE_AND_NOT_HIT_QUOTE_AND_NOT_HIT_BRACE    <== PARSING_TO_VALUE_AND_NOT_HIT_QUOTE * (1 - matcher.out[0]);
+    next_parsing_to_value                        <== PARSING_TO_VALUE_AND_NOT_HIT_QUOTE_AND_NOT_HIT_BRACE + NOT_PARSING_TO_KEY_AND_NOT_INSIDE_KEY * matcher.out[2]; // IF (`parsing_to_value` AND (NOT `hit_quote`)) THEN `next_parsing_to_value <== 1 ELSEIF ((NOT `parsing_to_value` AND (NOT `inside_value)) AND `hit_colon`) THEN `next_parsing_to_value <== 1`
 
      
     // TODO: Assert this never goes below zero (mod p)
