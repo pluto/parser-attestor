@@ -46,7 +46,7 @@ template StateUpdate() {
     signal input parsing_to_value;       // BIT_FLAG         -- whether we are currently parsing bytes until we find the next value (mutually exclusive with `inside_value` and both `*_key` flags).
     signal input inside_value;           // BIT_FLAG         -- whether we are currently inside a value (mutually exclusive with `parsing_to_value` and both `*_key` flags).
 
-    signal input escaping;               // BIT_FLAG         -- whether we have hit an escape ASCII symbol inside of a key or value. 
+    // signal input escaping;               // BIT_FLAG         -- whether we have hit an escape ASCII symbol inside of a key or value. 
 
     signal input end_of_kv;              // BIT_FLAG         -- reached end of key-value sequence, looking for comma delimiter or end of file signified by `tree_depth == 0`.
 
@@ -56,6 +56,8 @@ template StateUpdate() {
     signal output next_parsing_to_value; // BIT_FLAG         -- next state for `parsing_to_value`.
     signal output next_inside_value;     // BIT_FLAG         -- next state for `inside_value`.
     signal output next_end_of_kv;        // BIT_FLAG         -- next state for `end_of_kv`.
+
+    
 
     // signal output escaping; // TODO: Add this in!
 
@@ -98,10 +100,13 @@ template StateUpdate() {
     var hit_quote[4]        = [ 0,                             1,         0,          0]; // Command returned by switch if we hit a quote `"`
     var hit_colon[4]        = [ 0,                             0,         1,          0]; // Command returned by switch if we hit a colon `:`
     var hit_comma[4]        = [ 0,                             0,         0,          1];
-
+    
     matcher.branches      <== [start_brace,    end_brace,      quote,     colon,      comma,     start_bracket, end_bracket,  escape    ];
     matcher.vals          <== [increase_depth, decrease_depth, hit_quote, hit_colon,  hit_comma, do_nothing,    do_nothing,   do_nothing];
     matcher.case          <== byte;
+
+    var curr_state[6] = [tree_depth, parsing_to_key, inside_key, parsing_to_value, inside_value, end_of_kv];
+    var next_state[6] = curr_state + matcher_out;
 
 
     // TODO: These could likely go into a switch statement with the output of the `Switch` above.
@@ -194,4 +199,31 @@ template Switch(m, n) {
     match <== matchChecker.out;
 
     out <== sum;
+}
+
+template StateToMask() {
+    signal input state[6];
+    signal output mask[6];
+    
+    var tree_depth = state[0];
+    var parsing_to_key = state[1];
+    var inside_key = state[2];
+    var parsing_to_value = state[3];
+    var inside_value = state[4];
+    var end_of_kv = state[5];
+
+    signal NOT_INSIDE_KEY_AND_NOT_INSIDE_VALUE = (1 - inside_key) * (1 - inside_value);
+    signal NOT_PARSING_TO_KEY_AND_NOT_PARSING_TO_VALUE = (1 - parsing_to_key) * (1 - parsing_to_value);
+
+    // `tree_depth` can change only if `parsing_to_key OR parsing_to_value`
+    mask[0] <== parsing_to_key + parsing_to_value; // TODO: Make sure these are never both 1!
+
+    
+    // `parsing_to_key` can change if `(NOT inside_key) AND (NOT inside_value)`
+    mask[1] <== NOT_INSIDE_KEY_AND_NOT_INSIDE_VALUE;
+
+    // `inside_key` can change if `(NOT parsing_to_key) AND (NOT parsing_to_value)`
+    mask[2] <== NOT_PARSING_TO_KEY_AND_NOT_INSIDE_KEY_AND_NOT_PARSING_TO_VALUE;
+
+    
 }
