@@ -22,39 +22,30 @@ State[20]| "        | COMPLETE WITH KV PARSING
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 State[20].next_tree_depth == 0 | VALID JSON
 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-
-
-
-TODOs:
-- Handle case where the value is an another JSON. Shouldn't be too bad as we should just reset to init state with different tree depth
-- In fact, we might not even need tree depth if we replace it with `inside_value` that is a counter as it represents the same thing!
-   - Actually, this may not work since multiple values exist at same height. Let's not change this yet.
 */
 
 /*
 TODO
 */
 template StateUpdate() {
-    signal input byte;
+    signal input byte;  
 
-    signal input tree_depth;             // STATUS_INDICATOR -- how deep in a JSON branch we are, e.g., `user.balance.value` key should be at depth `3`. 
-                                         // Should always be greater than or equal to `0` (TODO: implement this constraint).
-
+    signal input tree_depth;          // STATUS_INDICATOR -- how deep in a JSON branch we are, e.g., `user.balance.value` key should be at depth `3`. 
+                                      // constrainted to be greater than or equal to `0`.
     signal input parsing_key;         // BIT_FLAG         -- whether we are currently parsing bytes until we find the next key (mutally exclusive with `inside_key` and both `*_value flags).
-    signal input inside_key;             // BIT_FLAG         -- whether we are currently inside a key (mutually exclusive with `parsing_key` and both `*_value` flags).
-    
+    signal input inside_key;          // BIT_FLAG         -- whether we are currently inside a key (mutually exclusive with `parsing_key` and both `*_value` flags).
     signal input parsing_value;       // BIT_FLAG         -- whether we are currently parsing bytes until we find the next value (mutually exclusive with `inside_value` and both `*_key` flags).
-    signal input inside_value;           // BIT_FLAG         -- whether we are currently inside a value (mutually exclusive with `parsing_value` and both `*_key` flags).
+    signal input inside_value;        // BIT_FLAG         -- whether we are currently inside a value (mutually exclusive with `parsing_value` and both `*_key` flags).
 
-    // signal input escaping;               // BIT_FLAG         -- whether we have hit an escape ASCII symbol inside of a key or value. 
-
-    signal output next_tree_depth;       // BIT_FLAG         -- next state for `tree_depth`.
+    signal output next_tree_depth;    // STATUS_INDICATOR -- next state for `tree_depth`.
     signal output next_parsing_key;   // BIT_FLAG         -- next state for `parsing_key`.
-    signal output next_inside_key;       // BIT_FLAG         -- next state for `inside_key`.
+    signal output next_inside_key;    // BIT_FLAG         -- next state for `inside_key`.
     signal output next_parsing_value; // BIT_FLAG         -- next state for `parsing_value`.
-    signal output next_inside_value;     // BIT_FLAG         -- next state for `inside_value`.
+    signal output next_inside_value;  // BIT_FLAG         -- next state for `inside_value`.
 
-    // signal output escaping; // TODO: Add this in!
+    // TODO: Add this in!
+    // signal input escaping;  // BIT_FLAG         -- whether we have hit an escape ASCII symbol inside of a key or value. 
+    // signal output escaping; 
 
     //--------------------------------------------------------------------------------------------//
     //-Delimeters---------------------------------------------------------------------------------//
