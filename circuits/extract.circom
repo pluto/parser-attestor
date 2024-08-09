@@ -26,7 +26,7 @@ template Extract(KEY_BYTES, DATA_BYTES) {
     State[0] = StateUpdate();
     State[0].byte             <== data[0];
     State[0].tree_depth       <== 0;
-    State[0].parsing_to_key   <== 1; // Initialize by saying we are parsing to the first key
+    State[0].parsing_to_key   <== 0; 
     State[0].inside_key       <== 0;
     State[0].parsing_to_value <== 0;
     State[0].inside_value     <== 0;

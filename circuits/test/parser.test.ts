@@ -1,3 +1,4 @@
+import { start } from "repl";
 import { circomkit, WitnessTester } from "./common";
 
 describe("parser", () => {
@@ -122,159 +123,151 @@ describe("parser", () => {
         let init = {
             byte: 0,
             tree_depth: 0,
-            parsing_to_key: 1,
+            parsing_to_key: 0,
             inside_key: 0,
             parsing_to_value: 0,
             inside_value: 0,
             end_of_kv: 0,
         };
-
-        // Test 1: init setup -> `do_nothing` byte
         let out = {
             next_tree_depth: init.tree_depth,
             next_parsing_to_key: init.parsing_to_key,
             next_inside_key: init.inside_key,
             next_parsing_to_value: init.parsing_to_value,
             next_inside_value: init.inside_value,
-            next_end_of_kv: init.end_of_kv
+            next_end_of_kv: init.end_of_kv,
         };
 
-        generatePassCase(init, out, "init setup -> `do_nothing` byte");
+        // Test 1: init setup -> `do_nothing` byte
+        generatePassCase(init, out, ">>>> `NUL` read");
 
         // Test 2: init setup -> `{` is read
         let read_start_brace = { ...init };
         read_start_brace.byte = start_brace;
         let read_start_brace_out = { ...out };
         read_start_brace_out.next_tree_depth = 1;
-        generatePassCase(read_start_brace, read_start_brace_out, "init setup -> `{` is read");
+        read_start_brace_out.next_parsing_to_key = 1;
+        generatePassCase(read_start_brace, read_start_brace_out, ">>>> `{` read");
 
         // Test 3: init setup -> `}` is read (should be INVALID)
         let read_end_brace = { ...init };
         read_end_brace.byte = end_brace;
-        generateFailCase(read_end_brace, "init setup -> `}` is read (NEGATIVE TREE DEPTH!)");
+        generateFailCase(read_end_brace, ">>>> `}` read --> (FAIL! NEGATIVE TREE DEPTH!)");
 
-        // Test 4: `tree_depth == 1` setup -> `"` is read
+        // Test 4: `tree_depth == 1` and `parsing_key == 1` setup -> `"` is read
         let in_tree_find_key = { ...init };
         in_tree_find_key.tree_depth = 1;
+        in_tree_find_key.parsing_to_key = 1;
         in_tree_find_key.byte = quote;
         let in_tree_find_key_out = { ...out };
+        in_tree_find_key_out.next_parsing_to_key = 1;
         in_tree_find_key_out.next_inside_key = 1;
-        in_tree_find_key_out.next_parsing_to_key = 0;
         in_tree_find_key_out.next_tree_depth = 1;
-        generatePassCase(in_tree_find_key, in_tree_find_key_out, "`tree_depth == 1` setup -> `\"` is read");
+        generatePassCase(in_tree_find_key, in_tree_find_key_out, ">>>> `\"` read");
 
         // Test 5: `tree_depth == 1` AND `inside_key ==1` setup -> ` ` is read
         let in_key = { ...init };
         in_key.tree_depth = 1;
-        in_key.parsing_to_key = 0;
         in_key.inside_key = 1;
         in_key.byte = space;
         let in_key_out = { ...out };
         in_key_out.next_inside_key = 1;
-        in_key_out.next_parsing_to_key = 0;
         in_key_out.next_tree_depth = 1;
-        generatePassCase(in_key, in_key_out, "`tree_depth == 1` AND `inside_key == 1 AND `parsing_to_key == 0` setup -> ` ` is read");
+        generatePassCase(in_key, in_key_out, ">>>> ` ` read");
 
         // Test 6: `tree_depth == 1` AND `inside_key == 1 AND `parsing_to_key == 0` setup -> `"` is read
         let in_key_to_exit = { ...init };
         in_key_to_exit.tree_depth = 1;
-        in_key_to_exit.parsing_to_key = 0;
         in_key_to_exit.inside_key = 1;
         in_key_to_exit.byte = quote;
         let in_key_to_exit_out = { ...out };
-        in_key_to_exit_out.next_inside_key = 0;
-        in_key_to_exit_out.next_parsing_to_key = 0;
         in_key_to_exit_out.next_tree_depth = 1;
-        generatePassCase(in_key_to_exit, in_key_to_exit_out, "`tree_depth == 1` AND `inside_key == 1 AND `parsing_to_key == 0` setup -> `\"` is read");
+        generatePassCase(in_key_to_exit, in_key_to_exit_out, "`\"` read");
 
         // Test 7: `tree_depth == 1` AND parsed through key` setup -> `:` is read
         let parsed_key_wait_to_parse_value = { ...init };
         parsed_key_wait_to_parse_value.tree_depth = 1;
-        parsed_key_wait_to_parse_value.parsing_to_key = 0;
+        parsed_key_wait_to_parse_value.parsing_to_key = 1;
         parsed_key_wait_to_parse_value.byte = colon;
         let parsed_key_wait_to_parse_value_out = { ...out };
         parsed_key_wait_to_parse_value_out.next_tree_depth = 1;
-        parsed_key_wait_to_parse_value_out.next_parsing_to_key = 0;
         parsed_key_wait_to_parse_value_out.next_parsing_to_value = 1;
-        generatePassCase(parsed_key_wait_to_parse_value, parsed_key_wait_to_parse_value_out, "`tree_depth == 1` AND parsed through key` setup -> `:` is read");
+        generatePassCase(parsed_key_wait_to_parse_value, parsed_key_wait_to_parse_value_out, ">>>> `:` read");
 
-        // Test 8: `tree_depth == 1` AND parsing_to_value` setup -> `"` is read
+        // Test 8: `tree_depth == 1` AND parsing_to_value == 1` setup -> `"` is read
         let in_tree_find_value = { ...init };
         in_tree_find_value.tree_depth = 1;
-        in_tree_find_value.parsing_to_key = 0;
         in_tree_find_value.parsing_to_value = 1;
         in_tree_find_value.byte = quote;
         let in_tree_find_value_out = { ...out };
         in_tree_find_value_out.next_tree_depth = 1;
-        in_tree_find_value_out.next_parsing_to_key = 0;
-        in_tree_find_value_out.next_parsing_to_value = 0;
         in_tree_find_value_out.next_inside_value = 1;
-        generatePassCase(in_tree_find_value, in_tree_find_value_out, "`tree_depth == 1` AND parsing_to_value` setup -> `\"` is read");
+        in_tree_find_value_out.next_parsing_to_value = 1;
+        generatePassCase(in_tree_find_value, in_tree_find_value_out, ">>>> `\"` read");
 
         // Test 9: `tree_depth == 1` AND inside_value` setup -> ` ` is read
         let in_value = { ...init };
         in_value.tree_depth = 1;
-        in_value.parsing_to_key = 0;
         in_value.inside_value = 1;
         in_value.byte = space;
         let in_value_out = { ...out };
         in_value_out.next_tree_depth = 1;
-        in_value_out.next_parsing_to_key = 0;
-        in_value_out.next_parsing_to_value = 0;
         in_value_out.next_inside_value = 1;
-        generatePassCase(in_value, in_value_out, "`tree_depth == 1` AND inside_value` setup -> ` ` is read");
+        generatePassCase(in_value, in_value_out, ">>>> ` ` is read");
 
         // Test 10: `tree_depth == 1` AND inside_value` setup -> `"` is read
         let in_value_to_exit = { ...init };
         in_value_to_exit.tree_depth = 1;
-        in_value_to_exit.parsing_to_key = 0;
+        in_value_to_exit.parsing_to_value = 1;
         in_value_to_exit.inside_value = 1;
         in_value_to_exit.byte = quote;
         let in_value_to_exit_out = { ...out };
         in_value_to_exit_out.next_tree_depth = 1;
-        in_value_to_exit_out.next_parsing_to_key = 0;
-        in_value_to_exit_out.next_parsing_to_value = 0;
-        in_value_to_exit_out.next_inside_value = 0;
-        in_value_to_exit_out.next_end_of_kv = 1;
-        generatePassCase(in_value_to_exit, in_value_to_exit_out, "`tree_depth == 1` AND inside_value` setup -> `\"` is read");
+        // in_value_to_exit_out.next_end_of_kv = 1;
+        in_value_to_exit_out.next_parsing_to_value = 1;
+        generatePassCase(in_value_to_exit, in_value_to_exit_out, ">>>> `\"` is read");
 
         // Test 11: `tree_depth == 1` AND end_of_kv` setup -> ` ` is read
         let in_end_of_kv = { ...init };
         in_end_of_kv.tree_depth = 1;
-        in_end_of_kv.parsing_to_key = 0;
         in_end_of_kv.end_of_kv = 1;
         in_end_of_kv.byte = space;
         let in_end_of_kv_out = { ...out };
         in_end_of_kv_out.next_tree_depth = 1;
-        in_end_of_kv_out.next_parsing_to_key = 0;
         in_end_of_kv_out.next_end_of_kv = 1;
-        generatePassCase(in_end_of_kv, in_end_of_kv_out, "`tree_depth == 1` AND end_of_kv` setup -> ` ` is read");
+        generatePassCase(in_end_of_kv, in_end_of_kv_out, ">>>> ` ` is read");
 
         // Test 12: `tree_depth == 1` AND end_of_kv` setup ->  `,` is read
         let end_of_kv_to_parse_to_key = { ...init };
         end_of_kv_to_parse_to_key.tree_depth = 1;
-        end_of_kv_to_parse_to_key.parsing_to_key = 0;
-        end_of_kv_to_parse_to_key.end_of_kv = 1;
+        end_of_kv_to_parse_to_key.parsing_to_value = 1;
+        // end_of_kv_to_parse_to_key.end_of_kv = 1;
         end_of_kv_to_parse_to_key.byte = comma;
         let end_of_kv_to_parse_to_key_out = { ...out };
         end_of_kv_to_parse_to_key_out.next_tree_depth = 1;
         end_of_kv_to_parse_to_key_out.next_parsing_to_key = 1;
-        end_of_kv_to_parse_to_key_out.next_end_of_kv = 0;
-        generatePassCase(end_of_kv_to_parse_to_key, end_of_kv_to_parse_to_key_out, "`tree_depth == 1` AND end_of_kv` setup -> ` ` is read");
+        generatePassCase(end_of_kv_to_parse_to_key, end_of_kv_to_parse_to_key_out, ">>>> ` ` is read");
 
         // Test 13: `tree_depth == 1` AND end_of_kv` setup ->  `}` is read
         let end_of_kv_to_exit_json = { ...init };
         end_of_kv_to_exit_json.tree_depth = 1;
-        end_of_kv_to_exit_json.parsing_to_key = 0;
         end_of_kv_to_exit_json.end_of_kv = 1;
         end_of_kv_to_exit_json.byte = end_brace;
         let end_of_kv_to_exit_json_out = { ...out };
-        end_of_kv_to_exit_json_out.next_tree_depth = 0;
-        end_of_kv_to_exit_json_out.next_parsing_to_key = 0;
         end_of_kv_to_exit_json_out.next_end_of_kv = 1;
-        generatePassCase(end_of_kv_to_exit_json, end_of_kv_to_exit_json_out, "`tree_depth == 1` AND end_of_kv` setup ->  `}` is read");
+        generatePassCase(end_of_kv_to_exit_json, end_of_kv_to_exit_json_out, ">>>> `}` is read");
 
         // NOTE: At this point, we can parse JSON that has 2 keys at depth 1!
+
+        // Test 14: `tree_depth == 1` AND parsing_to_value` setup ->  `{` is read
+        let end_of_key_to_inner_object = { ...init };
+        end_of_key_to_inner_object.tree_depth = 1;
+        end_of_key_to_inner_object.parsing_to_value = 1;
+        end_of_key_to_inner_object.byte = start_brace;
+        let end_of_key_to_inner_object_out = { ...out };
+        end_of_key_to_inner_object_out.next_tree_depth = 2;
+        end_of_key_to_inner_object_out.next_parsing_to_key = 1;
+        generatePassCase(end_of_key_to_inner_object, end_of_key_to_inner_object_out, ">>>> `{` is read");
     });
 
 });

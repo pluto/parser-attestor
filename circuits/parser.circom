@@ -93,14 +93,15 @@ template StateUpdate() {
     // Output management
     component matcher = Switch(5, 6);
     component mask = StateToMask();
+    // Right now thinking more like "parsing_through_key" and "parsing_through_value"
     var state[6]            = [tree_depth, parsing_to_key, inside_key, parsing_to_value, inside_value, end_of_kv];   
     mask.state            <== state;     
     var do_nothing[6]       = [ 0,         0,              0,          0,                0,            0        ]; // Command returned by switch if we want to do nothing, e.g. read a whitespace char while looking for a key
-    var hit_start_brace[6]  = [ 1,         0,              0,          0,                0,            0        ]; // Command returned by switch if we hit a start brace `{`
+    var hit_start_brace[6]  = [ 1,         1,              0,         -1,                0,            0        ]; // Command returned by switch if we hit a start brace `{`
     var hit_end_brace[6]    = [-1,         0,              0,          0,                0,            0        ]; // Command returned by switch if we hit a end brace `}`
-    var hit_quote[6]        = [ 0,        -1,              1,         -1,                1,            1        ]; // Command returned by switch if we hit a quote `"`
-    var hit_colon[6]        = [ 0,         0,              0,          1,                0,            0        ]; // Command returned by switch if we hit a colon `:`
-    var hit_comma[6]        = [ 0,         1,              0,          0,                0,           -1        ];
+    var hit_quote[6]        = [ 0,         0,              1,          0,                1,            1        ]; // Command returned by switch if we hit a quote `"`
+    var hit_colon[6]        = [ 0,        -1,              0,          1,                0,            0        ]; // Command returned by switch if we hit a colon `:`
+    var hit_comma[6]        = [ 0,         1,              0,         -1,                0,            0        ];
     
     matcher.branches      <== [start_brace,     end_brace,      quote,     colon,      comma    ];
     matcher.vals          <== [hit_start_brace, hit_end_brace,  hit_quote, hit_colon,  hit_comma];
@@ -116,11 +117,13 @@ template StateUpdate() {
     addToState.lhs <== state;
     addToState.rhs <== mulMaskAndOut.out;
 
-    for(var i = 0; i<6; i++) {
-        log("mask[", i,"]: ", mask.mask[i]);
-        log("mulMaskAndOut[ ", i,"]: ", mulMaskAndOut.out[i]);
-        log("addToState[ ", i,"]: ", addToState.out[i]);
-    }
+    // for(var i = 0; i<6; i++) {
+    //     log("-----------------------");
+    //     log("mask[",i,"]:         ", mask.mask[i]);
+    //     log("mulMaskAndOut[",i,"]:", mulMaskAndOut.out[i]);
+    //     log("state[",i,"]:        ", state[i]);
+    //     log("next_state[",i,"]:   ", addToState.out[i]);
+    // }
 
     next_tree_depth       <== addToState.out[0];
     next_parsing_to_key   <== addToState.out[1];
@@ -210,22 +213,26 @@ template StateToMask() {
     signal NOT_PARSING_TO_KEY_AND_NOT_PARSING_TO_VALUE <-- (1 - parsing_to_key) * (1 - parsing_to_value);
     signal NOT_PARSING_TO_VALUE_NOT_INSIDE_VALUE       <-- (1 - parsing_to_value) * (1 - inside_value);
 
+    component init_tree = IsZero();
+    init_tree.in <== tree_depth;
+
     // `tree_depth` can change: `IF (parsing_to_key XOR parsing_to_value XOR end_of_kv)`
-    mask[0] <== parsing_to_key + parsing_to_value + end_of_kv; // TODO: Make sure these are never both 1!
+    mask[0] <== init_tree.out + (parsing_to_key + parsing_to_value + end_of_kv); // TODO: Make sure these are never both 1!
     
     // `parsing_to_key` can change: `IF ((NOT inside_key) AND (NOT inside_value) AND (NOT parsing_to_value))`
-    mask[1] <== NOT_INSIDE_KEY_AND_NOT_INSIDE_VALUE * (1 - parsing_to_value);
+    mask[1] <== NOT_INSIDE_KEY_AND_NOT_INSIDE_VALUE; // TODO: Changed and removed `NOT parsing_to_value)
 
     // `inside_key` can change: `IF ((NOT parsing_to_value) AND (NOT inside_value)) THEN TOGGLE WITH inside_key`
     signal inside_key_toggle <-- (-1)**inside_key;
     mask[2] <== NOT_PARSING_TO_VALUE_NOT_INSIDE_VALUE * inside_key_toggle;
 
-    // `parsing_to_value` can change: `IF ((NOT parsing_to_key) AND (NOT inside_key) AND (NOT inside_value))`
-    mask[3] <== (1 - parsing_to_key) * NOT_INSIDE_KEY_AND_NOT_INSIDE_VALUE;
+    // `parsing_to_value` can change: `IF ((NOT parsing_to_key) AND (NOT inside_key) AND (NOT inside_value) AND (tree_depth != 0))`
+    signal INIT <== (1 - init_tree.out);
+    mask[3] <== INIT * NOT_INSIDE_KEY_AND_NOT_INSIDE_VALUE;
 
     // `inside_value` can change: `IF ((NOT parsing_to_key) AND (C_NOR (inside_value, parsing_to value)))`
     //                                                       control----------^
-    mask[4] <== (1 - parsing_to_key) * (parsing_to_value - inside_value);
+    mask[4] <==  parsing_to_value - 2*inside_value;
 
     // `end_of_kv` can change: `IF ((NOT inside_key) AND (NOT parsing_to_key) AND (NOT parsing_to_value))
     mask[5] <== (1 - inside_key) * NOT_PARSING_TO_KEY_AND_NOT_PARSING_TO_VALUE;
