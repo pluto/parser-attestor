@@ -117,21 +117,17 @@ template StateUpdate() {
     next_parsing_value <== addToState.out[3];
     next_inside_value     <== addToState.out[4];
 
-    // log("next_inside_key: ", next_inside_key);
-
     // Constrain bit flags
     next_parsing_key * (1 - next_parsing_key)     === 0; // - constrain that `next_parsing_key` remain a bit flag
     next_inside_key * (1 - next_inside_key)             === 0; // - constrain that `next_inside_key` remain a bit flag
     next_parsing_value * (1 - next_parsing_value) === 0; // - constrain that `next_parsing_value` remain a bit flag
     next_inside_value * (1 - next_inside_value)         === 0; // - constrain that `next_inside_value` remain a bit flag 
-
-    component depthIsZero             = IsZero();   
-    depthIsZero.in                  <== tree_depth;     // Determine if `tree_depth` was `0`
-    component isOneLess               = IsEqual();      
-    isOneLess.in[0]                 <== -1;             
-    isOneLess.in[1]                 <== matcher.out[0]; // Determine if instruction was to `decrease_depth`
-    depthIsZero.out * isOneLess.out === 0;              // IF ( `decrease_depth` AND `tree_depth == 0`) THEN FAIL 
-    // TODO: Can hit comma and then be sent to next KV, so comma will engage `parsing_key`
+    
+    // Constrain `tree_depth` to never hit -1 (TODO: should always moves in 1 bit increments?)
+    component isMinusOne = IsEqual();      
+    isMinusOne.in[0]   <== -1;             
+    isMinusOne.in[1]   <== next_tree_depth; 
+    isMinusOne.out     === 0;              
     //--------------------------------------------------------------------------------------------//
 }
 
@@ -202,16 +198,15 @@ template StateToMask() {
     mask[0] <== init_tree.out + parsing_key + parsing_value; // TODO: Make sure these are never both 1!
     
     // `parsing_key` can change: `IF ((NOT inside_key) AND (NOT inside_value) AND (NOT parsing_value))`
-    mask[1] <== NOT_INSIDE_KEY_AND_NOT_INSIDE_VALUE; // TODO: Changed and removed `NOT parsing_value)
+    mask[1] <== NOT_INSIDE_KEY_AND_NOT_INSIDE_VALUE;
 
-    // `inside_key` can change: `IF ((NOT parsing_value) AND (NOT inside_value)) THEN TOGGLE WITH inside_key`
+    // `inside_key` can change: `IF ((NOT parsing_value) AND (NOT inside_value) AND inside_key) THEN mask <== -1 ELSEIF (NOT parsing_value) AND (NOT inside_value) THEN mask <== 1`
     mask[2] <== NOT_PARSING_VALUE_NOT_INSIDE_VALUE - 2 * inside_key;
 
     // `parsing_value` can change: `IF ((NOT parsing_key) AND (NOT inside_key) AND (NOT inside_value) AND (tree_depth != 0))`
     signal INIT <== (1 - init_tree.out);
     mask[3] <== INIT * NOT_INSIDE_KEY_AND_NOT_INSIDE_VALUE;
 
-    // `inside_value` can change: `IF ((NOT parsing_key) AND (C_NOR (inside_value, parsing_to value)))`
-    //                                                       control----------^
+    // `inside_value` can change: `IF (parsing_value AND (NOT inside_value)) THEN mask <== 1 ELSEIF (inside_value) mask <== -1`
     mask[4] <==  parsing_value - 2 * inside_value;
 }
