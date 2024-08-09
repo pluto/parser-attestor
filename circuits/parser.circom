@@ -95,10 +95,13 @@ template StateUpdate() {
     //-State machine updating---------------------------------------------------------------------//
     // * yield instruction based on what byte we read *
     component matcher       = Switch(8, 5);
+    var number = 256; // Number beyond a byte to represent an ASCII numeral
     matcher.branches      <== [start_brace,     end_brace,      quote,     colon,      comma,     start_bracket,     end_bracket    , number    ];
     matcher.vals          <== [hit_start_brace, hit_end_brace,  hit_quote, hit_colon,  hit_comma, hit_start_bracket, hit_end_bracket, hit_number];
-    component LEQ = LessEqThan(8);
-    matcher.case          <== byte;
+    component numeral_range_check = InRange(8);
+    numeral_range_check.in <== byte;
+    numeral_range_check.range <== [48, 57]; // ASCII NUMERALS
+    matcher.case          <== (1 - numeral_range_check.out) * byte + numeral_range_check.out * 256;
     // * get the instruction mask based on current state *
     component mask          = StateToMask();
     mask.state            <== state;     

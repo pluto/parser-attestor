@@ -38,6 +38,13 @@
             15
         ]
     },
+    "extract_number": {
+        "file": "extract",
+        "template": "Extract",
+        "params": [
+            11
+        ]
+    },
     "test_extract_hard": {
         "file": "extract",
         "template": "Extract",
