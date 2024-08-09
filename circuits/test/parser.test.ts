@@ -127,7 +127,6 @@ describe("parser", () => {
             inside_key: 0,
             parsing_to_value: 0,
             inside_value: 0,
-            end_of_kv: 0,
         };
         let out = {
             next_tree_depth: init.tree_depth,
@@ -135,7 +134,6 @@ describe("parser", () => {
             next_inside_key: init.inside_key,
             next_parsing_to_value: init.parsing_to_value,
             next_inside_value: init.inside_value,
-            next_end_of_kv: init.end_of_kv,
         };
 
         // Test 1: init setup -> `do_nothing` byte
@@ -230,11 +228,9 @@ describe("parser", () => {
         // Test 11: `tree_depth == 1` AND end_of_kv` setup -> ` ` is read
         let in_end_of_kv = { ...init };
         in_end_of_kv.tree_depth = 1;
-        in_end_of_kv.end_of_kv = 1;
         in_end_of_kv.byte = space;
         let in_end_of_kv_out = { ...out };
         in_end_of_kv_out.next_tree_depth = 1;
-        in_end_of_kv_out.next_end_of_kv = 1;
         generatePassCase(in_end_of_kv, in_end_of_kv_out, ">>>> ` ` is read");
 
         // Test 12: `tree_depth == 1` AND end_of_kv` setup ->  `,` is read
@@ -251,10 +247,10 @@ describe("parser", () => {
         // Test 13: `tree_depth == 1` AND end_of_kv` setup ->  `}` is read
         let end_of_kv_to_exit_json = { ...init };
         end_of_kv_to_exit_json.tree_depth = 1;
-        end_of_kv_to_exit_json.end_of_kv = 1;
+        end_of_kv_to_exit_json.parsing_to_value = 1;
         end_of_kv_to_exit_json.byte = end_brace;
         let end_of_kv_to_exit_json_out = { ...out };
-        end_of_kv_to_exit_json_out.next_end_of_kv = 1;
+        end_of_kv_to_exit_json_out.next_parsing_to_value = 1;
         generatePassCase(end_of_kv_to_exit_json, end_of_kv_to_exit_json_out, ">>>> `}` is read");
 
         // NOTE: At this point, we can parse JSON that has 2 keys at depth 1!
