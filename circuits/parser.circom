@@ -90,10 +90,10 @@ template StateUpdate() {
     //--------------------------------------------------------------------------------------------//
     //-State machine updating---------------------------------------------------------------------//
     // * yield instruction based on what byte we read *
-    component matcher  = Switch(5, 5);
-    matcher.branches <== [start_brace,     end_brace,      quote,     colon,      comma    ];
-    matcher.vals     <== [hit_start_brace, hit_end_brace,  hit_quote, hit_colon,  hit_comma];
-    matcher.case     <== byte;
+    component matcher       = Switch(5, 5);
+    matcher.branches      <== [start_brace,     end_brace,      quote,     colon,      comma    ];
+    matcher.vals          <== [hit_start_brace, hit_end_brace,  hit_quote, hit_colon,  hit_comma];
+    matcher.case          <== byte;
     // * get the instruction mask based on current state *
     component mask          = StateToMask();
     mask.state            <== state;     
@@ -107,9 +107,9 @@ template StateUpdate() {
     addToState.rhs        <== mulMaskAndOut.out;
     // * set the new state *
     next_tree_depth       <== addToState.out[0];
-    next_parsing_key   <== addToState.out[1];
+    next_parsing_key      <== addToState.out[1];
     next_inside_key       <== addToState.out[2];
-    next_parsing_value <== addToState.out[3];
+    next_parsing_value    <== addToState.out[3];
     next_inside_value     <== addToState.out[4];
     //--------------------------------------------------------------------------------------------//
 
@@ -190,17 +190,17 @@ template StateToMask() {
     signal input state[5];
     signal output mask[5];
     
-    var tree_depth = state[0];
-    var parsing_key = state[1];
-    var inside_key = state[2];
+    var tree_depth    = state[0];
+    var parsing_key   = state[1];
+    var inside_key    = state[2];
     var parsing_value = state[3];
-    var inside_value = state[4];
+    var inside_value  = state[4];
 
-    signal NOT_INSIDE_KEY_AND_NOT_INSIDE_VALUE   <== (1 - inside_key) * (1 - inside_value);
-    signal NOT_PARSING_VALUE_NOT_INSIDE_VALUE <== (1 - parsing_value) * (1 - inside_value);
+    signal NOT_INSIDE_KEY_AND_NOT_INSIDE_VALUE <== (1 - inside_key) * (1 - inside_value);
+    signal NOT_PARSING_VALUE_NOT_INSIDE_VALUE  <== (1 - parsing_value) * (1 - inside_value);
 
     component init_tree = IsZero();
-    init_tree.in <== tree_depth;
+    init_tree.in      <== tree_depth;
 
     // `tree_depth` can change: `IF (parsing_key XOR parsing_value XOR end_of_kv)`
     mask[0] <== init_tree.out + parsing_key + parsing_value; // TODO: Make sure these are never both 1!
@@ -211,10 +211,9 @@ template StateToMask() {
     // `inside_key` can change: `IF ((NOT parsing_value) AND (NOT inside_value) AND inside_key) THEN mask <== -1 ELSEIF (NOT parsing_value) AND (NOT inside_value) THEN mask <== 1`
     mask[2] <== NOT_PARSING_VALUE_NOT_INSIDE_VALUE - 2 * inside_key;
 
-    // `parsing_value` can change: `IF ((NOT parsing_key) AND (NOT inside_key) AND (NOT inside_value) AND (tree_depth != 0))`
-    signal INIT <== (1 - init_tree.out);
-    mask[3] <== INIT * NOT_INSIDE_KEY_AND_NOT_INSIDE_VALUE;
+    // `parsing_value` can change: `IF ((NOT inside_key) AND (NOT inside_value) AND (tree_depth != 0))`
+    mask[3] <== NOT_INSIDE_KEY_AND_NOT_INSIDE_VALUE * (1 - init_tree.out);
 
     // `inside_value` can change: `IF (parsing_value AND (NOT inside_value)) THEN mask <== 1 ELSEIF (inside_value) mask <== -1`
-    mask[4] <==  parsing_value - 2 * inside_value;
+    mask[4] <== parsing_value - 2 * inside_value;
 }

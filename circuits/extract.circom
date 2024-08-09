@@ -24,21 +24,21 @@ template Extract(KEY_BYTES, DATA_BYTES) {
     // Initialze the parser
     component State[DATA_BYTES];
     State[0] = StateUpdate();
-    State[0].byte             <== data[0];
-    State[0].tree_depth       <== 0;
+    State[0].byte          <== data[0];
+    State[0].tree_depth    <== 0;
     State[0].parsing_key   <== 0; 
-    State[0].inside_key       <== 0;
+    State[0].inside_key    <== 0;
     State[0].parsing_value <== 0;
-    State[0].inside_value     <== 0;
+    State[0].inside_value  <== 0;
 
     for(var data_pointer = 1; data_pointer < DATA_BYTES; data_pointer++) {
         State[data_pointer] = StateUpdate();
-        State[data_pointer].byte             <== data[data_pointer];
-        State[data_pointer].tree_depth       <== State[data_pointer - 1].next_tree_depth;
+        State[data_pointer].byte          <== data[data_pointer];
+        State[data_pointer].tree_depth    <== State[data_pointer - 1].next_tree_depth;
         State[data_pointer].parsing_key   <== State[data_pointer - 1].next_parsing_key;
-        State[data_pointer].inside_key       <== State[data_pointer - 1].next_inside_key;
+        State[data_pointer].inside_key    <== State[data_pointer - 1].next_inside_key;
         State[data_pointer].parsing_value <== State[data_pointer - 1].next_parsing_value;
-        State[data_pointer].inside_value     <== State[data_pointer - 1].next_inside_value;
+        State[data_pointer].inside_value  <== State[data_pointer - 1].next_inside_value;
 
         // Debugging
         log("State[", data_pointer, "].tree_depth", "= ", State[data_pointer].tree_depth);
