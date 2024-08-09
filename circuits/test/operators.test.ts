@@ -198,4 +198,37 @@ describe("operators", () => {
         });
 
     });
+
+    describe("InRange", () => {
+        let circuit: WitnessTester<["in", "range"], ["out"]>;
+        before(async () => {
+            circuit = await circomkit.WitnessTester(`InRange`, {
+                file: "circuits/operators",
+                template: "InRange",
+                params: [8],
+            });
+            console.log("#constraints:", await circuit.getConstraintCount());
+        });
+
+        it("witness: in = 1, range = [0,2]", async () => {
+            await circuit.expectPass(
+                { in: 1, range: [0, 2] },
+                { out: 1 }
+            );
+        });
+
+        it("witness: in = 69, range = [128,255]", async () => {
+            await circuit.expectPass(
+                { in: 69, range: [128, 255] },
+                { out: 0 }
+            );
+        });
+
+        it("witness: in = 200, range = [128,255]", async () => {
+            await circuit.expectPass(
+                { in: 1, range: [0, 2] },
+                { out: 1 }
+            );
+        });
+    });
 });
