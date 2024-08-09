@@ -4,20 +4,14 @@ include "bytes.circom";
 include "operators.circom";
 include "parser.circom";
 
-template Extract(KEY_BYTES, DATA_BYTES) {
-    signal input key[KEY_BYTES];
+template Extract(DATA_BYTES) {
     signal input data[DATA_BYTES];
-    signal output KeyMatches[DATA_BYTES - KEY_BYTES];
 
     // TODO: Add assertions on the inputs here!
 
     //--------------------------------------------------------------------------------------------//
     //-CONSTRAINTS--------------------------------------------------------------------------------//
-    //--------------------------------------------------------------------------------------------//
-    // Working with a single key for now to do substring matching
-    component keyASCII = ASCII(KEY_BYTES);
-    keyASCII.in <== key;
-    
+    //--------------------------------------------------------------------------------------------//    
     component dataASCII = ASCII(DATA_BYTES);
     dataASCII.in <== data;
     //--------------------------------------------------------------------------------------------//

@@ -31,6 +31,13 @@
             105
         ]
     },
+    "extract_array": {
+        "file": "extract",
+        "template": "Extract",
+        "params": [
+            15
+        ]
+    },
     "test_extract_hard": {
         "file": "extract",
         "template": "Extract",

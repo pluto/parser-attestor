@@ -78,21 +78,25 @@ template StateUpdate() {
     // TODO: ADD CASE FOR `is_number` for in range 48-57 https://www.ascii-code.com since a value may just be a number
     //--------------------------------------------------------------------------------------------//
     //-Instructions for ASCII---------------------------------------------------------------------//
-    var state[5]           = [tree_depth, parsing_key, inside_key, parsing_value, inside_value];   
-    var do_nothing[5]      = [ 0,         0,           0,          0,             0           ]; // Command returned by switch if we want to do nothing, e.g. read a whitespace char while looking for a key
-    var hit_start_brace[5] = [ 1,         1,           0,         -1,             0           ]; // Command returned by switch if we hit a start brace `{`
-    var hit_end_brace[5]   = [-1,         0,           0,          0,             0           ]; // Command returned by switch if we hit a end brace `}`
-    var hit_quote[5]       = [ 0,         0,           1,          0,             1           ]; // Command returned by switch if we hit a quote `"`
-    var hit_colon[5]       = [ 0,        -1,           0,          1,             0           ]; // Command returned by switch if we hit a colon `:`
-    var hit_comma[5]       = [ 0,         1,           0,         -1,             0           ]; // Command returned by switch if we hit a comma `,`
+    var state[5]             = [tree_depth, parsing_key, inside_key, parsing_value, inside_value];   
+    var do_nothing[5]        = [ 0,         0,           0,          0,             0           ]; // Command returned by switch if we want to do nothing, e.g. read a whitespace char while looking for a key
+    var hit_start_brace[5]   = [ 1,         1,           0,          -1,            0           ]; // Command returned by switch if we hit a start brace `{`
+    var hit_end_brace[5]     = [-1,         0,           0,          0,             0           ]; // Command returned by switch if we hit a end brace `}`
+    var hit_quote[5]         = [ 0,         0,           1,          0,             1           ]; // Command returned by switch if we hit a quote `"`
+    var hit_colon[5]         = [ 0,         -1,          0,          1,             0           ]; // Command returned by switch if we hit a colon `:`
+    var hit_comma[5]         = [ 0,         1,           0,          -1,            0           ]; // Command returned by switch if we hit a comma `,`
+    var hit_start_bracket[5] = [ 0,         0,           0,          0,             1           ]; // Command returned by switch if we hit a start bracket `[` (TODO: could likely be combined with end bracket)
+    var hit_end_bracket[5]   = [ 0,         0,           0,          0,             1           ]; // Command returned by switch if we hit a start bracket `]` 
+    // TODO
+    var hit_number[5]        = [ 0,         0,           0,          0,             1           ]; // Command returned by switch if we hit some decimal number (e.g., ASCII 48-57)
     //--------------------------------------------------------------------------------------------//
     
     //--------------------------------------------------------------------------------------------//
     //-State machine updating---------------------------------------------------------------------//
     // * yield instruction based on what byte we read *
-    component matcher       = Switch(5, 5);
-    matcher.branches      <== [start_brace,     end_brace,      quote,     colon,      comma    ];
-    matcher.vals          <== [hit_start_brace, hit_end_brace,  hit_quote, hit_colon,  hit_comma];
+    component matcher       = Switch(7, 5);
+    matcher.branches      <== [start_brace,     end_brace,      quote,     colon,      comma,     start_bracket,     end_bracket    ];
+    matcher.vals          <== [hit_start_brace, hit_end_brace,  hit_quote, hit_colon,  hit_comma, hit_start_bracket, hit_end_bracket];
     matcher.case          <== byte;
     // * get the instruction mask based on current state *
     component mask          = StateToMask();
