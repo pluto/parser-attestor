@@ -40,18 +40,18 @@ template StateUpdate() {
     signal input tree_depth;             // STATUS_INDICATOR -- how deep in a JSON branch we are, e.g., `user.balance.value` key should be at depth `3`. 
                                          // Should always be greater than or equal to `0` (TODO: implement this constraint).
 
-    signal input parsing_to_key;         // BIT_FLAG         -- whether we are currently parsing bytes until we find the next key (mutally exclusive with `inside_key` and both `*_value flags).
-    signal input inside_key;             // BIT_FLAG         -- whether we are currently inside a key (mutually exclusive with `parsing_to_key` and both `*_value` flags).
+    signal input parsing_key;         // BIT_FLAG         -- whether we are currently parsing bytes until we find the next key (mutally exclusive with `inside_key` and both `*_value flags).
+    signal input inside_key;             // BIT_FLAG         -- whether we are currently inside a key (mutually exclusive with `parsing_key` and both `*_value` flags).
     
-    signal input parsing_to_value;       // BIT_FLAG         -- whether we are currently parsing bytes until we find the next value (mutually exclusive with `inside_value` and both `*_key` flags).
-    signal input inside_value;           // BIT_FLAG         -- whether we are currently inside a value (mutually exclusive with `parsing_to_value` and both `*_key` flags).
+    signal input parsing_value;       // BIT_FLAG         -- whether we are currently parsing bytes until we find the next value (mutually exclusive with `inside_value` and both `*_key` flags).
+    signal input inside_value;           // BIT_FLAG         -- whether we are currently inside a value (mutually exclusive with `parsing_value` and both `*_key` flags).
 
     // signal input escaping;               // BIT_FLAG         -- whether we have hit an escape ASCII symbol inside of a key or value. 
 
     signal output next_tree_depth;       // BIT_FLAG         -- next state for `tree_depth`.
-    signal output next_parsing_to_key;   // BIT_FLAG         -- next state for `parsing_to_key`.
+    signal output next_parsing_key;   // BIT_FLAG         -- next state for `parsing_key`.
     signal output next_inside_key;       // BIT_FLAG         -- next state for `inside_key`.
-    signal output next_parsing_to_value; // BIT_FLAG         -- next state for `parsing_to_value`.
+    signal output next_parsing_value; // BIT_FLAG         -- next state for `parsing_value`.
     signal output next_inside_value;     // BIT_FLAG         -- next state for `inside_value`.
 
     // signal output escaping; // TODO: Add this in!
@@ -91,7 +91,7 @@ template StateUpdate() {
     component matcher = Switch(5, 5);
     component mask = StateToMask();
     // Right now thinking more like "parsing_through_key" and "parsing_through_value"
-    var state[5]            = [tree_depth, parsing_to_key, inside_key, parsing_to_value, inside_value];   
+    var state[5]            = [tree_depth, parsing_key, inside_key, parsing_value, inside_value];   
     mask.state            <== state;     
     var do_nothing[5]       = [ 0,         0,              0,          0,                0          ]; // Command returned by switch if we want to do nothing, e.g. read a whitespace char while looking for a key
     var hit_start_brace[5]  = [ 1,         1,              0,         -1,                0          ]; // Command returned by switch if we hit a start brace `{`
@@ -121,17 +121,17 @@ template StateUpdate() {
     // }
 
     next_tree_depth       <== addToState.out[0];
-    next_parsing_to_key   <== addToState.out[1];
+    next_parsing_key   <== addToState.out[1];
     next_inside_key       <== addToState.out[2];
-    next_parsing_to_value <== addToState.out[3];
+    next_parsing_value <== addToState.out[3];
     next_inside_value     <== addToState.out[4];
 
     // log("next_inside_key: ", next_inside_key);
 
     // Constrain bit flags
-    next_parsing_to_key * (1 - next_parsing_to_key)     === 0; // - constrain that `next_parsing_to_key` remain a bit flag
+    next_parsing_key * (1 - next_parsing_key)     === 0; // - constrain that `next_parsing_key` remain a bit flag
     next_inside_key * (1 - next_inside_key)             === 0; // - constrain that `next_inside_key` remain a bit flag
-    next_parsing_to_value * (1 - next_parsing_to_value) === 0; // - constrain that `next_parsing_to_value` remain a bit flag
+    next_parsing_value * (1 - next_parsing_value) === 0; // - constrain that `next_parsing_value` remain a bit flag
     next_inside_value * (1 - next_inside_value)         === 0; // - constrain that `next_inside_value` remain a bit flag 
 
     component depthIsZero             = IsZero();   
@@ -140,7 +140,7 @@ template StateUpdate() {
     isOneLess.in[0]                 <== -1;             
     isOneLess.in[1]                 <== matcher.out[0]; // Determine if instruction was to `decrease_depth`
     depthIsZero.out * isOneLess.out === 0;              // IF ( `decrease_depth` AND `tree_depth == 0`) THEN FAIL 
-    // TODO: Can hit comma and then be sent to next KV, so comma will engage `parsing_to_key`
+    // TODO: Can hit comma and then be sent to next KV, so comma will engage `parsing_key`
     //--------------------------------------------------------------------------------------------//
 }
 
@@ -196,31 +196,31 @@ template StateToMask() {
     signal output mask[5];
     
     var tree_depth = state[0];
-    var parsing_to_key = state[1];
+    var parsing_key = state[1];
     var inside_key = state[2];
-    var parsing_to_value = state[3];
+    var parsing_value = state[3];
     var inside_value = state[4];
 
     signal NOT_INSIDE_KEY_AND_NOT_INSIDE_VALUE   <-- (1 - inside_key) * (1 - inside_value);
-    signal NOT_PARSING_TO_VALUE_NOT_INSIDE_VALUE <-- (1 - parsing_to_value) * (1 - inside_value);
+    signal NOT_PARSING_VALUE_NOT_INSIDE_VALUE <-- (1 - parsing_value) * (1 - inside_value);
 
     component init_tree = IsZero();
     init_tree.in <-- tree_depth;
 
-    // `tree_depth` can change: `IF (parsing_to_key XOR parsing_to_value XOR end_of_kv)`
-    mask[0] <== init_tree.out + parsing_to_key + parsing_to_value; // TODO: Make sure these are never both 1!
+    // `tree_depth` can change: `IF (parsing_key XOR parsing_value XOR end_of_kv)`
+    mask[0] <== init_tree.out + parsing_key + parsing_value; // TODO: Make sure these are never both 1!
     
-    // `parsing_to_key` can change: `IF ((NOT inside_key) AND (NOT inside_value) AND (NOT parsing_to_value))`
-    mask[1] <== NOT_INSIDE_KEY_AND_NOT_INSIDE_VALUE; // TODO: Changed and removed `NOT parsing_to_value)
+    // `parsing_key` can change: `IF ((NOT inside_key) AND (NOT inside_value) AND (NOT parsing_value))`
+    mask[1] <== NOT_INSIDE_KEY_AND_NOT_INSIDE_VALUE; // TODO: Changed and removed `NOT parsing_value)
 
-    // `inside_key` can change: `IF ((NOT parsing_to_value) AND (NOT inside_value)) THEN TOGGLE WITH inside_key`
-    mask[2] <== NOT_PARSING_TO_VALUE_NOT_INSIDE_VALUE - 2 * inside_key;
+    // `inside_key` can change: `IF ((NOT parsing_value) AND (NOT inside_value)) THEN TOGGLE WITH inside_key`
+    mask[2] <== NOT_PARSING_VALUE_NOT_INSIDE_VALUE - 2 * inside_key;
 
-    // `parsing_to_value` can change: `IF ((NOT parsing_to_key) AND (NOT inside_key) AND (NOT inside_value) AND (tree_depth != 0))`
+    // `parsing_value` can change: `IF ((NOT parsing_key) AND (NOT inside_key) AND (NOT inside_value) AND (tree_depth != 0))`
     signal INIT <== (1 - init_tree.out);
     mask[3] <== INIT * NOT_INSIDE_KEY_AND_NOT_INSIDE_VALUE;
 
-    // `inside_value` can change: `IF ((NOT parsing_to_key) AND (C_NOR (inside_value, parsing_to value)))`
+    // `inside_value` can change: `IF ((NOT parsing_key) AND (C_NOR (inside_value, parsing_to value)))`
     //                                                       control----------^
-    mask[4] <==  parsing_to_value - 2 * inside_value;
+    mask[4] <==  parsing_value - 2 * inside_value;
 }
