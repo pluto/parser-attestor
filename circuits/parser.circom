@@ -104,8 +104,6 @@ template StateUpdate() {
     matcher.vals          <== [hit_start_brace, hit_end_brace,  hit_quote, hit_colon,  hit_comma];
     matcher.case          <== byte;
 
-    // log("byte: ", byte);
-
     component mulMaskAndOut = ArrayMul(5);
     mulMaskAndOut.lhs <== mask.mask;
     mulMaskAndOut.rhs <== matcher.out;
@@ -203,12 +201,11 @@ template StateToMask() {
     var parsing_to_value = state[3];
     var inside_value = state[4];
 
-    signal NOT_INSIDE_KEY_AND_NOT_INSIDE_VALUE         <-- (1 - inside_key) * (1 - inside_value);
-    signal NOT_PARSING_TO_KEY_AND_NOT_PARSING_TO_VALUE <-- (1 - parsing_to_key) * (1 - parsing_to_value);
-    signal NOT_PARSING_TO_VALUE_NOT_INSIDE_VALUE       <-- (1 - parsing_to_value) * (1 - inside_value);
+    signal NOT_INSIDE_KEY_AND_NOT_INSIDE_VALUE   <-- (1 - inside_key) * (1 - inside_value);
+    signal NOT_PARSING_TO_VALUE_NOT_INSIDE_VALUE <-- (1 - parsing_to_value) * (1 - inside_value);
 
     component init_tree = IsZero();
-    init_tree.in <== tree_depth;
+    init_tree.in <-- tree_depth;
 
     // `tree_depth` can change: `IF (parsing_to_key XOR parsing_to_value XOR end_of_kv)`
     mask[0] <== init_tree.out + parsing_to_key + parsing_to_value; // TODO: Make sure these are never both 1!
@@ -217,8 +214,7 @@ template StateToMask() {
     mask[1] <== NOT_INSIDE_KEY_AND_NOT_INSIDE_VALUE; // TODO: Changed and removed `NOT parsing_to_value)
 
     // `inside_key` can change: `IF ((NOT parsing_to_value) AND (NOT inside_value)) THEN TOGGLE WITH inside_key`
-    signal inside_key_toggle <-- (-1)**inside_key;
-    mask[2] <== NOT_PARSING_TO_VALUE_NOT_INSIDE_VALUE * inside_key_toggle;
+    mask[2] <== NOT_PARSING_TO_VALUE_NOT_INSIDE_VALUE - 2 * inside_key;
 
     // `parsing_to_value` can change: `IF ((NOT parsing_to_key) AND (NOT inside_key) AND (NOT inside_value) AND (tree_depth != 0))`
     signal INIT <== (1 - init_tree.out);
@@ -226,5 +222,5 @@ template StateToMask() {
 
     // `inside_value` can change: `IF ((NOT parsing_to_key) AND (C_NOR (inside_value, parsing_to value)))`
     //                                                       control----------^
-    mask[4] <==  parsing_to_value - 2*inside_value;
+    mask[4] <==  parsing_to_value - 2 * inside_value;
 }
