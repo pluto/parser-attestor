@@ -13,6 +13,14 @@ struct Args {
     /// Keys to extract (can be specified multiple times)
     #[arg(short, long)]
     keys: Vec<String>,
+
+    /// Output directory (will be created if it doesn't exist)
+    #[arg(short, long, default_value = ".")]
+    output_dir: PathBuf,
+
+    /// Output filename (will be created if it doesn't exist)
+    #[arg(short, long, default_value = "output.json")]
+    filename: String,
 }
 
 #[derive(serde::Serialize)]
@@ -48,7 +56,8 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
         data,
     };
 
-    let mut file = std::fs::File::create("input.json")?;
+    let output_file = args.output_dir.join(args.filename);
+    let mut file = std::fs::File::create(output_file)?;
     file.write_all(serde_json::to_string_pretty(&witness)?.as_bytes())?;
 
     println!("Input file created successfully.");
