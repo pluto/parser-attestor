@@ -9,7 +9,7 @@ pub const KEYS: &[&[u8]] = &[
     b"\"title\"".as_slice(),
 ];
 // pub const DATA: &[u8] = include_bytes!("../../json_examples/example.json");
-pub const DATA: &[u8] = include_bytes!("../../json_examples/test_two_key.json");
+pub const DATA: &[u8] = include_bytes!("../../json_examples/test_depth.json");
 
 #[derive(serde::Serialize)]
 pub struct Witness {
@@ -59,7 +59,7 @@ pub fn main() {
         // num_data_bytes: DATA.len(), // For now we can set this to be the same
         data: DATA.to_vec(),
     };
-    let mut file = std::fs::File::create("inputs/test_extract/input_two_key.json").unwrap();
+    let mut file = std::fs::File::create("inputs/test_extract_depth/input.json").unwrap();
     file.write_all(serde_json::to_string_pretty(&witness).unwrap().as_bytes())
         .unwrap();
 }

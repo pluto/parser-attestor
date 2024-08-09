@@ -15,6 +15,14 @@
             40
         ]
     },
+    "test_extract_depth": {
+        "file": "extract",
+        "template": "Extract",
+        "params": [
+            4,
+            64
+        ]
+    },
     "test_extract_hard": {
         "file": "extract",
         "template": "Extract",
