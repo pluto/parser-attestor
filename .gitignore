@@ -2,8 +2,11 @@
 
 node_modules/*
 
+# Circomkit generated
 build/*
 ptau/*
 circuits/test/*.circom
 circuits/main/*
+
+# Rust generated
 inputs/**/*.json

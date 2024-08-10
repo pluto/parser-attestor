@@ -87,15 +87,15 @@ template StateUpdate() {
     var pushpop = 0;
     var obj_or_arr = 0;
     var parsing_state[7]     = [pushpop, obj_or_arr, parsing_string, parsing_array, parsing_object, parsing_number, key_or_value];   
-    var do_nothing[7]        = [0,          0,       0,             0,             0,              0,              0]; // Command returned by switch if we want to do nothing, e.g. read a whitespace char while looking for a key
-    var hit_start_brace[7]   = [1,          1,       0,            -1,             1,              0,              0]; // Command returned by switch if we hit a start brace `{`
-    var hit_end_brace[7]     = [-1,          1,      0,             0,            -1,              0,              0]; // Command returned by switch if we hit a end brace `}`
-    var hit_start_bracket[7] = [1,          -1,       0,             1,            -1,              0,              0]; // TODO: Might want `key_or_value` to toggle. Command returned by switch if we hit a start bracket `[` (TODO: could likely be combined with end bracket)
-    var hit_end_bracket[7]   = [-1,          -1,      0,            -1,             0,              0,              0]; // Command returned by switch if we hit a start bracket `]` 
-    var hit_quote[7]         = [0,           0,       1,             1,             1,              0,              0]; // TODO: Mightn ot want this to toglle `parsing_array`. Command returned by switch if we hit a quote `"`
-    var hit_colon[7]         = [0,           0,       0,             0,             0,              0,              1]; // Command returned by switch if we hit a colon `:`
-    var hit_comma[7]         = [0,           0,       0,             0,             0,             -1,              0]; // Command returned by switch if we hit a comma `,`
-    var hit_number[7]        = [0,           0,       0,             0,             0,              1,              0]; // Command returned by switch if we hit some decimal number (e.g., ASCII 48-57)
+    var do_nothing[7]        = [0,       0,          0,              0,             0,              0,              0]; // Command returned by switch if we want to do nothing, e.g. read a whitespace char while looking for a key
+    var hit_start_brace[7]   = [1,       1,          0,              -1,            1,              0,              0]; // Command returned by switch if we hit a start brace `{`
+    var hit_end_brace[7]     = [-1,      1,          0,              0,             -1,             0,              0]; // Command returned by switch if we hit a end brace `}`
+    var hit_start_bracket[7] = [1,       -1,         0,              1,             -1,             0,              0]; // TODO: Might want `key_or_value` to toggle. Command returned by switch if we hit a start bracket `[` (TODO: could likely be combined with end bracket)
+    var hit_end_bracket[7]   = [-1,      -1,         0,              -1,            0,              0,              0]; // Command returned by switch if we hit a start bracket `]` 
+    var hit_quote[7]         = [0,       0,          1,              0,             0,              0,              1]; // TODO: Mightn ot want this to toglle `parsing_array`. Command returned by switch if we hit a quote `"`
+    var hit_colon[7]         = [0,       0,          0,              0,             0,              0,              1]; // Command returned by switch if we hit a colon `:`
+    var hit_comma[7]         = [0,       0,          0,              0,             0,              -1,             0]; // Command returned by switch if we hit a comma `,`
+    var hit_number[7]        = [0,       0,          0,              0,             0,              1,              0]; // Command returned by switch if we hit some decimal number (e.g., ASCII 48-57)
     //--------------------------------------------------------------------------------------------//
     
     //--------------------------------------------------------------------------------------------//
@@ -241,7 +241,10 @@ template StateToMask() {
     out[6] <== (1 - parsing_string);
 }
 
+// TODO: IMPORTANT NOTE, THE STACK IS CONSTRAINED TO 2**8 so the LessThan and GreaterThan work (could be changed)
+// TODO: Might be good to change value before increment pointer AND decrement pointer before changing value
 template RewriteStack(n) {
+    assert(n < 2**8);
     signal input pointer;
     signal input stack[n];
     signal input pushpop;
@@ -249,8 +252,6 @@ template RewriteStack(n) {
 
     signal output next_pointer;
     signal output next_stack[n];
-
-    next_pointer <== pointer + pushpop; // If pushpop is 0, pointer doesn't change, if -1, decrement, +1 increment
 
     /*
     IDEA:
@@ -264,11 +265,23 @@ template RewriteStack(n) {
     // Indicate which position in the stack should change (if any)
     component indicator[n];
     signal unchanged_stack[n];
+    var accrue_pointer;
     for(var i = 0; i < n; i++) {
-        indicator[i] = IsZero();
-        indicator[i].in <== pointer - i; // Change at pointer or TODO: change at incremented pointer
+        indicator[i]         = IsZero();
+        indicator[i].in    <== pointer - i; // Change at pointer or TODO: change at incremented pointer
         unchanged_stack[i] <==  (1-indicator[i].out) * stack[i];
-        next_stack[i] <== unchanged_stack[i] + indicator[i].out * obj_or_arr;
+        next_stack[i]      <== unchanged_stack[i] + indicator[i].out * obj_or_arr;
     }
+    
+    next_pointer <== pointer + pushpop; // If pushpop is 0, pointer doesn't change, if -1, decrement, +1 increment
+    
+    component isOverflow = GreaterThan(8);
+    isOverflow.in[0]   <== next_pointer;
+    isOverflow.in[1]   <== n;
+    isOverflow.out     === 0;
 
+    component isUnderflow = LessThan(8);
+    isUnderflow.in[0]   <== next_pointer;
+    isUnderflow.in[1]   <== 0;
+    isUnderflow.out     === 0;
 }
