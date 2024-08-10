@@ -54,10 +54,15 @@ template Extract(DATA_BYTES) {
     // Constrain to have valid JSON (TODO: more is needed)
     // State[DATA_BYTES - 1].next_tree_depth === 0;
 
-    // log("State[", DATA_BYTES, "].tree_depth", "= ", State[DATA_BYTES-1].tree_depth);
-    // log("State[", DATA_BYTES, "].parsing_key", "= ", State[DATA_BYTES-1].parsing_key);
-    // log("State[", DATA_BYTES, "].inside_key", "= ", State[DATA_BYTES-1].inside_key);
-    // log("State[", DATA_BYTES, "].parsing_value", "= ", State[DATA_BYTES-1].parsing_value);
-    // log("State[", DATA_BYTES, "].inside_value", "= ", State[DATA_BYTES-1].inside_value);
-    // log("---");
+        // Debugging
+        log("State[", DATA_BYTES, "].pointer       ", "= ", State[DATA_BYTES -1].next_pointer);
+        for(var i = 0; i<4; i++) {
+            log("State[", DATA_BYTES, "].stack[", i,"]    ", "= ", State[DATA_BYTES -1 ].next_stack[i]);
+        }
+        log("State[", DATA_BYTES, "].parsing_string", "= ", State[DATA_BYTES-1].next_parsing_string);
+        log("State[", DATA_BYTES, "].parsing_array ", "= ", State[DATA_BYTES-1].next_parsing_array );
+        log("State[", DATA_BYTES, "].parsing_object", "= ", State[DATA_BYTES-1].next_parsing_object);
+        log("State[", DATA_BYTES, "].parsing_number", "= ", State[DATA_BYTES-1].next_parsing_number);
+        log("State[", DATA_BYTES, "].key_or_value  ", "= ", State[DATA_BYTES-1].next_key_or_value  );
+        log("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
 } 

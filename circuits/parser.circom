@@ -212,24 +212,24 @@ template StateToMask() {
     signal output out[7];
     
     signal pushpop        <== in[0];
-    signal val_or_array   <== in[1];
+    signal obj_or_array   <== in[1];
     signal parsing_string <== in[2];
     signal parsing_array  <== in[3];
     signal parsing_object <== in[4];
     signal parsing_number <== in[5];
     signal key_or_value   <== in[6];
 
-    // can push or pop the depth stack if we're not parsing a string
+    // `pushpop` can change: IF NOT `parsing_string`
     out[0] <== (1 - parsing_string);
 
-    // 
+    // `val_or_array`: IF NOT `parsing_string`
     out[1] <== (1 - parsing_string);
 
     // `parsing_string` can change:
     out[2] <== 1;
     
     // `parsing_array` can change:
-    out[3] <== (1 - parsing_string);
+    out[3] <== (1 - parsing_string) * parsing_array;
 
     // `parsing_object` can change:
     out[4] <== (1 - parsing_string);
@@ -263,10 +263,12 @@ template RewriteStack(n) {
 
     // Indicate which position in the stack should change (if any)
     component indicator[n];
+    signal unchanged_stack[n];
     for(var i = 0; i < n; i++) {
         indicator[i] = IsZero();
         indicator[i].in <== pointer - i; // Change at pointer or TODO: change at incremented pointer
-        next_stack[i] <== indicator[i].out * obj_or_arr;
+        unchanged_stack[i] <==  (1-indicator[i].out) * stack[i];
+        next_stack[i] <== unchanged_stack[i] + indicator[i].out * obj_or_arr;
     }
 
 }
