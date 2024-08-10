@@ -25,17 +25,18 @@ xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 */
 
 /*
-TODO
+TODO: Probably need a "reading_number" and "reading_array" and possibly "reading_string" state so that we can make rules based on these. E.g., a number is done when you hit white space.
 */
 template StateUpdate() {
     signal input byte;  
 
-    signal input tree_depth;          // STATUS_INDICATOR -- how deep in a JSON branch we are, e.g., `user.balance.value` key should be at depth `3`. 
+    signal input tree_depth;          // STACK -- how deep in a JSON branch we are, e.g., `user.balance.value` key should be at depth `3`. 
                                       // constrainted to be greater than or equal to `0`.
     signal input parsing_key;         // BIT_FLAG         -- whether we are currently parsing bytes until we find the next key (mutally exclusive with `inside_key` and both `*_value flags).
     signal input inside_key;          // BIT_FLAG         -- whether we are currently inside a key (mutually exclusive with `parsing_key` and both `*_value` flags).
     signal input parsing_value;       // BIT_FLAG         -- whether we are currently parsing bytes until we find the next value (mutually exclusive with `inside_value` and both `*_key` flags).
     signal input inside_value;        // BIT_FLAG         -- whether we are currently inside a value (mutually exclusive with `parsing_value` and both `*_key` flags).
+    signal input in_number_value;     // 
 
     signal output next_tree_depth;    // STATUS_INDICATOR -- next state for `tree_depth`.
     signal output next_parsing_key;   // BIT_FLAG         -- next state for `parsing_key`.
@@ -101,7 +102,7 @@ template StateUpdate() {
     component numeral_range_check = InRange(8);
     numeral_range_check.in <== byte;
     numeral_range_check.range <== [48, 57]; // ASCII NUMERALS
-    matcher.case          <== (1 - numeral_range_check.out) * byte + numeral_range_check.out * 256;
+    matcher.case          <== (1 - numeral_range_check.out) * byte + numeral_range_check.out * 256; // IF (NOT is_number) THEN byte ELSEIF 256
     // * get the instruction mask based on current state *
     component mask          = StateToMask();
     mask.state            <== state;     

@@ -45,4 +45,11 @@ template Extract(DATA_BYTES) {
 
     // Constrain to have valid JSON (TODO: more is needed)
     State[DATA_BYTES - 1].next_tree_depth === 0;
+
+    log("State[", DATA_BYTES, "].tree_depth", "= ", State[DATA_BYTES-1].tree_depth);
+    log("State[", DATA_BYTES, "].parsing_key", "= ", State[DATA_BYTES-1].parsing_key);
+    log("State[", DATA_BYTES, "].inside_key", "= ", State[DATA_BYTES-1].inside_key);
+    log("State[", DATA_BYTES, "].parsing_value", "= ", State[DATA_BYTES-1].parsing_value);
+    log("State[", DATA_BYTES, "].inside_value", "= ", State[DATA_BYTES-1].inside_value);
+    log("---");
 } 
