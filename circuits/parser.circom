@@ -137,13 +137,13 @@ template StateUpdate() {
 
     //--------------------------------------------------------------------------------------------//
     // DEBUGGING: internal state
-    // for(var i = 0; i<7; i++) {
-    //     log("------------------------------------------");
-    //     log(">>>> parsing_state[",i,"]:        ", parsing_state[i]);
-    //     log(">>>> mask[",i,"]         :        ", mask.out[i]);
-    //     log(">>>> command[",i,"]      :        ", matcher.out[i]);
-    //     log(">>>> addToState[",i,"]   :        ", addToState.out[i]);
-    // }
+    for(var i = 0; i<7; i++) {
+        log("------------------------------------------");
+        log(">>>> parsing_state[",i,"]:        ", parsing_state[i]);
+        log(">>>> mask[",i,"]         :        ", mask.out[i]);
+        log(">>>> command[",i,"]      :        ", matcher.out[i]);
+        log(">>>> addToState[",i,"]   :        ", addToState.out[i]);
+    }
     //--------------------------------------------------------------------------------------------//
 
     //--------------------------------------------------------------------------------------------//
@@ -226,7 +226,7 @@ template StateToMask() {
     out[1] <== (1 - parsing_string);
 
     // `parsing_string` can change:
-    out[2] <== 1;
+    out[2] <== 1 - 2 * parsing_string;
     
     // `parsing_array` can change:
     out[3] <== (1 - parsing_string) * parsing_array;
@@ -238,7 +238,7 @@ template StateToMask() {
     out[5] <== (1 - parsing_string);
 
     // `key_or_value` can change:
-    out[6] <== (1 - parsing_string);
+    out[6] <== (1 - parsing_string) - 2 * key_or_value;
 }
 
 // TODO: IMPORTANT NOTE, THE STACK IS CONSTRAINED TO 2**8 so the LessThan and GreaterThan work (could be changed)

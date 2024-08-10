@@ -177,13 +177,15 @@ describe("parser", () => {
         in_key.pointer = read_start_brace_out.next_pointer;
         in_key.stack = read_start_brace_out.next_stack;
         in_key.parsing_object = read_start_brace_out.next_parsing_object;
-        in_key.parsing_string = 1
+        in_key.parsing_string = 1;
+        in_key.key_or_value = 1;
         in_key.byte = space;
         let in_key_out = { ...out };
         in_key_out.next_pointer = 1;
         in_key_out.next_stack = [1, 0, 0, 0];
         in_key_out.next_parsing_string = 1;
         in_key_out.next_parsing_object = 1;
+        in_key_out.next_key_or_value = 1;
         generatePassCase(in_key, in_key_out, ">>>> ` ` read");
 
         // Test 6: `tree_depth == 1` AND `inside_key == 1 AND `parsing_key == 0` setup -> `"` is read
@@ -194,9 +196,9 @@ describe("parser", () => {
         in_key_to_exit.parsing_string = 1
         in_key_to_exit.byte = quote;
         let in_key_to_exit_out = { ...out };
-        in_key_out.next_pointer = 1;
-        in_key_out.next_stack = [1, 0, 0, 0];
-        in_key_out.next_parsing_object = 1;
+        in_key_to_exit_out.next_pointer = 1;
+        in_key_to_exit_out.next_stack = [1, 0, 0, 0];
+        in_key_to_exit_out.next_parsing_object = 1;
         generatePassCase(in_key_to_exit, in_key_to_exit_out, "`\"` read");
 
 
