@@ -66,7 +66,7 @@ template StateUpdate() {
     signal input byte;  
 
     signal input pointer;             // POINTER -- points to the stack to mark where we currently are inside the JSON.
-    signal input depth[4];            // STACK -- how deep in a JSON nest we are and what type we are currently inside (e.g., `1` for object, `-1` for array).
+    signal input stack[4];            // STACK -- how deep in a JSON nest we are and what type we are currently inside (e.g., `1` for object, `-1` for array).
     signal input parsing_string;
     signal input parsing_array;
     signal input parsing_object;
@@ -76,7 +76,7 @@ template StateUpdate() {
     // signal parsing_null; // TODO
 
     signal output next_pointer;
-    signal output next_depth[4];
+    signal output next_stack[4];
     signal output next_parsing_string;
     signal output next_parsing_object;
     signal output next_parsing_array;
@@ -121,26 +121,28 @@ template StateUpdate() {
     addToState.lhs           <== parsing_state;
     addToState.rhs           <== mulMaskAndOut.out;
     // * set the new state *
-    next_pointer             <== addToState.out[0];
-    for(var i = 0; i<4; i++) {
-        next_depth[i] <== depth[i] + key_or_value * (i - next_pointer); // todo this is definitely wrong
-    }
-    // next_depth[next_pointer] <== addToState.out[1];
-    next_parsing_string      <== addToState.out[2];
-    next_parsing_array       <== addToState.out[3];
-    next_parsing_object      <== addToState.out[4];
-    next_parsing_number      <== addToState.out[5];
-    next_key_or_value        <== addToState.out[6];    
+    component newStack = RewriteStack(4);
+    newStack.pointer    <== pointer;
+    newStack.stack      <== stack;
+    newStack.pushpop    <== addToState.out[0];
+    newStack.obj_or_arr <== addToState.out[1];
+    next_pointer        <== newStack.next_pointer;
+    next_stack          <== newStack.next_stack;
+    next_parsing_string <== addToState.out[2];
+    next_parsing_array  <== addToState.out[3];
+    next_parsing_object <== addToState.out[4];
+    next_parsing_number <== addToState.out[5];
+    next_key_or_value   <== addToState.out[6];    
     //--------------------------------------------------------------------------------------------//
 
     //--------------------------------------------------------------------------------------------//
-    // // DEBUGGING: internal state
-    // for(var i = 0; i<5; i++) {
-    //     log("-----------------------");
-    //     log("mask[",i,"]:         ", mask.mask[i]);
-    //     log("mulMaskAndOut[",i,"]:", mulMaskAndOut.out[i]);
-    //     log("state[",i,"]:        ", state[i]);
-    //     log("next_state[",i,"]:   ", addToState.out[i]);
+    // DEBUGGING: internal state
+    // for(var i = 0; i<7; i++) {
+    //     log("------------------------------------------");
+    //     log(">>>> parsing_state[",i,"]:        ", parsing_state[i]);
+    //     log(">>>> mask[",i,"]         :        ", mask.out[i]);
+    //     log(">>>> command[",i,"]      :        ", matcher.out[i]);
+    //     log(">>>> addToState[",i,"]   :        ", addToState.out[i]);
     // }
     //--------------------------------------------------------------------------------------------//
 
@@ -237,4 +239,34 @@ template StateToMask() {
 
     // `key_or_value` can change:
     out[6] <== (1 - parsing_string);
+}
+
+template RewriteStack(n) {
+    signal input pointer;
+    signal input stack[n];
+    signal input pushpop;
+    signal input obj_or_arr;
+
+    signal output next_pointer;
+    signal output next_stack[n];
+
+    next_pointer <== pointer + pushpop; // If pushpop is 0, pointer doesn't change, if -1, decrement, +1 increment
+
+    /*
+    IDEA:
+
+    We want to look at the old data
+    - if pushpop is 0, we are going to just return the old stack
+    - if pushpop is 1, we are going to increment the pointer and write a new value
+    - if pushpop is -1, we are going to decrement the pointer and delete an old value if it was the same value
+    */
+
+    // Indicate which position in the stack should change (if any)
+    component indicator[n];
+    for(var i = 0; i < n; i++) {
+        indicator[i] = IsZero();
+        indicator[i].in <== pointer - i; // Change at pointer or TODO: change at incremented pointer
+        next_stack[i] <== indicator[i].out * obj_or_arr;
+    }
+
 }

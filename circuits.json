@@ -3,7 +3,7 @@
         "file": "extract",
         "template": "Extract",
         "params": [
-            21
+            12
         ]
     },
     "test_extract_two_key": {
