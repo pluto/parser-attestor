@@ -206,11 +206,9 @@ template InRange(n) {
 
     component gte = GreaterEqThan(n);
     gte.in <== [in, range[0]];
-    log("gte.out: ", gte.out);
     
     component lte = LessEqThan(n);
     lte.in <== [in, range[1]];
-    log("lte.out: ", lte.out);
 
     out <== gte.out * lte.out;
 }

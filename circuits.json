@@ -1,9 +1,8 @@
 {
-    "test_extract": {
+    "extract_test": {
         "file": "extract",
         "template": "Extract",
         "params": [
-            4,
             21
         ]
     },
