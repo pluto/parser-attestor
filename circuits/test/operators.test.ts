@@ -5,7 +5,7 @@ describe("operators", () => {
         let circuit: WitnessTester<["in"], ["out"]>;
         before(async () => {
             circuit = await circomkit.WitnessTester(`IsZero`, {
-                file: "circuits/operators",
+                file: "circuits/utils/operators",
                 template: "IsZero",
             });
             console.log("#constraints:", await circuit.getConstraintCount());
@@ -36,7 +36,7 @@ describe("operators", () => {
         let circuit: WitnessTester<["in"], ["out"]>;
         before(async () => {
             circuit = await circomkit.WitnessTester(`IsEqual`, {
-                file: "circuits/operators",
+                file: "circuits/utils/operators",
                 template: "IsEqual",
             });
             console.log("#constraints:", await circuit.getConstraintCount());
@@ -68,7 +68,7 @@ describe("operators", () => {
         let circuit: WitnessTester<["in"], ["out"]>;
         before(async () => {
             circuit = await circomkit.WitnessTester(`IsEqualArray`, {
-                file: "circuits/operators",
+                file: "circuits/utils/operators",
                 template: "IsEqualArray",
                 params: [3],
             });
@@ -122,7 +122,7 @@ describe("operators", () => {
         let circuit: WitnessTester<["in", "array"], ["out"]>;
         before(async () => {
             circuit = await circomkit.WitnessTester(`Contains`, {
-                file: "circuits/operators",
+                file: "circuits/utils/operators",
                 template: "Contains",
                 params: [3],
             });

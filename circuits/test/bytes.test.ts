@@ -6,7 +6,7 @@ describe("bytes", () => {
     describe("U8ToBits", () => {
         before(async () => {
             circuit = await circomkit.WitnessTester(`U8ToBits`, {
-                file: "circuits/bytes",
+                file: "circuits/utils/bytes",
                 template: "U8ToBits",
             });
             console.log("#constraints:", await circuit.getConstraintCount());
@@ -36,7 +36,7 @@ describe("bytes", () => {
     describe("ASCII", () => {
         before(async () => {
             circuit = await circomkit.WitnessTester(`ASCII`, {
-                file: "circuits/bytes",
+                file: "circuits/utils/bytes",
                 template: "ASCII",
                 params: [13],
             });
