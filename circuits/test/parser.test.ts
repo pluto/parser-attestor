@@ -60,11 +60,11 @@ describe("parser", () => {
     //--------------------------------------------------------------------------------------------//
     //-Delimeters---------------------------------------------------------------------------------//
     // - ASCII char: `{`
-    const start_brace = 123;
+    const start_brace = "123";
     // - ASCII char: `}`
-    const end_brace = 125;
+    const end_brace = "125";
     // - ASCII char `[`
-    const start_bracket = 91;
+    const start_bracket = "91";
     // - ASCII char `]`
     const end_bracket = 93;
     // - ASCII char `"`
@@ -121,14 +121,14 @@ describe("parser", () => {
         });
 
         let init = {
-            byte: 0,
-            pointer: 0,
-            stack: [0, 0, 0, 0],
-            parsing_string: 0,
-            parsing_array: 0,
-            parsing_object: 0,
-            parsing_number: 0,
-            key_or_value: 0,
+            byte: "0",
+            pointer: "0",
+            stack: ["0", "0", "0", "0"],
+            parsing_string: "0",
+            parsing_array: "0",
+            parsing_object: "0",
+            parsing_number: "0",
+            key_or_value: "0",
         };
         let out = {
             next_pointer: init.pointer,
@@ -147,9 +147,9 @@ describe("parser", () => {
         let read_start_brace = { ...init };
         read_start_brace.byte = start_brace;
         let read_start_brace_out = { ...out };
-        read_start_brace_out.next_pointer = 1;
-        read_start_brace_out.next_stack = [1, 0, 0, 0];
-        read_start_brace_out.next_parsing_object = 1;
+        read_start_brace_out.next_pointer = "1";
+        read_start_brace_out.next_stack = ["1", "0", "0", "0"];
+        read_start_brace_out.next_parsing_object = "1";
         generatePassCase(read_start_brace, read_start_brace_out, ">>>> `{` read");
 
         // Test 3: init setup -> `}` is read (should be INVALID)
@@ -211,10 +211,10 @@ describe("parser", () => {
         in_object.parsing_object = read_start_brace_out.next_parsing_object;
         in_object.byte = start_brace;
         let in_object_out = { ...out };
-        in_object_out.next_pointer = 2;
-        in_object_out.next_stack = [1, 1, 0, 0];
-        in_object_out.next_parsing_object = 2;
-        generatePassCase(in_object, in_object_out, ">>>> `\"` read");
+        in_object_out.next_pointer = "2";
+        in_object_out.next_stack = ["1", "1", "0", "0"];
+        in_object_out.next_parsing_object = "2";
+        generatePassCase(in_object, in_object_out, ">>>> `{` read");
 
         // Test 8: Stack Management
         // init: read `{` then read`}`
@@ -226,25 +226,30 @@ describe("parser", () => {
         in_object_to_leave.parsing_object = read_start_brace_out.next_parsing_object;
         in_object_to_leave.byte = end_brace;
         let in_object_to_leave_out = { ...out };
-        in_object_to_leave_out.next_pointer = 0;
-        in_object_to_leave_out.next_stack = [0, 0, 0, 0];
-        in_object_to_leave_out.next_parsing_object = 0;
+        in_object_to_leave_out.next_pointer = "0";
+        in_object_to_leave_out.next_stack = ["0", "0", "0", "0"];
+        in_object_to_leave_out.next_parsing_object = "0";
         generatePassCase(in_object_to_leave, in_object_to_leave_out, ">>>> `\"` read");
 
         // Test 9: Stack Management
         // init: read `{`, then read `[`
         // expect: pointer --> 2
         //         stack   --> [1,-1,0,0]
-        in_object.byte = start_bracket;
-        in_object_out.next_pointer = 2;
-        in_object_out.next_stack =
-            [1,
-                21888242871839275222246405745257275088548364400416034343698204186575808495616,
-                0,
-                0];
-        in_object_out.next_parsing_object = 1;
-        in_object_out.next_parsing_array = 1;
-        generatePassCase(in_object, in_object_out, ">>>> `\"` read");
+        let in_object_to_read_start_bracket = { ...init };
+        in_object_to_read_start_bracket.byte = start_bracket;
+        in_object_to_read_start_bracket.pointer = "1";
+        in_object_to_read_start_bracket.stack = ["1", "0", "0", "0"];
+        in_object_to_read_start_bracket.parsing_object = "1";
+        let in_object_to_read_start_bracket_out = { ...out };
+        in_object_to_read_start_bracket_out.next_pointer = "2";
+        in_object_to_read_start_bracket_out.next_stack =
+            ["1",
+                "21888242871839275222246405745257275088548364400416034343698204186575808495616",
+                "0",
+                "0"];
+        in_object_to_read_start_bracket_out.next_parsing_object = "1";
+        in_object_to_read_start_bracket_out.next_parsing_array = "1";
+        generatePassCase(in_object_to_read_start_bracket, in_object_to_read_start_bracket_out, ">>>> `\"` read");
 
 
         //// BREAK HERE AND RENAME AND ADJUST
