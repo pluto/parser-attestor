@@ -280,12 +280,10 @@ next_pointer <== pointer + pushpop; // If pushpop is 0, pointer doesn't change, 
     // Indicate which position in the stack should change (if any)
     component isPop[n];
     component isPush[n];
-    component isNoOp[n];
     component indicatorPush[n];
     component indicatorPop[n];
     signal isPopAt[n];
     signal isPushAt[n];
-    signal isNoOpAt[n];
 
     // EXAMPLE:
     // `pointer == 1`, `stack == [1, 0, 0, 0]`

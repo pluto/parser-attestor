@@ -231,16 +231,20 @@ describe("parser", () => {
         in_object_to_leave_out.next_parsing_object = 0;
         generatePassCase(in_object_to_leave, in_object_to_leave_out, ">>>> `\"` read");
 
-        // // Test 9: Stack Management
-        // // init: read `{`, then read `[`
-        // // expect: pointer --> 2
-        // //         stack   --> [1,-1,0,0]
-        // in_object.byte = start_bracket;
-        // in_object_out.next_pointer = 2;
-        // in_object_out.next_stack = [1, -1, 0, 0];
-        // in_object_out.next_parsing_object = 1;
-        // in_object_out.next_parsing_array = 1;
-        // generatePassCase(in_object, in_object_out, ">>>> `\"` read");
+        // Test 9: Stack Management
+        // init: read `{`, then read `[`
+        // expect: pointer --> 2
+        //         stack   --> [1,-1,0,0]
+        in_object.byte = start_bracket;
+        in_object_out.next_pointer = 2;
+        in_object_out.next_stack =
+            [1,
+                21888242871839275222246405745257275088548364400416034343698204186575808495616,
+                0,
+                0];
+        in_object_out.next_parsing_object = 1;
+        in_object_out.next_parsing_array = 1;
+        generatePassCase(in_object, in_object_out, ">>>> `\"` read");
 
 
         //// BREAK HERE AND RENAME AND ADJUST
