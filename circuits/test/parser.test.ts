@@ -87,8 +87,8 @@ describe("parser", () => {
 
     describe("StateUpdate", () => {
         let circuit: WitnessTester<
-            ["byte", "pointer", "stack", "parsing_string", "parsing_array", "parsing_object", "parsing_number", "key_or_value"],
-            ["next_pointer", "next_stack", "next_parsing_string", "next_parsing_array", "next_parsing_object", "next_parsing_number", "next_key_or_value"]
+            ["byte", "pointer", "stack", "parsing_string", "parsing_number", "key_or_value"],
+            ["next_pointer", "next_stack", "next_parsing_string", "next_parsing_number", "next_key_or_value"]
         >;
 
         function generatePassCase(input: any, expected: any, desc: string) {
@@ -125,8 +125,6 @@ describe("parser", () => {
             pointer: "0",
             stack: ["0", "0", "0", "0"],
             parsing_string: "0",
-            parsing_array: "0",
-            parsing_object: "0",
             parsing_number: "0",
             key_or_value: "0",
         };
@@ -134,8 +132,6 @@ describe("parser", () => {
             next_pointer: init.pointer,
             next_stack: init.stack,
             next_parsing_string: init.parsing_string,
-            next_parsing_array: init.parsing_array,
-            next_parsing_object: init.parsing_object,
             next_parsing_number: init.parsing_number,
             next_key_or_value: init.key_or_value,
         };
@@ -149,7 +145,6 @@ describe("parser", () => {
         let read_start_brace_out = { ...out };
         read_start_brace_out.next_pointer = "1";
         read_start_brace_out.next_stack = ["1", "0", "0", "0"];
-        read_start_brace_out.next_parsing_object = "1";
         generatePassCase(read_start_brace, read_start_brace_out, ">>>> `{` read");
 
         // Test 3: init setup -> `}` is read (should be INVALID)
@@ -208,12 +203,10 @@ describe("parser", () => {
         let in_object = { ...init };
         in_object.pointer = read_start_brace_out.next_pointer;
         in_object.stack = read_start_brace_out.next_stack;
-        in_object.parsing_object = read_start_brace_out.next_parsing_object;
         in_object.byte = start_brace;
         let in_object_out = { ...out };
         in_object_out.next_pointer = "2";
         in_object_out.next_stack = ["1", "1", "0", "0"];
-        in_object_out.next_parsing_object = "2";
         generatePassCase(in_object, in_object_out, ">>>> `{` read");
 
         // Test 8: Stack Management
@@ -223,12 +216,10 @@ describe("parser", () => {
         let in_object_to_leave = { ...init };
         in_object_to_leave.pointer = read_start_brace_out.next_pointer;
         in_object_to_leave.stack = read_start_brace_out.next_stack;
-        in_object_to_leave.parsing_object = read_start_brace_out.next_parsing_object;
         in_object_to_leave.byte = end_brace;
         let in_object_to_leave_out = { ...out };
         in_object_to_leave_out.next_pointer = "0";
         in_object_to_leave_out.next_stack = ["0", "0", "0", "0"];
-        in_object_to_leave_out.next_parsing_object = "0";
         generatePassCase(in_object_to_leave, in_object_to_leave_out, ">>>> `\"` read");
 
         // Test 9: Stack Management
@@ -239,7 +230,6 @@ describe("parser", () => {
         in_object_to_read_start_bracket.byte = start_bracket;
         in_object_to_read_start_bracket.pointer = "1";
         in_object_to_read_start_bracket.stack = ["1", "0", "0", "0"];
-        in_object_to_read_start_bracket.parsing_object = "1";
         let in_object_to_read_start_bracket_out = { ...out };
         in_object_to_read_start_bracket_out.next_pointer = "2";
         in_object_to_read_start_bracket_out.next_stack =
@@ -247,8 +237,6 @@ describe("parser", () => {
                 "21888242871839275222246405745257275088548364400416034343698204186575808495616",
                 "0",
                 "0"];
-        in_object_to_read_start_bracket_out.next_parsing_object = "1";
-        in_object_to_read_start_bracket_out.next_parsing_array = "1";
         generatePassCase(in_object_to_read_start_bracket, in_object_to_read_start_bracket_out, ">>>> `\"` read");
 
 
