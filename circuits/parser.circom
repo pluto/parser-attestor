@@ -1,6 +1,6 @@
 pragma circom 2.1.9;
 
-include "operators.circom";
+include "./utils/operators.circom";
 /*
 Notes: for `test.json`
 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
@@ -35,16 +35,16 @@ TODO
 template StateUpdate() {
     signal input byte;
 
-    signal input tree_depth;             // STATUS_INDICATOR -- how deep in a JSON branch we are, e.g., `user.balance.value` key should be at depth `3`. 
+    signal input tree_depth;             // STATUS_INDICATOR -- how deep in a JSON branch we are, e.g., `user.balance.value` key should be at depth `3`.
                                          // Should always be greater than or equal to `0` (TODO: implement this constraint).
 
     signal input parsing_to_key;         // BIT_FLAG         -- whether we are currently parsing bytes until we find the next key (mutally exclusive with `inside_key` and both `*_value flags).
     signal input inside_key;             // BIT_FLAG         -- whether we are currently inside a key (mutually exclusive with `parsing_to_key` and both `*_value` flags).
-    
+
     signal input parsing_to_value;       // BIT_FLAG         -- whether we are currently parsing bytes until we find the next value (mutually exclusive with `inside_value` and both `*_key` flags).
     signal input inside_value;           // BIT_FLAG         -- whether we are currently inside a value (mutually exclusive with `parsing_to_value` and both `*_key` flags).
 
-    signal input escaping;               // BIT_FLAG         -- whether we have hit an escape ASCII symbol inside of a key or value. 
+    signal input escaping;               // BIT_FLAG         -- whether we have hit an escape ASCII symbol inside of a key or value.
 
     signal input end_of_kv;              // BIT_FLAG         -- reached end of key-value sequence, looking for comma delimiter or end of file signified by `tree_depth == 0`.
 
@@ -102,7 +102,7 @@ template StateUpdate() {
 
 
     // TODO: These could likely go into a switch statement with the output of the `Switch` above.
-    // TODO: Also could probably clean up things with de Morgan's laws or whatever. 
+    // TODO: Also could probably clean up things with de Morgan's laws or whatever.
     // An `IF ELSE` template would also be handy!
     next_inside_key       <== inside_key + (parsing_to_key - inside_key) * matcher.out[1];       // IF (`parsing_to_key` AND `hit_quote`) THEN `next_inside_key <== 1` ELSEIF (`inside_key` AND `hit_quote`) THEN `next_inside_key <== 0`
                                                                                                  // - note: can rewrite as -> `inside_key * (1-matcher.out[1]) + parsing_to_key * matcher.out[1]`, but this will not be quadratic (according to circom)
@@ -110,7 +110,7 @@ template StateUpdate() {
 
     next_inside_value     <== inside_value + (parsing_to_value - inside_value) * matcher.out[1]; // IF (`parsing_to_value` AND `hit_quote`) THEN `next_inside_value <== 1` ELSEIF (`inside_value` AND `hit_quote`) THEN `next_inside_value <==0`
                                                                                                  // -note: can rewrite as -> `(1 - inside_value) * matcher_out[1] + parsing_to_value * matcher.out[1]
-    
+
     signal NOT_PARSING_TO_KEY_AND_NOT_INSIDE_KEY <== (1 - parsing_to_key) * (1 - inside_key);                                                     // (NOT `parsing_to_key`) AND (NOT `inside_key`)
     signal PARSING_TO_VALUE_AND_NOT_HIT_QUOTE    <== parsing_to_value * (1 - matcher.out[1]);                                                     // `parsing_to_value` AND (NOT `hit_quote`)
     next_parsing_to_value                        <== PARSING_TO_VALUE_AND_NOT_HIT_QUOTE + NOT_PARSING_TO_KEY_AND_NOT_INSIDE_KEY * matcher.out[2]; // IF (`parsing_to_value` AND (NOT `hit_quote`)) THEN `next_parsing_to_value <== 1 ELSEIF ((NOT `parsing_to_value` AND (NOT `inside_value)) AND `hit_colon`) THEN `next_parsing_to_value <== 1`
@@ -118,7 +118,7 @@ template StateUpdate() {
     signal NOT_PARSING_TO_VALUE_AND_NOT_INSIDE_VALUE <== (1 - parsing_to_value) * (1 - inside_value);                                       // (NOT `parsing_to_value`) AND (NOT `inside_value`)
     next_end_of_kv                                   <== NOT_PARSING_TO_KEY_AND_NOT_INSIDE_KEY * NOT_PARSING_TO_VALUE_AND_NOT_INSIDE_VALUE; // IF ((NOT `parsing_to_key`) AND (NOT `inside_key`)) AND (NOT(`parsing_to_value`) AND NOT( `inside_value)) THEN `next_end_of_kv <== 1`
 
-     
+
     // TODO: Assert this never goes below zero (mod p)
     next_tree_depth       <== tree_depth + (parsing_to_key + next_end_of_kv) * matcher.out[0]; // IF ((`parsing_to_key` OR `next_end_of_kv`) AND `read_brace` THEN `increase/decrease_depth`
 
@@ -126,7 +126,7 @@ template StateUpdate() {
     next_parsing_to_key * (1 - next_parsing_to_key)     === 0; // - constrain that `next_parsing_to_key` remain a bit flag
     next_inside_key * (1 - next_inside_key)             === 0; // - constrain that `next_inside_key` remain a bit flag
     next_parsing_to_value * (1 - next_parsing_to_value) === 0; // - constrain that `next_parsing_to_value` remain a bit flag
-    next_inside_value * (1 - next_inside_value)         === 0; // - constrain that `next_inside_value` remain a bit flag 
+    next_inside_value * (1 - next_inside_value)         === 0; // - constrain that `next_inside_value` remain a bit flag
     next_end_of_kv * (1 - next_end_of_kv)               === 0; // - constrain that `next_end_of_kv` remain a bit flag
 
     // TODO: Can hit comma and then be sent to next KV, so comma will engage `parsing_to_key`
@@ -140,9 +140,9 @@ This function is creates an exhaustive switch statement from `0` up to `n`.
 - `m`: the number of switch cases
 - `n`: the output array length
 - `case`: which case of the switch to select
-- `branches[m]`: the values that enable taking different branches in the switch 
+- `branches[m]`: the values that enable taking different branches in the switch
     (e.g., if `branch[i] == 10` then if `case == 10` we set `out == `vals[i]`)
-- `vals[m][n]`: the value that is emitted for a given switch case 
+- `vals[m][n]`: the value that is emitted for a given switch case
     (e.g., `val[i]` array is emitted on `case == `branch[i]`)
 
 # Outputs
@@ -166,7 +166,7 @@ template Switch(m, n) {
     var sum[n];
     for(var i = 0; i < m; i++) {
         indicator[i] = IsZero();
-        indicator[i].in <== case - branches[i]; 
+        indicator[i].in <== case - branches[i];
         matchChecker.array[i] <== 1 - indicator[i].out;
         for(var j = 0; j < n; j++) {
             component_out[i][j] <== indicator[i].out * vals[i][j];

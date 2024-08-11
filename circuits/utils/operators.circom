@@ -1,56 +1,13 @@
 pragma circom 2.1.9;
 
+include "circomlib/circuits/comparators.circom";
+
 /*
 All tests for this file are located in: `./test/operators.test.ts`
 
 Some of the functions here were based off the circomlib:
 https://github.com/iden3/circomlib/blob/cff5ab6288b55ef23602221694a6a38a0239dcc0/circuits/comparators.circom
 */
-
-
-/*
-This function is an indicator for zero.
-
-# Inputs:
-- `in`: some number
-- `out`: either `0` or `1`
-    - `1` if `in` is equal to `0`
-    - `0` otherwise
-
-# Constraints
-- `in`: must be either `0` or `1`.
-*/
-template IsZero() {
-    signal input in;
-    signal output out;
-
-    signal inv;
-
-    inv <-- in!=0 ? 1/in : 0;
-
-    out <== -in * inv + 1;
-    in * out === 0;
-}
-
-/*
-This function is an indicator for two equal inputs.
-
-# Inputs:
-- `in[2]`: two numbers
-- `out`: either `0` or `1`
-    - `1` if `in[0]` is equal to `in[1]`
-    - `0` otherwise
-*/
-template IsEqual() {
-    signal input in[2];
-    signal output out;
-
-    component isz = IsZero();
-
-    in[1] - in[0] ==> isz.in;
-
-    isz.out ==> out;
-}
 
 /*
 This function is an indicator for two equal array inputs.

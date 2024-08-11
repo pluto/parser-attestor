@@ -1,7 +1,7 @@
 pragma circom 2.1.9;
 
-include "bytes.circom";
-include "operators.circom";
+include "./utils/bytes.circom";
+include "./utils/operators.circom";
 include "parser.circom";
 
 template Extract(KEY_BYTES, DATA_BYTES) {
@@ -17,7 +17,7 @@ template Extract(KEY_BYTES, DATA_BYTES) {
     // Working with a single key for now to do substring matching
     component keyASCII = ASCII(KEY_BYTES);
     keyASCII.in <== key;
-    
+
     component dataASCII = ASCII(DATA_BYTES);
     dataASCII.in <== data;
     //--------------------------------------------------------------------------------------------//
@@ -58,4 +58,4 @@ template Extract(KEY_BYTES, DATA_BYTES) {
 
     // Constrain to have valid JSON (TODO: more is needed)
     State[DATA_BYTES - 1].next_tree_depth === 0;
-} 
+}
