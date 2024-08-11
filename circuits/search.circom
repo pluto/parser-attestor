@@ -1,9 +1,8 @@
 pragma circom  2.1.9;
 
-include "operators.circom";
-include "mux1.circom";
-include "chunks.circom";
-include "poseidon.circom";
+include "circomlib/circuits/mux1.circom";
+include "./utils/hash.circom";
+include "./utils/operators.circom";
 
 /// @title SubstringSearch
 /// @notice Calculates the index of a substring within a larger string. Uses a probabilistic algorithm to
@@ -16,8 +15,8 @@ include "poseidon.circom";
 /// @input data Array of ASCII characters as input string
 /// @input key Array of ASCII characters as substring to be searched in `data`
 /// @output position Index of `key` in `data`
-/// @profile 2 * `dataLen` constraints
-template SubstringSearch(dataLen, keyLen) {
+/// @profile 6 * `dataLen` constraints
+template SubstringSearch(dataLen, keyLen, random_num) {
     signal input data[dataLen];
     signal input key[keyLen];
     signal output position;
@@ -26,49 +25,55 @@ template SubstringSearch(dataLen, keyLen) {
     assert(keyLen > 0);
     assert(dataLen >= keyLen);
 
-    // random number for linear combination
-    // TODO: correct this
-    var random_num = 100;
-
-    // powers of random number for combination with string search
-    var r[keyLen];
-    r[0] = random_num;
-    for (var i=1 ; i<keyLen ; i++) {
-        r[i] = r[i-1] * random_num;
-    }
-
-    var pos = 0;
-    var num_matches = 0;
+    signal pos[dataLen-keyLen+2];
+    pos[0] <== 0;
+    signal num_matches[dataLen-keyLen+2];
+    num_matches[0] <== 0;
 
     // iterate through each substring of length `keyLen` in `data` and find substring that matches.
+    signal is_match_found[dataLen-keyLen+1];
+    signal is_first_match[dataLen-keyLen+1];
+    signal index_at_first_match_and_found[dataLen-keyLen+1];
     for (var i = 0; i < dataLen - keyLen + 1; i++) {
-        var found = 0;
+        // this is the underconstrained part, any malicious prover can set found to `0` manually
+        var found;
         for (var j=0 ; j < keyLen ; j++) {
-            found += r[j] * (data[i+j] - key[j]);
+            found += (random_num**j) * (data[i+j] - key[j]);
         }
 
         // is substring a match?
-        var is_match_found = IsZero()(found);
+        is_match_found[i] <== IsZero()(found);
 
         // update total number of matches found
-        num_matches += is_match_found;
+        num_matches[i+1] <== num_matches[i] + is_match_found[i];
 
         // is substring first match?
-        var is_first_match = IsEqual()([1, num_matches]);
-
-        // should be only first match
-        var is_first_match_and_found = is_match_found * is_first_match;
+        is_first_match[i] <== IsEqual()([1, num_matches[i+1]]);
 
         // n
-        var a = Mux1()([0, i], is_first_match_and_found);
-        pos += a;
+        // should be only first match
+        index_at_first_match_and_found[i] <== Mux1()([0, i], is_match_found[i] * is_first_match[i]);
+        pos[i+1] <== pos[i] + index_at_first_match_and_found[i];
     }
 
-    assert(pos < dataLen - keyLen + 1);
-    position <== pos;
+    assert(pos[dataLen-keyLen+1] < dataLen - keyLen + 1);
+    position <== pos[dataLen-keyLen+1];
 }
 
-// RLC algorithm for matching substring with index modified from <https://github.com/zkemail/zk-email-verify>
+/// @title SubstringMatchWithIndex
+/// @notice RLC algorithm for matching substring at index.
+///         - Creates a mask for `data` at `[start, start + keyLen]`
+///         - apply mask to data
+///         - multiply data with powers of `r` to create random linear combination
+///         - multiply key with powers of `r`
+///         - sum of both arrays should be equal
+/// @notice Modified from https://github.com/zkemail/zk-email-verify/tree/main/packages/circuits
+/// @param dataLen The maximum length of the input string
+/// @param keyLen The maximum length of the substring to be matched
+/// @input data Array of ASCII characters as input string
+/// @input key Array of ASCII characters as substring to be searched in `data`
+/// @input position Index of `key` in `data`
+/// @profile 9 * `dataLen` constraints
 template SubstringMatchWithIndex(dataLen, keyLen) {
     signal input data[dataLen];
     signal input key[keyLen];
@@ -125,7 +130,6 @@ template SubstringMatchWithIndex(dataLen, keyLen) {
         maskedData[i] <== data[i] * mask[i];
     }
 
-
     // n constraints
     //
     // powers of `r` for masked data
@@ -164,55 +168,38 @@ template SubstringMatchWithIndex(dataLen, keyLen) {
     hashMaskedData[dataLen - 1] === hashMaskedKey[keyLen - 1];
 }
 
-// template SubstringMatchWithChunking(dataLen, keyLen) {
-//     signal input data[dataLen];
-//     signal input key[keyLen];
-//     signal input start;
-
-//     signal initial_chunk_index <== (start/31) * 31;
-//     log(initial_chunk_index);
-
-//     var chunkLength = computeIntChunkLength(dataLen);
-//     signal input_chunks[chunkLength];
-
-//     input_chunks <== PackBytes(dataLen)(data);
-//     log(input_chunks[0]);
-
-//     signal initial_chunk[31];
-//     for (var i=0 ; i<31 ; i++) {
-//         initial_chunk[i] <== Mux1()([])
-//     }
-// }
-
 /// @title SubstringMatch
 /// @notice Matches a substring with an input string and returns the position
-template SubstringMatch(dataLen, keyLen) {
+/// @param dataLen The maximum length of the input string
+/// @param keyLen The maximum length of the substring to be matched
+/// @param r Random number initialised as poseidon hash of concatenation of key and data
+/// @input data Array of ASCII characters as input string
+/// @input key Array of ASCII characters as substring to be searched in `data`
+/// @input position Index of `key` in `data`
+/// @profile 9 * `dataLen` constraints
+template SubstringMatch(dataLen, keyLen, r) {
     signal input data[dataLen];
     signal input key[keyLen];
     signal output position;
 
-    // TODO: correct this. r must be secret, so either has to be derived from hash in the circuit or off the circuit
-    // signal r <== 100;
-    signal r;
-    component rHasher;
-    rHasher = PoseidonModular(dataLen + keyLen);
-    // rHasher.in[0] <== start;
+    // r must be secret, so either has to be derived from hash in the circuit or off the circuit
+    component rHasher = PoseidonModular(dataLen + keyLen);
     for (var i = 0; i < keyLen; i++) {
         rHasher.in[i] <== key[i];
     }
     for (var i = 0; i < dataLen; i++) {
         rHasher.in[i + keyLen] <== data[i];
     }
-    r <== rHasher.out;
+    r === rHasher.out;
 
     // find the start position of `key` first match in `data`
     // NOTE: underconstrained (should be paired with SubstringMatchWithIndex)
-    signal start <== SubstringSearch(dataLen, keyLen)(data, key);
+    signal start <== SubstringSearch(dataLen, keyLen, r)(data, key);
     log(start);
 
     // matches a `key` in `data` at `pos`
-    SubstringMatchWithIndex(dataLen, keyLen)(data, key, r, start);
-    // SubstringMatchWithChunking(dataLen, keyLen)(data, key, start);
+    // NOTE: constrained verification assures correctness
+    SubstringMatchWithIndex(dataLen, keyLen)(data, key, rHasher.out, start);
 
     position <== start;
 }
