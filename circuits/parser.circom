@@ -33,6 +33,8 @@ Array.
 Object.
 Whitespace.
 Null.
+
+TODO: Might not need the "parsing object" and "parsing array" as these are kinda captured by the stack?
 */
 template StateUpdate() {
     //--------------------------------------------------------------------------------------------//
@@ -136,14 +138,25 @@ template StateUpdate() {
     //--------------------------------------------------------------------------------------------//
 
     //--------------------------------------------------------------------------------------------//
-    // DEBUGGING: internal state
-    for(var i = 0; i<7; i++) {
-        log("------------------------------------------");
-        log(">>>> parsing_state[",i,"]:        ", parsing_state[i]);
-        log(">>>> mask[",i,"]         :        ", mask.out[i]);
-        log(">>>> command[",i,"]      :        ", matcher.out[i]);
-        log(">>>> addToState[",i,"]   :        ", addToState.out[i]);
+    // // DEBUGGING: internal state
+    // for(var i = 0; i<7; i++) {
+    //     log("------------------------------------------");
+    //     log(">>>> parsing_state[",i,"]:        ", parsing_state[i]);
+    //     log(">>>> mask[",i,"]         :        ", mask.out[i]);
+    //     log(">>>> command[",i,"]      :        ", matcher.out[i]);
+    //     log(">>>> addToState[",i,"]   :        ", addToState.out[i]);
+    // }
+    // Debugging
+    log("next_pointer       ", "= ", next_pointer);
+    for(var i = 0; i<4; i++) {
+        log("next_stack[", i,"]    ", "= ", next_stack[i]);
     }
+    log("next_parsing_string", "= ", next_parsing_string);
+    log("next_parsing_array ", "= ", next_parsing_array );
+    log("next_parsing_object", "= ", next_parsing_object);
+    log("next_parsing_number", "= ", next_parsing_number);
+    log("next_key_or_value  ", "= ", next_key_or_value  );
+    log("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
     //--------------------------------------------------------------------------------------------//
 
     //--------------------------------------------------------------------------------------------//
@@ -262,18 +275,47 @@ template RewriteStack(n) {
     - if pushpop is -1, we are going to decrement the pointer and delete an old value if it was the same value
     */
 
+next_pointer <== pointer + pushpop; // If pushpop is 0, pointer doesn't change, if -1, decrement, +1 increment
+
     // Indicate which position in the stack should change (if any)
-    component indicator[n];
-    signal unchanged_stack[n];
-    var accrue_pointer;
+    component isPop[n];
+    component isPush[n];
+    component isNoOp[n];
+    component indicatorPush[n];
+    component indicatorPop[n];
+    signal isPopAt[n];
+    signal isPushAt[n];
+    signal isNoOpAt[n];
+
+    // EXAMPLE:
+    // `pointer == 1`, `stack == [1, 0, 0, 0]`
+    // >>>> `pushpop == -1`
+    // This means we need to decrement pointer, then pop from the stack
+    // This means we take `next_pointer` then set this to zero
+
+    //TODO: Note, we are not effectively using the stack, we could actually pop and read these values to save to inner state signals
+    // I.e., the `in_object` and `in_array` or whatever
     for(var i = 0; i < n; i++) {
-        indicator[i]         = IsZero();
-        indicator[i].in    <== pointer - i; // Change at pointer or TODO: change at incremented pointer
-        unchanged_stack[i] <==  (1-indicator[i].out) * stack[i];
-        next_stack[i]      <== unchanged_stack[i] + indicator[i].out * obj_or_arr;
+        isPop[i]             = IsZero();
+        isPop[i].in        <== pushpop + 1; // TRUE if we are popping
+
+        isPush[i]            = IsZero();
+        isPush[i].in       <== pushpop - 1; // TRUE if we are pushing
+
+        indicatorPush[i]         = IsZero();
+        indicatorPush[i].in    <== pointer - i; // 1 in the position of the current pointer
+
+        indicatorPop[i]         = IsZero();
+        indicatorPop[i].in    <== next_pointer - i; // 1 in the position of the current pointer
+
+        isPopAt[i]         <== indicatorPop[i].out * isPop[i].out; // Index to pop from 
+        isPushAt[i]        <== indicatorPush[i].out * isPush[i].out; // Index to push to
+
+        //  Could use GreaterEqThan to set any position in the stack at next_pointer or above 0?
+        
+        // Leave the stack alone except for where we indicate change
+        next_stack[i]      <== stack[i] + (isPushAt[i] - isPopAt[i]) * obj_or_arr;
     }
-    
-    next_pointer <== pointer + pushpop; // If pushpop is 0, pointer doesn't change, if -1, decrement, +1 increment
     
     component isOverflow = GreaterThan(8);
     isOverflow.in[0]   <== next_pointer;
