@@ -4,6 +4,8 @@ include "operators.circom";
 include "mux1.circom";
 include "chunks.circom";
 include "poseidon.circom";
+include "functions.circom";
+include "array.circom";
 
 /// @title SubstringSearch
 /// @notice Calculates the index of a substring within a larger string. Uses a probabilistic algorithm to
@@ -164,26 +166,6 @@ template SubstringMatchWithIndex(dataLen, keyLen) {
     hashMaskedData[dataLen - 1] === hashMaskedKey[keyLen - 1];
 }
 
-// template SubstringMatchWithChunking(dataLen, keyLen) {
-//     signal input data[dataLen];
-//     signal input key[keyLen];
-//     signal input start;
-
-//     signal initial_chunk_index <== (start/31) * 31;
-//     log(initial_chunk_index);
-
-//     var chunkLength = computeIntChunkLength(dataLen);
-//     signal input_chunks[chunkLength];
-
-//     input_chunks <== PackBytes(dataLen)(data);
-//     log(input_chunks[0]);
-
-//     signal initial_chunk[31];
-//     for (var i=0 ; i<31 ; i++) {
-//         initial_chunk[i] <== Mux1()([])
-//     }
-// }
-
 /// @title SubstringMatch
 /// @notice Matches a substring with an input string and returns the position
 template SubstringMatch(dataLen, keyLen) {
@@ -191,9 +173,7 @@ template SubstringMatch(dataLen, keyLen) {
     signal input key[keyLen];
     signal output position;
 
-    // TODO: correct this. r must be secret, so either has to be derived from hash in the circuit or off the circuit
-    // signal r <== 100;
-    signal r;
+    // r must be secret, so either has to be derived from hash in the circuit or off the circuit
     component rHasher;
     rHasher = PoseidonModular(dataLen + keyLen);
     // rHasher.in[0] <== start;
@@ -212,7 +192,6 @@ template SubstringMatch(dataLen, keyLen) {
 
     // matches a `key` in `data` at `pos`
     SubstringMatchWithIndex(dataLen, keyLen)(data, key, r, start);
-    // SubstringMatchWithChunking(dataLen, keyLen)(data, key, start);
 
     position <== start;
 }

@@ -23,7 +23,7 @@ pub fn run() -> Result<(), String> {
         .map_err(|c| format!("Error: {}", c))?
         .join("noir_string_search");
 
-    let mut circom = Circom::new(String::from("extract"));
+    let mut circom = Circom::new(String::from("search"));
     let mut noir = noir::Noir {};
 
     let circom_bench = benchme(circom_path, &mut circom)?;

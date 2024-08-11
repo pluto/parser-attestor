@@ -205,7 +205,7 @@ impl Circom {
 
 pub fn powers_of_tau() -> Result<PathBuf, String> {
     let path = env::current_dir().map_err(|c| format!("Error: {}", c))?;
-    assert_file(path.join("../ptau").join("powersOfTau28_hez_final_16.ptau"))
+    assert_file(path.join("../ptau").join("powersOfTau28_hez_final_17.ptau"))
 }
 
 fn assert_file(file: PathBuf) -> Result<PathBuf, String> {
