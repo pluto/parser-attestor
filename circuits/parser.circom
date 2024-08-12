@@ -267,8 +267,6 @@ template RewriteStack(n) {
     on the case we get a POP instruction reading an object OR an array (no trailing commas in arrays either)
     */
 
-    next_pointer <== pointer + pushpop; // If pushpop is 0, pointer doesn't change, if -1, decrement, +1 increment
-
     // Indicate which position in the stack should change (if any)
     component isPop = IsZero();
     isPop.in      <== pushpop + 1;
@@ -280,30 +278,56 @@ template RewriteStack(n) {
 
     // TODO: Thinking of it this way
     component isEndOfArrayOrObject[n];
+    component doublePopIndicator[n];
+    signal doublePopAt[n];
+    signal stackModifier[n];
     // top of stack is a 3, then we need to pop off 3, and check the value underneath 
     // is correct match (i.e., a brace or bracket (1 or 2))
 
     for(var i = 0; i < n; i++) {
-        // Points to top of stack if POP
+        // Points to top of stack if POP else it points to unallocated position
         indicator[i]         = IsZero();
         indicator[i].in    <== pointer - isPop.out - i;     
 
         // Indicators for index to PUSH to or POP from
         isPopAt[i]         <== indicator[i].out * isPop.out; 
+        log("isPopAt[",i,"]:              ", isPopAt[i]);
         isPushAt[i]        <== indicator[i].out * isPush.out; 
 
         // NEW STUFF -------------------------------------------//
         // If this is TRUE, then we are POP and the top is a `:` marker (3)
         isEndOfArrayOrObject[i] = IsZero();
-        isEndOfArrayOrObject[i].in <== stack[i] * indicator[i].out - 3;
-        // Therefore, if we are hitting a stack value
+        isEndOfArrayOrObject[i].in <== stack[i] * isPopAt[i] - 3;
+        log("isEndOfArrayOrObject[",i,"]: ", isEndOfArrayOrObject[i].out);
+        // --> If this, then if stack_val = -1 or -2, we clear this
+        // --> Then we need to constrain the next lower loc in the stack is +1 or +2 resp.
+
+        // Where this is TRUE is the second value to pop off, else it is just at the pointer
+        doublePopIndicator[i] = IsZero();
+        doublePopIndicator[i].in <== pointer - 2 * isPop.out - i; 
+        log("doublePopIndicator[",i,"]:   ", doublePopIndicator[i].out);
+
+        // Double pop at the correct loc IF we at end of array or object
+        doublePopAt[i] <== stack[i] * doublePopIndicator[i].out;
+        log("doublePopAt[",i,"]:          ", doublePopAt[i]);
+
+        log("---");
+        // Therefore, if we get a comma, we don't want to do anything different
+        // But if it is a } or a ], we pop off the 3, and look at next stack value
+        // to see if it is correct (`{` or `]`), and clear that off too if it is
+
         //------------------------------------------------------//
         
         // Leave the stack alone except for where we indicate change
-        next_stack[i]      <== stack[i] + (isPushAt[i] + isPopAt[i]) * stack_val;
+        stackModifier[i] <== (stack[i] + (isPushAt[i] + isPopAt[i]) * stack_val) ;
+        next_stack[i]      <== stackModifier[i] * (1 - isEndOfArrayOrObject[i].out);
+        //                 is 1 if we read a `:`           ^^^^^^^^^^^^^^^^^^^^^
 
         // TODO: Constrain next_stack entries to be 0,1,2,3
     }
+
+    // TODO: This decrements by 2 if we hit a ] or } when the top of stack is 3
+    next_pointer <== pointer + pushpop; // If pushpop is 0, pointer doesn't change, if -1, decrement, +1 increment
 
     component isOverflow = GreaterThan(8);
     isOverflow.in[0]   <== next_pointer;

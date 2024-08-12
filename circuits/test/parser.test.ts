@@ -384,12 +384,12 @@ describe("parser", () => {
         let in_object_and_array_out = { ...out };
         in_object_and_array_out.next_pointer = 1;
         in_object_and_array_out.next_stack = [1, 0, 0, 0];
-        generatePassCase(in_object_and_array, in_object_and_array_out, ">>>> `[` read");
+        generatePassCase(in_object_and_array, in_object_and_array_out, ">>>> `]` read");
 
         // Test 12: Stack Management
         // init: read `{` and `:`, then read `,`
         // expect: pointer --> 2
-        //         stack   --> [1,0,0,0]
+        //         stack   --> [1,3,0,0]
         let in_object_and_value = { ...init };
         in_object_and_value.byte = comma;
         in_object_and_value.pointer = 2;
@@ -397,7 +397,20 @@ describe("parser", () => {
         let in_object_and_value_out = { ...out };
         in_object_and_value_out.next_pointer = 1;
         in_object_and_value_out.next_stack = [1, 0, 0, 0];
-        generatePassCase(in_object_and_value, in_object_and_value_out, ">>>> `[` read");
+        generatePassCase(in_object_and_value, in_object_and_value_out, ">>>> `,` read");
+
+        // Test 13: Stack Management
+        // init: read `{` and `:`, then read `,`
+        // expect: pointer --> 2
+        //         stack   --> [1,3,0,0]
+        let in_object_and_value_to_leave_object = { ...init };
+        in_object_and_value_to_leave_object.byte = end_brace;
+        in_object_and_value_to_leave_object.pointer = 2;
+        in_object_and_value_to_leave_object.stack = [1, 3, 0, 0];
+        let in_object_and_value_to_leave_object_out = { ...out };
+        in_object_and_value_to_leave_object_out.next_pointer = 0;
+        in_object_and_value_to_leave_object_out.next_stack = [0, 0, 0, 0];
+        generatePassCase(in_object_and_value_to_leave_object, in_object_and_value_to_leave_object_out, ">>>> `,` read");
     });
 
 });
