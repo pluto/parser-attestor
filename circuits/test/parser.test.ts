@@ -8,6 +8,48 @@ describe("parser", () => {
             circuit = await circomkit.WitnessTester(`Switch`, {
                 file: "circuits/parser",
                 template: "Switch",
+                params: [3],
+            });
+            console.log("#constraints:", await circuit.getConstraintCount());
+        });
+
+        it("witness: case = 0, branches = [0, 1, 2], vals = [69, 420, 1337]", async () => {
+            await circuit.expectPass(
+                { case: 0, branches: [0, 1, 2], vals: [69, 420, 1337] },
+                { match: 1, out: 69 },
+            );
+        });
+
+        it("witness: case = 1, branches = [0, 1, 2], vals = [69, 420, 1337]", async () => {
+            await circuit.expectPass(
+                { case: 1, branches: [0, 1, 2], vals: [69, 420, 1337] },
+                { match: 1, out: 420 },
+            );
+        });
+
+        it("witness: case = 2, branches = [0, 1, 2], vals = [69, 420, 1337]", async () => {
+            await circuit.expectPass(
+                { case: 2, branches: [0, 1, 2], vals: [69, 420, 1337] },
+                { match: 1, out: 1337 },
+            );
+        });
+
+        it("witness: case = 3, branches = [0, 1, 2], vals = [69, 420, 1337]", async () => {
+            await circuit.expectPass(
+                { case: 3, branches: [0, 1, 2], vals: [69, 420, 1337] },
+                { match: 0, out: 0 },
+            );
+        });
+
+
+    });
+
+    describe("SwitchArray", () => {
+        let circuit: WitnessTester<["case", "branches", "vals"], ["match", "out"]>;
+        before(async () => {
+            circuit = await circomkit.WitnessTester(`SwitchArray`, {
+                file: "circuits/parser",
+                template: "SwitchArray",
                 params: [3, 2],
             });
             console.log("#constraints:", await circuit.getConstraintCount());
@@ -115,6 +157,7 @@ describe("parser", () => {
             circuit = await circomkit.WitnessTester(`StateUpdate`, {
                 file: "circuits/parser",
                 template: "StateUpdate",
+                params: [4],
             });
             console.log("#constraints:", await circuit.getConstraintCount());
 
@@ -411,6 +454,26 @@ describe("parser", () => {
         in_object_and_value_to_leave_object_out.next_pointer = 0;
         in_object_and_value_to_leave_object_out.next_stack = [0, 0, 0, 0];
         generatePassCase(in_object_and_value_to_leave_object, in_object_and_value_to_leave_object_out, ">>>> `,` read");
+
+
+
+
+
+
+
+
+        //-----------------------------------------------------------------------------//
+        // Test SOMETHING: 
+        // init: pointer = 1, stack = [1,2,0,0] -> `,` is read
+        let inside_array = { ...init };
+        inside_array.pointer = read_start_brace_out.next_pointer;
+        inside_array.stack = read_start_brace_out.next_stack;
+        inside_array.byte = comma;
+        let inside_array_out = { ...out };
+        inside_array_out.next_pointer = 2;
+        inside_array_out.next_stack = [1, 2, 0, 0];
+        generatePassCase(inside_array, inside_array_out, ">>>> `,` read");
+        //-----------------------------------------------------------------------------//
     });
 
 });

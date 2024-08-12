@@ -97,7 +97,7 @@ template StateUpdate(MAX_STACK_HEIGHT) {
     //--------------------------------------------------------------------------------------------//
     //-State machine updating---------------------------------------------------------------------//
     // * yield instruction based on what byte we read *
-    component matcher           = Switch(8, 4);
+    component matcher           = SwitchArray(8, 4);
     var number = 256; // Number beyond a byte to represent an ASCII numeral
     matcher.branches          <== [start_brace,     end_brace,      quote,     colon,      comma,     start_bracket,     end_bracket,     number    ];
     matcher.vals              <== [hit_start_brace, hit_end_brace,  hit_quote, hit_colon,  hit_comma, hit_start_bracket, hit_end_bracket, hit_number];
@@ -106,8 +106,10 @@ template StateUpdate(MAX_STACK_HEIGHT) {
     numeral_range_check.range <== [48, 57]; // ASCII NUMERALS
     matcher.case              <== (1 - numeral_range_check.out) * byte + numeral_range_check.out * 256; // IF (NOT is_number) THEN byte ELSE 256
     // * get the instruction mask based on current state *
-    component mask             = StateToMask();
+    component mask             = StateToMask(MAX_STACK_HEIGHT);
     mask.in                  <== parsing_state;     
+    mask.stack               <== stack;
+    mask.pointer             <== pointer;
     // * multiply the mask array elementwise with the instruction array *
     component mulMaskAndOut    = ArrayMul(4);
     mulMaskAndOut.lhs        <== mask.out;
@@ -178,7 +180,7 @@ This function is creates an exhaustive switch statement from `0` up to `n`.
 - `match`: is set to `0` if `case` does not match on any of `branches`
 - `out[n]`: the selected output value if one of `branches` is selected (will be `[0,0,...]` otherwise)
 */
-template Switch(m, n) {
+template SwitchArray(m, n) {
     assert(m > 0);
     assert(n > 0);
     signal input case;
@@ -208,14 +210,46 @@ template Switch(m, n) {
     out <== sum;
 }
 
-template StateToMask() {
+template Switch(n) {
+    assert(n > 0);
+    signal input case;
+    signal input branches[n];
+    signal input vals[n];
+    signal output match;
+    signal output out;
+
+
+    // Verify that the `case` is in the possible set of branches
+    component indicator[n];
+    component matchChecker = Contains(n);
+    signal temp_val[n];
+    var sum;
+    for(var i = 0; i < n; i++) {
+        indicator[i] = IsZero();
+        indicator[i].in <== case - branches[i]; 
+        matchChecker.array[i] <== 1 - indicator[i].out;
+        temp_val[i] <== indicator[i].out * vals[i];
+        sum += temp_val[i];
+    }
+    matchChecker.in <== 0;
+    match <== matchChecker.out;
+
+    out <== sum;
+}
+
+template StateToMask(n) {
     signal input in[4];
+    signal input stack[n];
+    signal input pointer;
     signal output out[4];
     
     signal pushpop        <== in[0];
     signal stack_val      <== in[1];
     signal parsing_string <== in[2];
     signal parsing_number <== in[3];
+
+    // component stackTop = Switch(n);
+
 
     // `pushpop` can change: IF NOT `parsing_string`
     out[0] <== (1 - parsing_string);
