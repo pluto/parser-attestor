@@ -52,11 +52,10 @@
             48
         ]
     },
-    "extract": {
+    "extract_example": {
         "file": "extract",
         "template": "Extract",
         "params": [
-            10,
             787
         ]
     }

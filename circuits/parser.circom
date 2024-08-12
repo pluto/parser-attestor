@@ -36,7 +36,7 @@ Null.
 
 TODO: Might not need the "parsing object" and "parsing array" as these are kinda captured by the stack?
 */
-template StateUpdate() {
+template StateUpdate(MAX_STACK_HEIGHT) {
     //--------------------------------------------------------------------------------------------//
     //-Delimeters---------------------------------------------------------------------------------//
     // - ASCII char: `{`
@@ -68,14 +68,14 @@ template StateUpdate() {
     signal input byte;  
 
     signal input pointer;             // POINTER -- points to the stack to mark where we currently are inside the JSON.
-    signal input stack[4];            // STACK -- how deep in a JSON nest we are and what type we are currently inside (e.g., `1` for object, `-1` for array).
+    signal input stack[MAX_STACK_HEIGHT];            // STACK -- how deep in a JSON nest we are and what type we are currently inside (e.g., `1` for object, `-1` for array).
     signal input parsing_string;
     signal input parsing_number;
     // signal parsing_boolean;
     // signal parsing_null; // TODO
 
     signal output next_pointer;
-    signal output next_stack[4];
+    signal output next_stack[MAX_STACK_HEIGHT];
     signal output next_parsing_string;
     signal output next_parsing_number;
     //--------------------------------------------------------------------------------------------//
@@ -117,7 +117,7 @@ template StateUpdate() {
     addToState.lhs           <== parsing_state;
     addToState.rhs           <== mulMaskAndOut.out;
     // * set the new state *
-    component newStack         = RewriteStack(4);
+    component newStack         = RewriteStack(MAX_STACK_HEIGHT);
     newStack.pointer         <== pointer;
     newStack.stack           <== stack;
     newStack.pushpop         <== addToState.out[0];
@@ -138,13 +138,13 @@ template StateUpdate() {
     //     log(">>>> addToState[",i,"]   :        ", addToState.out[i]);
     // }
     // Debugging
-    log("next_pointer       ", "= ", next_pointer);
-    for(var i = 0; i<4; i++) {
-        log("next_stack[", i,"]    ", "= ", next_stack[i]);
-    }
-    log("next_parsing_string", "= ", next_parsing_string);
-    log("next_parsing_number", "= ", next_parsing_number);
-    log("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
+    // log("next_pointer       ", "= ", next_pointer);
+    // for(var i = 0; i<4; i++) {
+    //     log("next_stack[", i,"]    ", "= ", next_stack[i]);
+    // }
+    // log("next_parsing_string", "= ", next_parsing_string);
+    // log("next_parsing_number", "= ", next_parsing_number);
+    // log("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
     //--------------------------------------------------------------------------------------------//
 
     //--------------------------------------------------------------------------------------------//

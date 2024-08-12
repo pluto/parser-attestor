@@ -15,17 +15,21 @@ template Extract(DATA_BYTES) {
     component dataASCII = ASCII(DATA_BYTES);
     dataASCII.in <== data;
     //--------------------------------------------------------------------------------------------//
+    var MAX_STACK_HEIGHT = 16;
     // Initialze the parser
     component State[DATA_BYTES];
-    State[0] = StateUpdate();
+    State[0] = StateUpdate(MAX_STACK_HEIGHT);
     State[0].byte           <== data[0];
     State[0].pointer        <== 0;
-    State[0].stack          <== [0,0,0,0];
+    for(var i = 0; i < MAX_STACK_HEIGHT; i++) {
+        State[0].stack[i]   <== 0;
+    }
+    // State[0].stack          <== [0,0,0,0,0,0,0,0,0,0,0,0];
     State[0].parsing_string <== 0;
     State[0].parsing_number <== 0;
 
     for(var data_idx = 1; data_idx < DATA_BYTES; data_idx++) {
-        State[data_idx]                  = StateUpdate();
+        State[data_idx]                  = StateUpdate(MAX_STACK_HEIGHT);
         State[data_idx].byte           <== data[data_idx];
         State[data_idx].pointer        <== State[data_idx - 1].next_pointer;
         State[data_idx].stack          <== State[data_idx - 1].next_stack;
@@ -34,7 +38,7 @@ template Extract(DATA_BYTES) {
 
         // Debugging
         log("State[", data_idx, "].pointer       ", "= ", State[data_idx].pointer);
-        for(var i = 0; i<4; i++) {
+        for(var i = 0; i<MAX_STACK_HEIGHT; i++) {
             log("State[", data_idx, "].stack[", i,"]    ", "= ", State[data_idx].stack[i]);
         }
         log("State[", data_idx, "].parsing_string", "= ", State[data_idx].parsing_string);
