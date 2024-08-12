@@ -291,12 +291,12 @@ template RewriteStack(n) {
         // points to 1 value back
         prev_indicator[i] = IsZero();
         prev_indicator[i].in <== pointer - 2 * isPop.out - i;
-        log("prev_indicator[",i,"]: ", prev_indicator[i].out);
+        // log("prev_indicator[",i,"]: ", prev_indicator[i].out);
 
         // Points to top of stack if POP else it points to unallocated position
         indicator[i]         = IsZero();
         indicator[i].in    <== pointer - isPop.out - i;   
-        log("indicator[",i,"]:      ", indicator[i].out);  
+        // log("indicator[",i,"]:      ", indicator[i].out);  
 
         // TODO: `isDoublePop` will be true IF (stack[i] * indicator[i] == 3) AND readEndChar
         accum[i] <== stack[i] * indicator[i].out;
@@ -311,25 +311,43 @@ template RewriteStack(n) {
     atColon.in      <== next_accum - 3;
     signal isDoublePop <== atColon.out * readEndChar.out;
 
-    log("atColon = ", atColon.out);
-    log("isDoublePop = ", isDoublePop);
+    // log("atColon = ", atColon.out);
+    // log("isDoublePop = ", isDoublePop);
 
     // TODO: Now we can say `IF at_colon AND readEndChar` THEN doublePop!
     signal isPopAtPrev[n];
+    signal isNotPopAtPrev[n];
     signal singleOrDoublePop[n];
+    signal push_val[n];
+    signal second_pop_val[n];
+    signal first_pop_val[n];
+    signal temp_val[n];
+
 
     for(var i = 0; i < n; i++) {
 
         // Indicators for index to PUSH to or POP from
         // TODO: make potentially two values here enabled if we need to pop twice
         isPopAtPrev[i]     <== prev_indicator[i].out * isDoublePop; // temp signal
-        isPopAt[i]         <== isPopAtPrev[i] + indicator[i].out * isPop.out; // want to add: `prev_indicator[i] * isDoublePop`
+        log("isPopAtPrev[",i,"]:              ", isPopAtPrev[i]);
+        isNotPopAtPrev[i]  <== indicator[i].out * (1-isDoublePop);
+        log("isNotPopAtPrev[",i,"]:           ", isNotPopAtPrev[i]);
+        isPopAt[i]         <== indicator[i].out * isPop.out; // want to add: `prev_indicator[i] * isDoublePop`
         log("isPopAt[",i,"]:              ", isPopAt[i]);
 
         isPushAt[i]        <== indicator[i].out * isPush.out; 
 
         // Leave the stack alone except for where we indicate change
-        next_stack[i]      <== stack[i] + (isPushAt[i] + isPopAt[i]) * stack_val;
+        second_pop_val[i]            <== isPopAtPrev[i] * stack_val;
+        temp_val[i]                  <== stack_val - (3 + stack_val) * isDoublePop;
+        first_pop_val[i]             <== isPopAt[i] * temp_val[i]; // = isPopAt[i] * (stack_val * (1 - isDoublePop) - 3 * isDoublePop)
+        push_val[i]                  <== isPushAt[i] * stack_val;
+
+        log("first_pop_val[",i,"]:         ", first_pop_val[i]);
+        log("second_pop_val[",i,"]:        ", second_pop_val[i]);
+        log("push_val[",i,"]:              ", push_val[i]);
+
+        next_stack[i]      <== stack[i] + push_val[i] + first_pop_val[i] + second_pop_val[i];
 
         // TODO: Constrain next_stack entries to be 0,1,2,3
     }
