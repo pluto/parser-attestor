@@ -71,7 +71,7 @@ template StateUpdate() {
     signal input stack[4];            // STACK -- how deep in a JSON nest we are and what type we are currently inside (e.g., `1` for object, `-1` for array).
     signal input parsing_string;
     signal input parsing_number;
-    signal input key_or_value;              // BIT_FLAG-- whether we are in a key or a value
+    signal input key_or_value;              // (conditional?) BIT_FLAG -- 1 if in KEY string 0 if in VALUE string?
     // signal parsing_boolean;
     // signal parsing_null; // TODO
 
