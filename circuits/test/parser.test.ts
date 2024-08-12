@@ -60,35 +60,35 @@ describe("parser", () => {
     //--------------------------------------------------------------------------------------------//
     //-Delimeters---------------------------------------------------------------------------------//
     // - ASCII char: `{`
-    const start_brace = "123";
+    const start_brace = 123;
     // - ASCII char: `}`
-    const end_brace = "125";
+    const end_brace = 125;
     // - ASCII char `[`
-    const start_bracket = "91";
+    const start_bracket = 91;
     // - ASCII char `]`
-    const end_bracket = "93";
-    // - ASCII char `"`
-    const quote = "34";
+    const end_bracket = 93;
+    // - ASCII char ``
+    const quote = 34;
     // - ASCII char `:`
-    const colon = "58";
+    const colon = 58;
     // - ASCII char `,`
-    const comma = "44";
+    const comma = 44;
     //--------------------------------------------------------------------------------------------//
     // White space
     // - ASCII char: `\n`
-    const newline = "10";
+    const newline = 10;
     // - ASCII char: ` `
-    const space = "32";
+    const space = 32;
     //--------------------------------------------------------------------------------------------//
     // Escape
     // - ASCII char: `\`
-    const escape = "92";
+    const escape = 92;
     //--------------------------------------------------------------------------------------------//
 
     describe("StateUpdate", () => {
         let circuit: WitnessTester<
-            ["byte", "pointer", "stack", "parsing_string", "parsing_number", "key_or_value"],
-            ["next_pointer", "next_stack", "next_parsing_string", "next_parsing_number", "next_key_or_value"]
+            ["byte", "pointer", "stack", "parsing_string", "parsing_number"],
+            ["next_pointer", "next_stack", "next_parsing_string", "next_parsing_number"]
         >;
 
         function generatePassCase(input: any, expected: any, desc: string) {
@@ -121,19 +121,17 @@ describe("parser", () => {
         });
 
         let init = {
-            byte: "0",
-            pointer: "0",
-            stack: ["0", "0", "0", "0"],
-            parsing_string: "0",
-            parsing_number: "0",
-            in_value: "0",
+            byte: 0,
+            pointer: 0,
+            stack: [0, 0, 0, 0],
+            parsing_string: 0,
+            parsing_number: 0,
         };
         let out = {
             next_pointer: init.pointer,
             next_stack: init.stack,
             next_parsing_string: init.parsing_string,
             next_parsing_number: init.parsing_number,
-            next_in_value: init.in_value,
         };
 
 
@@ -152,8 +150,8 @@ describe("parser", () => {
         let read_start_brace = { ...init };
         read_start_brace.byte = start_brace;
         let read_start_brace_out = { ...out };
-        read_start_brace_out.next_pointer = "1";
-        read_start_brace_out.next_stack = ["1", "0", "0", "0"];
+        read_start_brace_out.next_pointer = 1;
+        read_start_brace_out.next_stack = [1, 0, 0, 0];
         generatePassCase(read_start_brace, read_start_brace_out, ">>>> `{` read");
         //-----------------------------------------------------------------------------//
 
@@ -177,7 +175,7 @@ describe("parser", () => {
         let in_object_find_key_out = { ...out };
         in_object_find_key_out.next_pointer = in_object_find_key.pointer;
         in_object_find_key_out.next_stack = in_object_find_key.stack;
-        in_object_find_key_out.next_parsing_string = "1";
+        in_object_find_key_out.next_parsing_string = 1;
         generatePassCase(in_object_find_key, in_object_find_key_out, ">>>> `\"` read");
         //-----------------------------------------------------------------------------//
 
@@ -189,12 +187,12 @@ describe("parser", () => {
         let in_key = { ...init };
         in_key.pointer = read_start_brace_out.next_pointer;
         in_key.stack = read_start_brace_out.next_stack;
-        in_key.parsing_string = "1";
+        in_key.parsing_string = 1;
         in_key.byte = space;
         let in_key_out = { ...out };
         in_key_out.next_pointer = in_key.pointer;
         in_key_out.next_stack = in_key.stack;
-        in_key_out.next_parsing_string = "1";
+        in_key_out.next_parsing_string = 1;
         generatePassCase(in_key, in_key_out, ">>>> ` ` read");
         //-----------------------------------------------------------------------------//
 
@@ -206,7 +204,7 @@ describe("parser", () => {
         let in_key_to_exit = { ...init };
         in_key_to_exit.pointer = read_start_brace_out.next_pointer;
         in_key_to_exit.stack = read_start_brace_out.next_stack;
-        in_key_to_exit.parsing_string = "1"
+        in_key_to_exit.parsing_string = 1
         in_key_to_exit.byte = quote;
         let in_key_to_exit_out = { ...out };
         in_key_to_exit_out.next_pointer = in_key_to_exit.pointer;
@@ -222,10 +220,9 @@ describe("parser", () => {
         parsed_key_wait_to_parse_value.stack = read_start_brace_out.next_stack;
         parsed_key_wait_to_parse_value.byte = colon;
         let parsed_key_wait_to_parse_value_out = { ...out };
-        parsed_key_wait_to_parse_value_out.next_pointer = parsed_key_wait_to_parse_value.pointer;
-        parsed_key_wait_to_parse_value_out.next_stack = parsed_key_wait_to_parse_value.stack;
-        parsed_key_wait_to_parse_value_out.next_in_value = "1";
-        generatePassCase(parsed_key_wait_to_parse_value, parsed_key_wait_to_parse_value_out, ">>>> `: ` read");
+        parsed_key_wait_to_parse_value_out.next_pointer = 2;
+        parsed_key_wait_to_parse_value_out.next_stack = [1, 3, 0, 0];
+        generatePassCase(parsed_key_wait_to_parse_value, parsed_key_wait_to_parse_value_out, ">>>> `:` read");
         //-----------------------------------------------------------------------------//
 
         // // Test 8: `tree_depth == 1` AND parsing_value == 1` setup -> `"` is read
@@ -326,8 +323,8 @@ describe("parser", () => {
         in_object.stack = read_start_brace_out.next_stack;
         in_object.byte = start_brace;
         let in_object_out = { ...out };
-        in_object_out.next_pointer = "2";
-        in_object_out.next_stack = ["1", "1", "0", "0"];
+        in_object_out.next_pointer = 2;
+        in_object_out.next_stack = [1, 1, 0, 0];
         generatePassCase(in_object, in_object_out, ">>>> `{` read");
 
         // Test 8: Stack Management
@@ -339,25 +336,21 @@ describe("parser", () => {
         in_object_to_leave.stack = read_start_brace_out.next_stack;
         in_object_to_leave.byte = end_brace;
         let in_object_to_leave_out = { ...out };
-        in_object_to_leave_out.next_pointer = "0";
-        in_object_to_leave_out.next_stack = ["0", "0", "0", "0"];
+        in_object_to_leave_out.next_pointer = 0;
+        in_object_to_leave_out.next_stack = [0, 0, 0, 0];
         generatePassCase(in_object_to_leave, in_object_to_leave_out, ">>>> `}` read");
 
         // Test 9: Stack Management
         // init: read `{`, then read `[`
         // expect: pointer --> 2
-        //         stack   --> [1,-1,0,0]
+        //         stack   --> [1,2,0,0]
         let in_object_to_read_start_bracket = { ...init };
         in_object_to_read_start_bracket.byte = start_bracket;
-        in_object_to_read_start_bracket.pointer = "1";
-        in_object_to_read_start_bracket.stack = ["1", "0", "0", "0"];
+        in_object_to_read_start_bracket.pointer = 1;
+        in_object_to_read_start_bracket.stack = [1, 0, 0, 0];
         let in_object_to_read_start_bracket_out = { ...out };
-        in_object_to_read_start_bracket_out.next_pointer = "2";
-        in_object_to_read_start_bracket_out.next_stack =
-            ["1",
-                "21888242871839275222246405745257275088548364400416034343698204186575808495616",
-                "0",
-                "0"];
+        in_object_to_read_start_bracket_out.next_pointer = 2;
+        in_object_to_read_start_bracket_out.next_stack = [1, 2, 0, 0];
         generatePassCase(in_object_to_read_start_bracket, in_object_to_read_start_bracket_out, ">>>> `[` read");
 
         // Test 10: Stack Management
@@ -366,8 +359,8 @@ describe("parser", () => {
         //         stack   --> [1,1,1,1]
         let in_max_stack = { ...init };
         in_max_stack.byte = start_brace;
-        in_max_stack.pointer = "4";
-        in_max_stack.stack = ["1", "1", "1", "1"];
+        in_max_stack.pointer = 4;
+        in_max_stack.stack = [1, 1, 1, 1];
         generateFailCase(in_max_stack, ">>>> `{` read --> (stack overflow)");
 
         // Test 11: Stack Management
@@ -376,9 +369,35 @@ describe("parser", () => {
         //         stack   --> [1,1,1,1]
         let in_max_stack_2 = { ...init };
         in_max_stack_2.byte = start_bracket;
-        in_max_stack_2.pointer = "4";
-        in_max_stack_2.stack = ["1", "1", "1", "1"];
+        in_max_stack_2.pointer = 4;
+        in_max_stack_2.stack = [1, 1, 1, 1];
         generateFailCase(in_max_stack, ">>>> `[` read --> (stack overflow)");
+
+        // Test 12: Stack Management
+        // init: read `{` and `[`, then read `]`
+        // expect: pointer --> 2
+        //         stack   --> [1,0,0,0]
+        let in_object_and_array = { ...init };
+        in_object_and_array.byte = end_bracket;
+        in_object_and_array.pointer = 2;
+        in_object_and_array.stack = [1, 2, 0, 0];
+        let in_object_and_array_out = { ...out };
+        in_object_and_array_out.next_pointer = 1;
+        in_object_and_array_out.next_stack = [1, 0, 0, 0];
+        generatePassCase(in_object_and_array, in_object_and_array_out, ">>>> `[` read");
+
+        // Test 12: Stack Management
+        // init: read `{` and `:`, then read `,`
+        // expect: pointer --> 2
+        //         stack   --> [1,0,0,0]
+        let in_object_and_value = { ...init };
+        in_object_and_value.byte = comma;
+        in_object_and_value.pointer = 2;
+        in_object_and_value.stack = [1, 3, 0, 0];
+        let in_object_and_value_out = { ...out };
+        in_object_and_value_out.next_pointer = 1;
+        in_object_and_value_out.next_stack = [1, 0, 0, 0];
+        generatePassCase(in_object_and_value, in_object_and_value_out, ">>>> `[` read");
     });
 
 });

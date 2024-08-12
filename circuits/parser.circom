@@ -71,7 +71,6 @@ template StateUpdate() {
     signal input stack[4];            // STACK -- how deep in a JSON nest we are and what type we are currently inside (e.g., `1` for object, `-1` for array).
     signal input parsing_string;
     signal input parsing_number;
-    signal input in_value;              // BIT_FLAG -- 1 if in KEY string 0 otherwise (TODO: disable with a colon? Might need to track that with stack)
     // signal parsing_boolean;
     // signal parsing_null; // TODO
 
@@ -79,27 +78,26 @@ template StateUpdate() {
     signal output next_stack[4];
     signal output next_parsing_string;
     signal output next_parsing_number;
-    signal output next_in_value;
     //--------------------------------------------------------------------------------------------//
     //-Instructions for ASCII---------------------------------------------------------------------//
     var pushpop = 0;
-    var obj_or_arr = 0;
-    var parsing_state[5]     = [pushpop, obj_or_arr, parsing_string, parsing_number, in_value];   
-    var do_nothing[5]        = [0,       0,          0,              0,              0]; // Command returned by switch if we want to do nothing, e.g. read a whitespace char while looking for a key
-    var hit_start_brace[5]   = [1,       1,          0,              0,              0]; // Command returned by switch if we hit a start brace `{`
-    var hit_end_brace[5]     = [-1,      1,          0,              0,              0]; // Command returned by switch if we hit a end brace `}`
-    var hit_start_bracket[5] = [1,       -1,         0,              0,              0]; // TODO: Might want `in_value` to toggle. Command returned by switch if we hit a start bracket `[` (TODO: could likely be combined with end bracket)
-    var hit_end_bracket[5]   = [-1,      -1,         0,              0,              0]; // Command returned by switch if we hit a start bracket `]` 
-    var hit_quote[5]         = [0,       0,          1,              0,              0]; // TODO: Mightn ot want this to toglle `parsing_array`. Command returned by switch if we hit a quote `"`
-    var hit_colon[5]         = [0,       0,          0,              0,              1]; // Command returned by switch if we hit a colon `:`
-    var hit_comma[5]         = [0,       0,          0,              -1,            -1]; // Command returned by switch if we hit a comma `,`
-    var hit_number[5]        = [0,       0,          0,              1,              0]; // Command returned by switch if we hit some decimal number (e.g., ASCII 48-57)
+    var stack_val = 0;
+    var parsing_state[4]     = [pushpop, stack_val, parsing_string, parsing_number];   
+    var do_nothing[4]        = [0,       0,         0,              0             ]; // Command returned by switch if we want to do nothing, e.g. read a whitespace char while looking for a key
+    var hit_start_brace[4]   = [1,       1,         0,              0             ]; // Command returned by switch if we hit a start brace `{`
+    var hit_end_brace[4]     = [-1,      1,         0,              0             ]; // Command returned by switch if we hit a end brace `}`
+    var hit_start_bracket[4] = [1,       2,         0,              0             ]; // TODO: Might want `in_value` to toggle. Command returned by switch if we hit a start bracket `[` (TODO: could likely be combined with end bracket)
+    var hit_end_bracket[4]   = [-1,      2,         0,              0             ]; // Command returned by switch if we hit a start bracket `]` 
+    var hit_quote[4]         = [0,       0,         1,              0             ]; // TODO: Mightn ot want this to toglle `parsing_array`. Command returned by switch if we hit a quote `"`
+    var hit_colon[4]         = [1,       3,         0,              0             ]; // Command returned by switch if we hit a colon `:`
+    var hit_comma[4]         = [-1,      3,         0,              -1            ]; // Command returned by switch if we hit a comma `,`
+    var hit_number[4]        = [0,       0,         0,              1             ]; // Command returned by switch if we hit some decimal number (e.g., ASCII 48-57)
     //--------------------------------------------------------------------------------------------//
     
     //--------------------------------------------------------------------------------------------//
     //-State machine updating---------------------------------------------------------------------//
     // * yield instruction based on what byte we read *
-    component matcher           = Switch(8, 5);
+    component matcher           = Switch(8, 4);
     var number = 256; // Number beyond a byte to represent an ASCII numeral
     matcher.branches          <== [start_brace,     end_brace,      quote,     colon,      comma,     start_bracket,     end_bracket,     number    ];
     matcher.vals              <== [hit_start_brace, hit_end_brace,  hit_quote, hit_colon,  hit_comma, hit_start_bracket, hit_end_bracket, hit_number];
@@ -111,11 +109,11 @@ template StateUpdate() {
     component mask             = StateToMask();
     mask.in                  <== parsing_state;     
     // * multiply the mask array elementwise with the instruction array *
-    component mulMaskAndOut    = ArrayMul(5);
+    component mulMaskAndOut    = ArrayMul(4);
     mulMaskAndOut.lhs        <== mask.out;
     mulMaskAndOut.rhs        <== matcher.out;
     // * add the masked instruction to the state to get new state *
-    component addToState       = ArrayAdd(5);
+    component addToState       = ArrayAdd(4);
     addToState.lhs           <== parsing_state;
     addToState.rhs           <== mulMaskAndOut.out;
     // * set the new state *
@@ -123,12 +121,11 @@ template StateUpdate() {
     newStack.pointer         <== pointer;
     newStack.stack           <== stack;
     newStack.pushpop         <== addToState.out[0];
-    newStack.obj_or_arr      <== addToState.out[1];
+    newStack.stack_val    <== addToState.out[1];
     next_pointer             <== newStack.next_pointer;
     next_stack               <== newStack.next_stack;
     next_parsing_string      <== addToState.out[2];
     next_parsing_number      <== addToState.out[3];
-    next_in_value              <== addToState.out[4];    
     //--------------------------------------------------------------------------------------------//
 
     //--------------------------------------------------------------------------------------------//
@@ -147,7 +144,6 @@ template StateUpdate() {
     }
     log("next_parsing_string", "= ", next_parsing_string);
     log("next_parsing_number", "= ", next_parsing_number);
-    log("next_in_value  ", "    = ", next_in_value  );
     log("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
     //--------------------------------------------------------------------------------------------//
 
@@ -213,14 +209,13 @@ template Switch(m, n) {
 }
 
 template StateToMask() {
-    signal input in[5];
-    signal output out[5];
+    signal input in[4];
+    signal output out[4];
     
     signal pushpop        <== in[0];
-    signal obj_or_array   <== in[1];
+    signal stack_val      <== in[1];
     signal parsing_string <== in[2];
     signal parsing_number <== in[3];
-    signal in_value         <== in[4];
 
     // `pushpop` can change: IF NOT `parsing_string`
     out[0] <== (1 - parsing_string);
@@ -232,10 +227,7 @@ template StateToMask() {
     out[2] <== 1 - 2 * parsing_string;
 
     // `parsing_number` can change: 
-    out[3] <== (1 - parsing_string);
-
-    // `in_value` can change:
-    out[4] <== (1 - parsing_string) - 2 * in_value;
+    out[3] <== (1 - parsing_string) * (- 2 * parsing_number);
 }
 
 // TODO: IMPORTANT NOTE, THE STACK IS CONSTRAINED TO 2**8 so the LessThan and GreaterThan work (could be changed)
@@ -245,8 +237,7 @@ template RewriteStack(n) {
     signal input pointer;
     signal input stack[n];
     signal input pushpop;
-    signal input obj_or_arr;
-
+    signal input stack_val;
     signal output next_pointer;
     signal output next_stack[n];
 
@@ -278,9 +269,9 @@ template RewriteStack(n) {
         isPushAt[i]        <== indicator[i].out * isPush.out; 
         
         // Leave the stack alone except for where we indicate change
-        next_stack[i]      <== stack[i] + (isPushAt[i] - isPopAt[i]) * obj_or_arr;
+        next_stack[i]      <== stack[i] + (isPushAt[i] - isPopAt[i]) * stack_val;
     }
-    
+
     component isOverflow = GreaterThan(8);
     isOverflow.in[0]   <== next_pointer;
     isOverflow.in[1]   <== n;
