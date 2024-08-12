@@ -99,6 +99,27 @@ describe("parser", () => {
 
     });
 
+    describe("GetTopOfStack", () => {
+        let circuit: WitnessTester<["stack", "pointer"], ["out"]>;
+        before(async () => {
+            circuit = await circomkit.WitnessTester(`GetTopOfStack`, {
+                file: "circuits/parser",
+                template: "GetTopOfStack",
+                params: [4],
+            });
+            console.log("#constraints:", await circuit.getConstraintCount());
+        });
+
+        it("witness: pointer = 4, stack = [0, 1, 2, 3, 4]", async () => {
+            await circuit.expectPass(
+                { pointer: 4, stack: [1, 2, 3, 4] },
+                { out: 4 },
+            );
+        });
+
+
+    });
+
     //--------------------------------------------------------------------------------------------//
     //-Delimeters---------------------------------------------------------------------------------//
     // - ASCII char: `{`

@@ -108,8 +108,6 @@ template StateUpdate(MAX_STACK_HEIGHT) {
     // * get the instruction mask based on current state *
     component mask             = StateToMask(MAX_STACK_HEIGHT);
     mask.in                  <== parsing_state;     
-    mask.stack               <== stack;
-    mask.pointer             <== pointer;
     // * multiply the mask array elementwise with the instruction array *
     component mulMaskAndOut    = ArrayMul(4);
     mulMaskAndOut.lhs        <== mask.out;
@@ -239,8 +237,6 @@ template Switch(n) {
 
 template StateToMask(n) {
     signal input in[4];
-    signal input stack[n];
-    signal input pointer;
     signal output out[4];
     
     signal pushpop        <== in[0];
@@ -263,6 +259,22 @@ template StateToMask(n) {
 
     // `parsing_number` can change: 
     out[3] <== (1 - parsing_string) * (- 2 * parsing_number);
+}
+
+template GetTopOfStack(n) {
+    signal input stack[n];
+    signal input pointer;
+
+    signal output out;
+
+    component atTop = Switch(n);
+    for(var i = 0; i < n; i++) {
+        atTop.branches[i] <== i + 1;
+        atTop.vals[i]     <== stack[i];
+    }
+    atTop.case <== pointer;
+
+    out <== atTop.out;
 }
 
 // TODO: IMPORTANT NOTE, THE STACK IS CONSTRAINED TO 2**8 so the LessThan and GreaterThan work (could be changed)
