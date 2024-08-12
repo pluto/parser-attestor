@@ -85,12 +85,12 @@ template StateUpdate() {
     var parsing_state[4]     = [pushpop, stack_val, parsing_string, parsing_number];   
     var do_nothing[4]        = [0,       0,         0,              0             ]; // Command returned by switch if we want to do nothing, e.g. read a whitespace char while looking for a key
     var hit_start_brace[4]   = [1,       1,         0,              0             ]; // Command returned by switch if we hit a start brace `{`
-    var hit_end_brace[4]     = [-1,      1,         0,              0             ]; // Command returned by switch if we hit a end brace `}`
+    var hit_end_brace[4]     = [-1,      -1,        0,              0             ]; // Command returned by switch if we hit a end brace `}`
     var hit_start_bracket[4] = [1,       2,         0,              0             ]; // TODO: Might want `in_value` to toggle. Command returned by switch if we hit a start bracket `[` (TODO: could likely be combined with end bracket)
-    var hit_end_bracket[4]   = [-1,      2,         0,              0             ]; // Command returned by switch if we hit a start bracket `]` 
+    var hit_end_bracket[4]   = [-1,      -2,        0,              0             ]; // Command returned by switch if we hit a start bracket `]` 
     var hit_quote[4]         = [0,       0,         1,              0             ]; // TODO: Mightn ot want this to toglle `parsing_array`. Command returned by switch if we hit a quote `"`
     var hit_colon[4]         = [1,       3,         0,              0             ]; // Command returned by switch if we hit a colon `:`
-    var hit_comma[4]         = [-1,      3,         0,              -1            ]; // Command returned by switch if we hit a comma `,`
+    var hit_comma[4]         = [-1,      -3,        0,              -1            ]; // Command returned by switch if we hit a comma `,`
     var hit_number[4]        = [0,       0,         0,              1             ]; // Command returned by switch if we hit some decimal number (e.g., ASCII 48-57)
     //--------------------------------------------------------------------------------------------//
     
@@ -138,13 +138,13 @@ template StateUpdate() {
     //     log(">>>> addToState[",i,"]   :        ", addToState.out[i]);
     // }
     // Debugging
-    log("next_pointer       ", "= ", next_pointer);
-    for(var i = 0; i<4; i++) {
-        log("next_stack[", i,"]    ", "= ", next_stack[i]);
-    }
-    log("next_parsing_string", "= ", next_parsing_string);
-    log("next_parsing_number", "= ", next_parsing_number);
-    log("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
+    // log("next_pointer       ", "= ", next_pointer);
+    // for(var i = 0; i<4; i++) {
+    //     log("next_stack[", i,"]    ", "= ", next_stack[i]);
+    // }
+    // log("next_parsing_string", "= ", next_parsing_string);
+    // log("next_parsing_number", "= ", next_parsing_number);
+    // log("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
     //--------------------------------------------------------------------------------------------//
 
     //--------------------------------------------------------------------------------------------//
@@ -220,7 +220,8 @@ template StateToMask() {
     // `pushpop` can change: IF NOT `parsing_string`
     out[0] <== (1 - parsing_string);
 
-    // `val_or_array`: IF NOT `parsing_string`
+    // `stack_val`: IF NOT `parsing_string` OR 
+    // TODO: `parsing_array`
     out[1] <== (1 - parsing_string);
 
     // `parsing_string` can change:
@@ -248,6 +249,22 @@ template RewriteStack(n) {
     - if pushpop is 0, we are going to just return the old stack
     - if pushpop is 1, we are going to increment the pointer and write a new value
     - if pushpop is -1, we are going to decrement the pointer and delete an old value if it was the same value
+
+    TODO: There's the weird case of "no trailing commas" for KVs in JSON. 
+    This constitutes valid JSON, fortunately, and is NOT optional. Or, at least,
+    we should NOT consider it to be for this current impl.
+    Basically, JSON must be like:
+    ```
+    {
+        "a": "valA",
+        "b": "valB"
+    }
+    ```
+    so there is the one end here where we have to go from:
+    stack      == [1,3,0,0,...]
+    to
+    next_stack == [0,0,0,0,...]
+    on the case we get a POP instruction reading an object OR an array (no trailing commas in arrays either)
     */
 
     next_pointer <== pointer + pushpop; // If pushpop is 0, pointer doesn't change, if -1, decrement, +1 increment
@@ -261,15 +278,31 @@ template RewriteStack(n) {
     signal isPopAt[n];
     signal isPushAt[n];
 
-    for(var i = 0; i < n; i++) {
-        indicator[i]         = IsZero();
-        indicator[i].in    <== pointer - isPop.out - i; 
+    // TODO: Thinking of it this way
+    component isEndOfArrayOrObject[n];
+    // top of stack is a 3, then we need to pop off 3, and check the value underneath 
+    // is correct match (i.e., a brace or bracket (1 or 2))
 
+    for(var i = 0; i < n; i++) {
+        // Points to top of stack if POP
+        indicator[i]         = IsZero();
+        indicator[i].in    <== pointer - isPop.out - i;     
+
+        // Indicators for index to PUSH to or POP from
         isPopAt[i]         <== indicator[i].out * isPop.out; 
         isPushAt[i]        <== indicator[i].out * isPush.out; 
+
+        // NEW STUFF -------------------------------------------//
+        // If this is TRUE, then we are POP and the top is a `:` marker (3)
+        isEndOfArrayOrObject[i] = IsZero();
+        isEndOfArrayOrObject[i].in <== stack[i] * indicator[i].out - 3;
+        // Therefore, if we are hitting a stack value
+        //------------------------------------------------------//
         
         // Leave the stack alone except for where we indicate change
-        next_stack[i]      <== stack[i] + (isPushAt[i] - isPopAt[i]) * stack_val;
+        next_stack[i]      <== stack[i] + (isPushAt[i] + isPopAt[i]) * stack_val;
+
+        // TODO: Constrain next_stack entries to be 0,1,2,3
     }
 
     component isOverflow = GreaterThan(8);

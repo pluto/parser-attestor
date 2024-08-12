@@ -22,10 +22,7 @@ template Extract(DATA_BYTES) {
     State[0].pointer        <== 0;
     State[0].stack          <== [0,0,0,0];
     State[0].parsing_string <== 0;
-    State[0].parsing_array  <== 0;
-    State[0].parsing_object <== 0;
     State[0].parsing_number <== 0;
-    State[0].key_or_value   <== 0;
 
     for(var data_idx = 1; data_idx < DATA_BYTES; data_idx++) {
         State[data_idx]                  = StateUpdate();
@@ -33,10 +30,7 @@ template Extract(DATA_BYTES) {
         State[data_idx].pointer        <== State[data_idx - 1].next_pointer;
         State[data_idx].stack          <== State[data_idx - 1].next_stack;
         State[data_idx].parsing_string <== State[data_idx - 1].next_parsing_string;
-        State[data_idx].parsing_array  <== State[data_idx - 1].next_parsing_array;
-        State[data_idx].parsing_object <== State[data_idx - 1].next_parsing_object;
         State[data_idx].parsing_number <== State[data_idx - 1].next_parsing_number;
-        State[data_idx].key_or_value   <== State[data_idx - 1].next_key_or_value;
 
         // Debugging
         log("State[", data_idx, "].pointer       ", "= ", State[data_idx].pointer);
@@ -44,10 +38,7 @@ template Extract(DATA_BYTES) {
             log("State[", data_idx, "].stack[", i,"]    ", "= ", State[data_idx].stack[i]);
         }
         log("State[", data_idx, "].parsing_string", "= ", State[data_idx].parsing_string);
-        log("State[", data_idx, "].parsing_array ", "= ", State[data_idx].parsing_array );
-        log("State[", data_idx, "].parsing_object", "= ", State[data_idx].parsing_object);
         log("State[", data_idx, "].parsing_number", "= ", State[data_idx].parsing_number);
-        log("State[", data_idx, "].key_or_value  ", "= ", State[data_idx].key_or_value  );
         log("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
     }
 
@@ -60,9 +51,6 @@ template Extract(DATA_BYTES) {
             log("State[", DATA_BYTES, "].stack[", i,"]    ", "= ", State[DATA_BYTES -1 ].next_stack[i]);
         }
         log("State[", DATA_BYTES, "].parsing_string", "= ", State[DATA_BYTES-1].next_parsing_string);
-        log("State[", DATA_BYTES, "].parsing_array ", "= ", State[DATA_BYTES-1].next_parsing_array );
-        log("State[", DATA_BYTES, "].parsing_object", "= ", State[DATA_BYTES-1].next_parsing_object);
         log("State[", DATA_BYTES, "].parsing_number", "= ", State[DATA_BYTES-1].next_parsing_number);
-        log("State[", DATA_BYTES, "].key_or_value  ", "= ", State[DATA_BYTES-1].next_key_or_value  );
         log("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
 } 
