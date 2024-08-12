@@ -220,7 +220,7 @@ describe("parser", () => {
         let in_object_to_leave_out = { ...out };
         in_object_to_leave_out.next_pointer = "0";
         in_object_to_leave_out.next_stack = ["0", "0", "0", "0"];
-        generatePassCase(in_object_to_leave, in_object_to_leave_out, ">>>> `\"` read");
+        generatePassCase(in_object_to_leave, in_object_to_leave_out, ">>>> `}` read");
 
         // Test 9: Stack Management
         // init: read `{`, then read `[`
@@ -237,7 +237,27 @@ describe("parser", () => {
                 "21888242871839275222246405745257275088548364400416034343698204186575808495616",
                 "0",
                 "0"];
-        generatePassCase(in_object_to_read_start_bracket, in_object_to_read_start_bracket_out, ">>>> `\"` read");
+        generatePassCase(in_object_to_read_start_bracket, in_object_to_read_start_bracket_out, ">>>> `[` read");
+
+        // Test 10: Stack Management
+        // init: read 4x `{`, then read `{`
+        // expect: pointer --> 4
+        //         stack   --> [1,1,1,1]
+        let in_max_stack = { ...init };
+        in_max_stack.byte = start_brace;
+        in_max_stack.pointer = "4";
+        in_max_stack.stack = ["1", "1", "1", "1"];
+        generateFailCase(in_max_stack, ">>>> `{` read --> (stack overflow)");
+
+        // Test 11: Stack Management
+        // init: read 4x `{`, then read `[`
+        // expect: pointer --> 4
+        //         stack   --> [1,1,1,1]
+        let in_max_stack_2 = { ...init };
+        in_max_stack_2.byte = start_bracket;
+        in_max_stack_2.pointer = "4";
+        in_max_stack_2.stack = ["1", "1", "1", "1"];
+        generateFailCase(in_max_stack, ">>>> `[` read --> (stack overflow)");
 
 
         //// BREAK HERE AND RENAME AND ADJUST

@@ -262,10 +262,11 @@ template RewriteStack(n) {
 next_pointer <== pointer + pushpop; // If pushpop is 0, pointer doesn't change, if -1, decrement, +1 increment
 
     // Indicate which position in the stack should change (if any)
-    component isPop[n];
-    component isPush[n];
-    component indicatorPush[n];
-    component indicatorPop[n];
+    component isPop = IsZero();
+    isPop.in      <== pushpop + 1;
+    component isPush = IsZero();
+    isPush.in     <== pushpop - 1;
+    component indicator[n];
     signal isPopAt[n];
     signal isPushAt[n];
 
@@ -278,20 +279,11 @@ next_pointer <== pointer + pushpop; // If pushpop is 0, pointer doesn't change, 
     //TODO: Note, we are not effectively using the stack, we could actually pop and read these values to save to inner state signals
     // I.e., the `in_object` and `in_array` or whatever
     for(var i = 0; i < n; i++) {
-        isPop[i]             = IsZero();
-        isPop[i].in        <== pushpop + 1; // TRUE if we are popping
+        indicator[i]         = IsZero();
+        indicator[i].in    <== pointer - isPop.out - i; // 1 in the position of the current pointer
 
-        isPush[i]            = IsZero();
-        isPush[i].in       <== pushpop - 1; // TRUE if we are pushing
-
-        indicatorPush[i]         = IsZero();
-        indicatorPush[i].in    <== pointer - i; // 1 in the position of the current pointer
-
-        indicatorPop[i]         = IsZero();
-        indicatorPop[i].in    <== next_pointer - i; // 1 in the position of the current pointer
-
-        isPopAt[i]         <== indicatorPop[i].out * isPop[i].out; // Index to pop from 
-        isPushAt[i]        <== indicatorPush[i].out * isPush[i].out; // Index to push to
+        isPopAt[i]         <== indicator[i].out * isPop.out; // Index to pop from 
+        isPushAt[i]        <== indicator[i].out * isPush.out; // Index to push to
 
         //  Could use GreaterEqThan to set any position in the stack at next_pointer or above 0?
         
