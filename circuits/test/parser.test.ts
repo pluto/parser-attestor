@@ -126,15 +126,16 @@ describe("parser", () => {
             stack: ["0", "0", "0", "0"],
             parsing_string: "0",
             parsing_number: "0",
-            key_or_value: "0",
+            in_value: "0",
         };
         let out = {
             next_pointer: init.pointer,
             next_stack: init.stack,
             next_parsing_string: init.parsing_string,
             next_parsing_number: init.parsing_number,
-            next_key_or_value: init.key_or_value,
+            next_in_value: init.in_value,
         };
+
 
         //-----------------------------------------------------------------------------//
         // Test 1: 
@@ -169,7 +170,6 @@ describe("parser", () => {
         // Test 4: 
         // init: pointer == 1, stack = [1,0,0,0] -> `"` is read
         // expect: parsing_string --> 1
-        //         key_or_value   --> 1
         let in_object_find_key = { ...init };
         in_object_find_key.pointer = read_start_brace_out.next_pointer;
         in_object_find_key.stack = read_start_brace_out.next_stack;
@@ -178,119 +178,55 @@ describe("parser", () => {
         in_object_find_key_out.next_pointer = in_object_find_key.pointer;
         in_object_find_key_out.next_stack = in_object_find_key.stack;
         in_object_find_key_out.next_parsing_string = "1";
-        in_object_find_key_out.next_key_or_value = "1";
         generatePassCase(in_object_find_key, in_object_find_key_out, ">>>> `\"` read");
         //-----------------------------------------------------------------------------//
 
         //-----------------------------------------------------------------------------//
         // Test 5: 
-        // init: pointer == 1, stack = [1,0,0,0], parsing_string = 1, key_or_value = 1 -> ` ` is read
+        // init: pointer == 1, stack = [1,0,0,0], parsing_string = 1 -> ` ` is read
         // expect: parsing_string --> 1
-        //         key_or_value   --> 1
+        //         in_key         --> 1
         let in_key = { ...init };
         in_key.pointer = read_start_brace_out.next_pointer;
         in_key.stack = read_start_brace_out.next_stack;
         in_key.parsing_string = "1";
-        in_key.key_or_value = "1";
         in_key.byte = space;
         let in_key_out = { ...out };
         in_key_out.next_pointer = in_key.pointer;
         in_key_out.next_stack = in_key.stack;
         in_key_out.next_parsing_string = "1";
-        in_key_out.next_key_or_value = "1";
         generatePassCase(in_key, in_key_out, ">>>> ` ` read");
         //-----------------------------------------------------------------------------//
 
-        // // Test 6: `tree_depth == 1` AND `inside_key == 1 AND `parsing_key == 0` setup -> `"` is read
-        // let in_key_to_exit = { ...init };
-        // in_key_to_exit.pointer = read_start_brace_out.next_pointer;
-        // in_key_to_exit.stack = read_start_brace_out.next_stack;
-        // in_key_to_exit.parsing_object = read_start_brace_out.next_parsing_object;
-        // in_key_to_exit.parsing_string = 1
-        // in_key_to_exit.byte = quote;
-        // let in_key_to_exit_out = { ...out };
-        // in_key_to_exit_out.next_pointer = 1;
-        // in_key_to_exit_out.next_stack = [1, 0, 0, 0];
-        // in_key_to_exit_out.next_parsing_object = 1;
-        // generatePassCase(in_key_to_exit, in_key_to_exit_out, "`\"` read");
+        //-----------------------------------------------------------------------------//
+        // Test 6: 
+        // init: pointer = 1, stack = [1,0,0,0], parsing_string = 1 setup -> `"` is read
+        // expect: parsing_string --> 0
+        //         
+        let in_key_to_exit = { ...init };
+        in_key_to_exit.pointer = read_start_brace_out.next_pointer;
+        in_key_to_exit.stack = read_start_brace_out.next_stack;
+        in_key_to_exit.parsing_string = "1"
+        in_key_to_exit.byte = quote;
+        let in_key_to_exit_out = { ...out };
+        in_key_to_exit_out.next_pointer = in_key_to_exit.pointer;
+        in_key_to_exit_out.next_stack = in_key_to_exit.stack;
+        generatePassCase(in_key_to_exit, in_key_to_exit_out, "`\"` read");
+        //-----------------------------------------------------------------------------//
 
-        // TODO: Test stack fully works with brackets too
-        // Test 7: Stack Management
-        // init: read `{`, read another `{`
-        // expect: pointer --> 2
-        //         stack   --> [1,1,0,0]
-        let in_object = { ...init };
-        in_object.pointer = read_start_brace_out.next_pointer;
-        in_object.stack = read_start_brace_out.next_stack;
-        in_object.byte = start_brace;
-        let in_object_out = { ...out };
-        in_object_out.next_pointer = "2";
-        in_object_out.next_stack = ["1", "1", "0", "0"];
-        generatePassCase(in_object, in_object_out, ">>>> `{` read");
-
-        // Test 8: Stack Management
-        // init: read `{` then read`}`
-        // expect: pointer-- > 0
-        // stack-- > [0, 0, 0, 0]
-        let in_object_to_leave = { ...init };
-        in_object_to_leave.pointer = read_start_brace_out.next_pointer;
-        in_object_to_leave.stack = read_start_brace_out.next_stack;
-        in_object_to_leave.byte = end_brace;
-        let in_object_to_leave_out = { ...out };
-        in_object_to_leave_out.next_pointer = "0";
-        in_object_to_leave_out.next_stack = ["0", "0", "0", "0"];
-        generatePassCase(in_object_to_leave, in_object_to_leave_out, ">>>> `}` read");
-
-        // Test 9: Stack Management
-        // init: read `{`, then read `[`
-        // expect: pointer --> 2
-        //         stack   --> [1,-1,0,0]
-        let in_object_to_read_start_bracket = { ...init };
-        in_object_to_read_start_bracket.byte = start_bracket;
-        in_object_to_read_start_bracket.pointer = "1";
-        in_object_to_read_start_bracket.stack = ["1", "0", "0", "0"];
-        let in_object_to_read_start_bracket_out = { ...out };
-        in_object_to_read_start_bracket_out.next_pointer = "2";
-        in_object_to_read_start_bracket_out.next_stack =
-            ["1",
-                "21888242871839275222246405745257275088548364400416034343698204186575808495616",
-                "0",
-                "0"];
-        generatePassCase(in_object_to_read_start_bracket, in_object_to_read_start_bracket_out, ">>>> `[` read");
-
-        // Test 10: Stack Management
-        // init: read 4x `{`, then read `{`
-        // expect: pointer --> 4
-        //         stack   --> [1,1,1,1]
-        let in_max_stack = { ...init };
-        in_max_stack.byte = start_brace;
-        in_max_stack.pointer = "4";
-        in_max_stack.stack = ["1", "1", "1", "1"];
-        generateFailCase(in_max_stack, ">>>> `{` read --> (stack overflow)");
-
-        // Test 11: Stack Management
-        // init: read 4x `{`, then read `[`
-        // expect: pointer --> 4
-        //         stack   --> [1,1,1,1]
-        let in_max_stack_2 = { ...init };
-        in_max_stack_2.byte = start_bracket;
-        in_max_stack_2.pointer = "4";
-        in_max_stack_2.stack = ["1", "1", "1", "1"];
-        generateFailCase(in_max_stack, ">>>> `[` read --> (stack overflow)");
-
-
-        //// BREAK HERE AND RENAME AND ADJUST
-        /// USE CLEAR PREVIOUS SETUPS SO THIS IS EASIER TO PARSE VVVVVVVVVVVV
-
-        // // Test 7: `tree_depth == 1` AND parsed through key` setup -> `:` is read
-        // let parsed_key_wait_to_parse_value = { ...init };
-        // parsed_key_wait_to_parse_value.tree_depth = 1;
-        // parsed_key_wait_to_parse_value.parsing_key = 1;
-        // parsed_key_wait_to_parse_value.byte = colon;
-        // let parsed_key_wait_to_parse_value_out = { ...out };
-        // parsed_key_wait_to_parse_value_out.next_tree_depth = 1;
-        // parsed_key_wait_to_parse_value_out.next_parsing_value = 1;
-        // generatePassCase(parsed_key_wait_to_parse_value, parsed_key_wait_to_parse_value_out, ">>>> `:` read");
+        //-----------------------------------------------------------------------------//
+        // Test 7: 
+        // init: pointer = 1, stack = [1,0,0,0] -> `:` is read
+        let parsed_key_wait_to_parse_value = { ...init };
+        parsed_key_wait_to_parse_value.pointer = read_start_brace_out.next_pointer;
+        parsed_key_wait_to_parse_value.stack = read_start_brace_out.next_stack;
+        parsed_key_wait_to_parse_value.byte = colon;
+        let parsed_key_wait_to_parse_value_out = { ...out };
+        parsed_key_wait_to_parse_value_out.next_pointer = parsed_key_wait_to_parse_value.pointer;
+        parsed_key_wait_to_parse_value_out.next_stack = parsed_key_wait_to_parse_value.stack;
+        parsed_key_wait_to_parse_value_out.next_in_value = "1";
+        generatePassCase(parsed_key_wait_to_parse_value, parsed_key_wait_to_parse_value_out, ">>>> `: ` read");
+        //-----------------------------------------------------------------------------//
 
         // // Test 8: `tree_depth == 1` AND parsing_value == 1` setup -> `"` is read
         // let in_tree_find_value = { ...init };
@@ -364,6 +300,85 @@ describe("parser", () => {
         // end_of_key_to_inner_object_out.next_tree_depth = 2;
         // end_of_key_to_inner_object_out.next_parsing_key = 1;
         // generatePassCase(end_of_key_to_inner_object, end_of_key_to_inner_object_out, ">>>> `{` is read");
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        // TODO: Test stack fully works with brackets too
+        // Test 7: Stack Management
+        // init: read `{`, read another `{`
+        // expect: pointer --> 2
+        //         stack   --> [1,1,0,0]
+        let in_object = { ...init };
+        in_object.pointer = read_start_brace_out.next_pointer;
+        in_object.stack = read_start_brace_out.next_stack;
+        in_object.byte = start_brace;
+        let in_object_out = { ...out };
+        in_object_out.next_pointer = "2";
+        in_object_out.next_stack = ["1", "1", "0", "0"];
+        generatePassCase(in_object, in_object_out, ">>>> `{` read");
+
+        // Test 8: Stack Management
+        // init: read `{` then read`}`
+        // expect: pointer --> 0
+        //           stack --> [0, 0, 0, 0]
+        let in_object_to_leave = { ...init };
+        in_object_to_leave.pointer = read_start_brace_out.next_pointer;
+        in_object_to_leave.stack = read_start_brace_out.next_stack;
+        in_object_to_leave.byte = end_brace;
+        let in_object_to_leave_out = { ...out };
+        in_object_to_leave_out.next_pointer = "0";
+        in_object_to_leave_out.next_stack = ["0", "0", "0", "0"];
+        generatePassCase(in_object_to_leave, in_object_to_leave_out, ">>>> `}` read");
+
+        // Test 9: Stack Management
+        // init: read `{`, then read `[`
+        // expect: pointer --> 2
+        //         stack   --> [1,-1,0,0]
+        let in_object_to_read_start_bracket = { ...init };
+        in_object_to_read_start_bracket.byte = start_bracket;
+        in_object_to_read_start_bracket.pointer = "1";
+        in_object_to_read_start_bracket.stack = ["1", "0", "0", "0"];
+        let in_object_to_read_start_bracket_out = { ...out };
+        in_object_to_read_start_bracket_out.next_pointer = "2";
+        in_object_to_read_start_bracket_out.next_stack =
+            ["1",
+                "21888242871839275222246405745257275088548364400416034343698204186575808495616",
+                "0",
+                "0"];
+        generatePassCase(in_object_to_read_start_bracket, in_object_to_read_start_bracket_out, ">>>> `[` read");
+
+        // Test 10: Stack Management
+        // init: read 4x `{`, then read `{`
+        // expect: pointer --> 4
+        //         stack   --> [1,1,1,1]
+        let in_max_stack = { ...init };
+        in_max_stack.byte = start_brace;
+        in_max_stack.pointer = "4";
+        in_max_stack.stack = ["1", "1", "1", "1"];
+        generateFailCase(in_max_stack, ">>>> `{` read --> (stack overflow)");
+
+        // Test 11: Stack Management
+        // init: read 4x `{`, then read `[`
+        // expect: pointer --> 4
+        //         stack   --> [1,1,1,1]
+        let in_max_stack_2 = { ...init };
+        in_max_stack_2.byte = start_bracket;
+        in_max_stack_2.pointer = "4";
+        in_max_stack_2.stack = ["1", "1", "1", "1"];
+        generateFailCase(in_max_stack, ">>>> `[` read --> (stack overflow)");
     });
 
 });

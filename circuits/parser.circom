@@ -71,7 +71,7 @@ template StateUpdate() {
     signal input stack[4];            // STACK -- how deep in a JSON nest we are and what type we are currently inside (e.g., `1` for object, `-1` for array).
     signal input parsing_string;
     signal input parsing_number;
-    signal input key_or_value;              // (conditional?) BIT_FLAG -- 1 if in KEY string 0 if in VALUE string?
+    signal input in_value;              // BIT_FLAG -- 1 if in KEY string 0 otherwise (TODO: disable with a colon? Might need to track that with stack)
     // signal parsing_boolean;
     // signal parsing_null; // TODO
 
@@ -79,20 +79,20 @@ template StateUpdate() {
     signal output next_stack[4];
     signal output next_parsing_string;
     signal output next_parsing_number;
-    signal output next_key_or_value;
+    signal output next_in_value;
     //--------------------------------------------------------------------------------------------//
     //-Instructions for ASCII---------------------------------------------------------------------//
     var pushpop = 0;
     var obj_or_arr = 0;
-    var parsing_state[5]     = [pushpop, obj_or_arr, parsing_string, parsing_number, key_or_value];   
+    var parsing_state[5]     = [pushpop, obj_or_arr, parsing_string, parsing_number, in_value];   
     var do_nothing[5]        = [0,       0,          0,              0,              0]; // Command returned by switch if we want to do nothing, e.g. read a whitespace char while looking for a key
     var hit_start_brace[5]   = [1,       1,          0,              0,              0]; // Command returned by switch if we hit a start brace `{`
     var hit_end_brace[5]     = [-1,      1,          0,              0,              0]; // Command returned by switch if we hit a end brace `}`
-    var hit_start_bracket[5] = [1,       -1,         0,              0,              0]; // TODO: Might want `key_or_value` to toggle. Command returned by switch if we hit a start bracket `[` (TODO: could likely be combined with end bracket)
+    var hit_start_bracket[5] = [1,       -1,         0,              0,              0]; // TODO: Might want `in_value` to toggle. Command returned by switch if we hit a start bracket `[` (TODO: could likely be combined with end bracket)
     var hit_end_bracket[5]   = [-1,      -1,         0,              0,              0]; // Command returned by switch if we hit a start bracket `]` 
-    var hit_quote[5]         = [0,       0,          1,              0,              1]; // TODO: Mightn ot want this to toglle `parsing_array`. Command returned by switch if we hit a quote `"`
+    var hit_quote[5]         = [0,       0,          1,              0,              0]; // TODO: Mightn ot want this to toglle `parsing_array`. Command returned by switch if we hit a quote `"`
     var hit_colon[5]         = [0,       0,          0,              0,              1]; // Command returned by switch if we hit a colon `:`
-    var hit_comma[5]         = [0,       0,          0,              -1,             0]; // Command returned by switch if we hit a comma `,`
+    var hit_comma[5]         = [0,       0,          0,              -1,            -1]; // Command returned by switch if we hit a comma `,`
     var hit_number[5]        = [0,       0,          0,              1,              0]; // Command returned by switch if we hit some decimal number (e.g., ASCII 48-57)
     //--------------------------------------------------------------------------------------------//
     
@@ -128,7 +128,7 @@ template StateUpdate() {
     next_stack               <== newStack.next_stack;
     next_parsing_string      <== addToState.out[2];
     next_parsing_number      <== addToState.out[3];
-    next_key_or_value        <== addToState.out[4];    
+    next_in_value              <== addToState.out[4];    
     //--------------------------------------------------------------------------------------------//
 
     //--------------------------------------------------------------------------------------------//
@@ -147,7 +147,7 @@ template StateUpdate() {
     }
     log("next_parsing_string", "= ", next_parsing_string);
     log("next_parsing_number", "= ", next_parsing_number);
-    log("next_key_or_value  ", "= ", next_key_or_value  );
+    log("next_in_value  ", "    = ", next_in_value  );
     log("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
     //--------------------------------------------------------------------------------------------//
 
@@ -220,7 +220,7 @@ template StateToMask() {
     signal obj_or_array   <== in[1];
     signal parsing_string <== in[2];
     signal parsing_number <== in[3];
-    signal key_or_value   <== in[4];
+    signal in_value         <== in[4];
 
     // `pushpop` can change: IF NOT `parsing_string`
     out[0] <== (1 - parsing_string);
@@ -234,8 +234,8 @@ template StateToMask() {
     // `parsing_number` can change: 
     out[3] <== (1 - parsing_string);
 
-    // `key_or_value` can change:
-    out[4] <== (1 - parsing_string) - 2 * key_or_value;
+    // `in_value` can change:
+    out[4] <== (1 - parsing_string) - 2 * in_value;
 }
 
 // TODO: IMPORTANT NOTE, THE STACK IS CONSTRAINED TO 2**8 so the LessThan and GreaterThan work (could be changed)
