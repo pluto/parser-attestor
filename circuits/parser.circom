@@ -36,6 +36,10 @@ Null.
 
 TODO: Might not need the "parsing object" and "parsing array" as these are kinda captured by the stack?
 */
+template Delimeters() {
+    signal output START_BRACE <== 123;
+}
+
 template StateUpdate(MAX_STACK_HEIGHT) {
     //--------------------------------------------------------------------------------------------//
     //-Delimeters---------------------------------------------------------------------------------//
@@ -85,12 +89,12 @@ template StateUpdate(MAX_STACK_HEIGHT) {
     var parsing_state[4]     = [pushpop, stack_val, parsing_string, parsing_number];   
     var do_nothing[4]        = [0,       0,         0,              0             ]; // Command returned by switch if we want to do nothing, e.g. read a whitespace char while looking for a key
     var hit_start_brace[4]   = [1,       1,         0,              0             ]; // Command returned by switch if we hit a start brace `{`
-    var hit_end_brace[4]     = [-1,      -1,        0,              0             ]; // Command returned by switch if we hit a end brace `}`
+    var hit_end_brace[4]     = [-1,      1,        0,              0             ]; // Command returned by switch if we hit a end brace `}`
     var hit_start_bracket[4] = [1,       2,         0,              0             ]; // TODO: Might want `in_value` to toggle. Command returned by switch if we hit a start bracket `[` (TODO: could likely be combined with end bracket)
-    var hit_end_bracket[4]   = [-1,      -2,        0,              0             ]; // Command returned by switch if we hit a start bracket `]` 
+    var hit_end_bracket[4]   = [-1,      2,        0,              0             ]; // Command returned by switch if we hit a start bracket `]` 
     var hit_quote[4]         = [0,       0,         1,              0             ]; // TODO: Mightn ot want this to toglle `parsing_array`. Command returned by switch if we hit a quote `"`
     var hit_colon[4]         = [1,       3,         0,              0             ]; // Command returned by switch if we hit a colon `:`
-    var hit_comma[4]         = [-1,      -4,        0,              -1            ]; // Command returned by switch if we hit a comma `,`
+    var hit_comma[4]         = [-1,      4,        0,              -1            ]; // Command returned by switch if we hit a comma `,`
     var hit_number[4]        = [0,       0,         0,              1             ]; // Command returned by switch if we hit some decimal number (e.g., ASCII 48-57)
     //--------------------------------------------------------------------------------------------//
     
@@ -212,6 +216,8 @@ template RewriteStack(n) {
     signal output next_pointer;
     signal output next_stack[n];
 
+    component Delimeters = Delimeters();
+    var brace = Delimeters.START_BRACE;
     /*
     IDEA:
 
@@ -239,7 +245,7 @@ template RewriteStack(n) {
 
     // Indicate which position in the stack should change (if any)
     component readComma = IsEqual();
-    readComma.in[0]   <== -4;
+    readComma.in[0]   <== 4;
     readComma.in[1]   <== stack_val;
 
     component topOfStack = GetTopOfStack(n);
@@ -250,7 +256,7 @@ template RewriteStack(n) {
     isArray.in[0]    <== topOfStack.out;
     isArray.in[1]    <== 2;
 
-    signal READ_COMMA_AND_IN_ARRAY <== (1-readComma.out) + (1-isArray.out);
+    signal READ_COMMA_AND_IN_ARRAY <== (1 - readComma.out) + (1 - isArray.out);
     component isReadCommaAndInArray   = IsZero();
     isReadCommaAndInArray.in       <== READ_COMMA_AND_IN_ARRAY;
 
@@ -264,19 +270,14 @@ template RewriteStack(n) {
     signal isPushAt[n];
 
     component readEndChar = IsZero();
-    readEndChar.in <== (stack_val + 1) * (stack_val + 2);
+    readEndChar.in <== (stack_val - 1) * (stack_val - 2);
 
-
-
-    signal NOT_READ_COMMA      <== (1-readComma.out) * stack_val;
-    signal READ_COMMA          <== readComma.out * ((1-isArray.out) * (-3) + isArray.out * (-2));
+    signal NOT_READ_COMMA      <== (1 - readComma.out) * stack_val;
+    signal READ_COMMA          <== readComma.out * ((1-isArray.out) * (3) + isArray.out * (2));
     signal corrected_stack_val <== READ_COMMA + NOT_READ_COMMA;
 
     // top of stack is a 3, then we need to pop off 3, and check the value underneath 
     // is correct match (i.e., a brace or bracket (1 or 2))
-
-
-    signal accum[n];
 
     for(var i = 0; i < n; i++) {
         // points to 1 value back from top
@@ -286,17 +287,11 @@ template RewriteStack(n) {
         // Points to top of stack if POP else it points to unallocated position
         indicator[i]         = IsZero();
         indicator[i].in    <== pointer - isPop.out - i;   
-
-        accum[i] <== stack[i] * indicator[i].out;
     }
 
-    var next_accum = 0;
-    for(var i = 0; i < n; i++) {
-        next_accum += accum[i];
-    }
-
-    component atColon = IsZero();
-    atColon.in      <== next_accum - 3;
+    component atColon = IsEqual();
+    atColon.in[0]   <== topOfStack.out;
+    atColon.in[1]   <== 3;
     signal isDoublePop <== atColon.out * readEndChar.out;
 
     signal isPopAtPrev[n];
@@ -315,10 +310,10 @@ template RewriteStack(n) {
 
         // Leave the stack alone except for where we indicate change
         second_pop_val[i]            <== isPopAtPrev[i] * corrected_stack_val;
-        temp_val[i]                  <== corrected_stack_val - (3 + corrected_stack_val) * isDoublePop;
+        temp_val[i]                  <== corrected_stack_val + (1 + corrected_stack_val) * isDoublePop;
         first_pop_val[i]             <== isPopAt[i] * temp_val[i]; // = isPopAt[i] * (corrected_stack_val * (1 - isDoublePop) - 3 * isDoublePop)
 
-        next_stack[i]      <== stack[i] + isPushAt[i] * corrected_stack_val + first_pop_val[i] + second_pop_val[i];
+        next_stack[i]      <== stack[i] + isPushAt[i] * corrected_stack_val - first_pop_val[i] - second_pop_val[i];
 
         // TODO: Constrain next_stack entries to be 0,1,2,3
     }

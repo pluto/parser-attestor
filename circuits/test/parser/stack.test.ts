@@ -152,7 +152,8 @@ describe("StateUpdate :: RewriteStack", () => {
     );
 
     //-TEST_8----------------------------------------------------------//
-    // init: read `{` and `:`, then read `,`
+    // init:   pointer == 2, stack == [1,3,0,0]
+    // read:   `}`
     // expect: pointer --> 2
     //         stack   --> [1,3,0,0]
     let in_object_and_value_to_leave_object = { ...INITIAL_IN };
@@ -164,7 +165,7 @@ describe("StateUpdate :: RewriteStack", () => {
     in_object_and_value_to_leave_object_out.next_stack = [0, 0, 0, 0];
     generatePassCase(in_object_and_value_to_leave_object,
         in_object_and_value_to_leave_object_out,
-        ">>>> `,` read"
+        ">>>> `}` read"
     );
 
     //-TEST_9----------------------------------------------------------//
