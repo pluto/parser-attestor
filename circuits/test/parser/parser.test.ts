@@ -1,5 +1,5 @@
-import { circomkit, WitnessTester, generatePassCase, generateFailCase } from "../common";
-import { Delimiters, WhiteSpace, Numbers, Escape } from '.';
+import { circomkit, WitnessTester } from "../common";
+import { Delimiters, WhiteSpace, Numbers, Escape, INITIAL_IN, INITIAL_OUT } from '.';
 
 
 
@@ -8,6 +8,26 @@ describe("StateUpdate", () => {
         ["byte", "pointer", "stack", "parsing_string", "parsing_number"],
         ["next_pointer", "next_stack", "next_parsing_string", "next_parsing_number"]
     >;
+
+    function generatePassCase(input: any, expected: any, desc: string) {
+        const description = Object.entries(input)
+            .map(([key, value]) => `${key} = ${value}`)
+            .join(", ");
+
+        it(`(valid) witness: ${description}\n${desc}`, async () => {
+            await circuit.expectPass(input, expected);
+        });
+    }
+
+    function generateFailCase(input: any, desc: string) {
+        const description = Object.entries(input)
+            .map(([key, value]) => `${key} = ${value}`)
+            .join(", ");
+
+        it(`(invalid) witness: ${description}\n${desc}`, async () => {
+            await circuit.expectFail(input);
+        });
+    }
 
     before(async () => {
         circuit = await circomkit.WitnessTester(`StateUpdate`, {
@@ -19,26 +39,11 @@ describe("StateUpdate", () => {
 
     });
 
-    let init = {
-        byte: 0,
-        pointer: 0,
-        stack: [0, 0, 0, 0],
-        parsing_string: 0,
-        parsing_number: 0,
-    };
-    let out = {
-        next_pointer: init.pointer,
-        next_stack: init.stack,
-        next_parsing_string: init.parsing_string,
-        next_parsing_number: init.parsing_number,
-    };
-
-
     //-----------------------------------------------------------------------------//
     // Test 1: 
     // init: ZEROS then read `do_nothing` byte
     // expect: ZEROS
-    generatePassCase(init, out, ">>>> `NUL` read", circuit);
+    generatePassCase(INITIAL_IN, INITIAL_OUT, ">>>> `NUL` read");
     //-----------------------------------------------------------------------------//
 
     //-----------------------------------------------------------------------------//
@@ -46,9 +51,9 @@ describe("StateUpdate", () => {
     // init: ZEROS -> `{` is read
     // expect: pointer --> 1
     //         stack   --> [1,0,0,0]
-    let read_start_brace = { ...init };
+    let read_start_brace = { ...INITIAL_IN };
     read_start_brace.byte = Delimiters.START_BRACE;
-    let read_start_brace_out = { ...out };
+    let read_start_brace_out = { ...INITIAL_OUT };
     read_start_brace_out.next_pointer = 1;
     read_start_brace_out.next_stack = [1, 0, 0, 0];
     generatePassCase(read_start_brace, read_start_brace_out, ">>>> `{` read");
@@ -58,7 +63,7 @@ describe("StateUpdate", () => {
     // Test 3: 
     // init: ZEROS -> `}` is read 
     // expect: FAIL stack underflow
-    let read_end_brace = { ...init };
+    let read_end_brace = { ...INITIAL_IN };
     read_end_brace.byte = Delimiters.END_BRACE;
     generateFailCase(read_end_brace, ">>>> `}` read --> (stack underflow)");
     //-----------------------------------------------------------------------------//
@@ -67,11 +72,11 @@ describe("StateUpdate", () => {
     // Test 4: 
     // init: pointer == 1, stack = [1,0,0,0] -> `"` is read
     // expect: parsing_string --> 1
-    let in_object_find_key = { ...init };
+    let in_object_find_key = { ...INITIAL_IN };
     in_object_find_key.pointer = read_start_brace_out.next_pointer;
     in_object_find_key.stack = read_start_brace_out.next_stack;
     in_object_find_key.byte = Delimiters.QUOTE;
-    let in_object_find_key_out = { ...out };
+    let in_object_find_key_out = { ...INITIAL_OUT };
     in_object_find_key_out.next_pointer = in_object_find_key.pointer;
     in_object_find_key_out.next_stack = in_object_find_key.stack;
     in_object_find_key_out.next_parsing_string = 1;
@@ -83,12 +88,12 @@ describe("StateUpdate", () => {
     // init: pointer == 1, stack = [1,0,0,0], parsing_string = 1 -> ` ` is read
     // expect: parsing_string --> 1
     //         in_key         --> 1
-    let in_key = { ...init };
+    let in_key = { ...INITIAL_IN };
     in_key.pointer = read_start_brace_out.next_pointer;
     in_key.stack = read_start_brace_out.next_stack;
     in_key.parsing_string = 1;
     in_key.byte = WhiteSpace.SPACE;
-    let in_key_out = { ...out };
+    let in_key_out = { ...INITIAL_OUT };
     in_key_out.next_pointer = in_key.pointer;
     in_key_out.next_stack = in_key.stack;
     in_key_out.next_parsing_string = 1;
@@ -100,12 +105,12 @@ describe("StateUpdate", () => {
     // init: pointer = 1, stack = [1,0,0,0], parsing_string = 1 setup -> `"` is read
     // expect: parsing_string --> 0
     //         
-    let in_key_to_exit = { ...init };
+    let in_key_to_exit = { ...INITIAL_IN };
     in_key_to_exit.pointer = read_start_brace_out.next_pointer;
     in_key_to_exit.stack = read_start_brace_out.next_stack;
     in_key_to_exit.parsing_string = 1
     in_key_to_exit.byte = Delimiters.QUOTE;
-    let in_key_to_exit_out = { ...out };
+    let in_key_to_exit_out = { ...INITIAL_OUT };
     in_key_to_exit_out.next_pointer = in_key_to_exit.pointer;
     in_key_to_exit_out.next_stack = in_key_to_exit.stack;
     generatePassCase(in_key_to_exit, in_key_to_exit_out, "`\"` read");
@@ -114,11 +119,11 @@ describe("StateUpdate", () => {
     //-----------------------------------------------------------------------------//
     // Test 7: 
     // init: pointer = 1, stack = [1,0,0,0] -> `:` is read
-    let parsed_key_wait_to_parse_value = { ...init };
+    let parsed_key_wait_to_parse_value = { ...INITIAL_IN };
     parsed_key_wait_to_parse_value.pointer = read_start_brace_out.next_pointer;
     parsed_key_wait_to_parse_value.stack = read_start_brace_out.next_stack;
     parsed_key_wait_to_parse_value.byte = Delimiters.COLON;
-    let parsed_key_wait_to_parse_value_out = { ...out };
+    let parsed_key_wait_to_parse_value_out = { ...INITIAL_OUT };
     parsed_key_wait_to_parse_value_out.next_pointer = 2;
     parsed_key_wait_to_parse_value_out.next_stack = [1, 3, 0, 0];
     generatePassCase(parsed_key_wait_to_parse_value, parsed_key_wait_to_parse_value_out, ">>>> `:` read");
