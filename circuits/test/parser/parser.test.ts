@@ -55,7 +55,10 @@ describe("StateUpdate", () => {
     let read_start_brace_out = { ...INITIAL_OUT };
     read_start_brace_out.next_pointer = 1;
     read_start_brace_out.next_stack = [1, 0, 0, 0];
-    generatePassCase(read_start_brace, read_start_brace_out, ">>>> `{` read");
+    generatePassCase(read_start_brace,
+        read_start_brace_out,
+        ">>>> `{` read"
+    );
 
     //-TEST_3----------------------------------------------------------//
     // state:  INIT
@@ -63,7 +66,9 @@ describe("StateUpdate", () => {
     // expect: FAIL (stack underflow)
     let read_end_brace = { ...INITIAL_IN };
     read_end_brace.byte = Delimiters.END_BRACE;
-    generateFailCase(read_end_brace, ">>>> `}` read --> (stack underflow)");
+    generateFailCase(read_end_brace,
+        ">>>> `}` read --> (stack underflow)"
+    );
 
     //-TEST_4----------------------------------------------------------//
     // state:  pointer == 1, stack == [1,0,0,0] 
@@ -77,7 +82,10 @@ describe("StateUpdate", () => {
     in_object_find_key_out.next_pointer = 1;
     in_object_find_key_out.next_stack = [1, 0, 0, 0];
     in_object_find_key_out.next_parsing_string = 1;
-    generatePassCase(in_object_find_key, in_object_find_key_out, ">>>> `\"` read");
+    generatePassCase(in_object_find_key,
+        in_object_find_key_out,
+        ">>>> `\"` read"
+    );
 
     //-TEST_5----------------------------------------------------------//
     // state:  pointer == 1, stack = [1,0,0,0], parsing_string == 1
@@ -121,7 +129,10 @@ describe("StateUpdate", () => {
     in_tree_find_value_out.next_pointer = 1;
     in_tree_find_value_out.next_stack = [1, 3, 0, 0];
     in_tree_find_value_out.next_parsing_string = 1;
-    generatePassCase(in_tree_find_value, in_tree_find_value_out, ">>>> `\"` read");
+    generatePassCase(in_tree_find_value,
+        in_tree_find_value_out,
+        ">>>> `\"` read"
+    );
 
     //-TEST_8----------------------------------------------------------//
     // state:  pointer == 2, stack == [1,3,0,0], parsing_string == 1
@@ -135,47 +146,10 @@ describe("StateUpdate", () => {
     let in_value_to_exit_out = { ...INITIAL_OUT };
     in_value_to_exit_out.next_pointer = 2;
     in_value_to_exit_out.next_stack = [1, 3, 0, 0];
-    generatePassCase(in_value_to_exit, in_value_to_exit_out, ">>>> `\"` is read");
-
-    // // Test 11: `tree_depth == 1` AND end_of_kv` setup -> ` ` is read
-    // let in_end_of_kv = { ...init };
-    // in_end_of_kv.tree_depth = 1;
-    // in_end_of_kv.byte = space;
-    // let in_end_of_kv_out = { ...out };
-    // in_end_of_kv_out.next_tree_depth = 1;
-    // generatePassCase(in_end_of_kv, in_end_of_kv_out, ">>>> ` ` is read");
-
-    // // Test 12: `tree_depth == 1` AND end_of_kv` setup ->  `,` is read
-    // let end_of_kv_to_parse_to_key = { ...init };
-    // end_of_kv_to_parse_to_key.tree_depth = 1;
-    // end_of_kv_to_parse_to_key.parsing_value = 1;
-    // // end_of_kv_to_parse_to_key.end_of_kv = 1;
-    // end_of_kv_to_parse_to_key.byte = comma;
-    // let end_of_kv_to_parse_to_key_out = { ...out };
-    // end_of_kv_to_parse_to_key_out.next_tree_depth = 1;
-    // end_of_kv_to_parse_to_key_out.next_parsing_key = 1;
-    // generatePassCase(end_of_kv_to_parse_to_key, end_of_kv_to_parse_to_key_out, ">>>> ` ` is read");
-
-    // // Test 13: `tree_depth == 1` AND end_of_kv` setup ->  `}` is read
-    // let end_of_kv_to_exit_json = { ...init };
-    // end_of_kv_to_exit_json.tree_depth = 1;
-    // end_of_kv_to_exit_json.parsing_value = 1;
-    // end_of_kv_to_exit_json.byte = end_brace;
-    // let end_of_kv_to_exit_json_out = { ...out };
-    // end_of_kv_to_exit_json_out.next_parsing_value = 1;
-    // generatePassCase(end_of_kv_to_exit_json, end_of_kv_to_exit_json_out, ">>>> `}` is read");
-
-    // // NOTE: At this point, we can parse JSON that has 2 keys at depth 1!
-
-    // // Test 14: `tree_depth == 1` AND parsing_value` setup ->  `{` is read
-    // let end_of_key_to_inner_object = { ...init };
-    // end_of_key_to_inner_object.tree_depth = 1;
-    // end_of_key_to_inner_object.parsing_value = 1;
-    // end_of_key_to_inner_object.byte = start_brace;
-    // let end_of_key_to_inner_object_out = { ...out };
-    // end_of_key_to_inner_object_out.next_tree_depth = 2;
-    // end_of_key_to_inner_object_out.next_parsing_key = 1;
-    // generatePassCase(end_of_key_to_inner_object, end_of_key_to_inner_object_out, ">>>> `{` is read");
+    generatePassCase(in_value_to_exit,
+        in_value_to_exit_out,
+        ">>>> `\"` is read"
+    );
 
 });
 

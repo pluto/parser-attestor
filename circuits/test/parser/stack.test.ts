@@ -190,6 +190,9 @@ describe("StateUpdate :: RewriteStack", () => {
     let parsed_key_wait_to_parse_value_out = { ...INITIAL_OUT };
     parsed_key_wait_to_parse_value_out.next_pointer = 2;
     parsed_key_wait_to_parse_value_out.next_stack = [1, 3, 0, 0];
-    generatePassCase(parsed_key_wait_to_parse_value, parsed_key_wait_to_parse_value_out, ">>>> `:` read");
+    generatePassCase(parsed_key_wait_to_parse_value,
+        parsed_key_wait_to_parse_value_out,
+        ">>>> `:` read"
+    );
 
 });
