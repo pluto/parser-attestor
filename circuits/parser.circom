@@ -4,7 +4,7 @@ include "utils.circom";
 include "language.circom";
 
 /*
-TODO: Might not need the "parsing object" and "parsing array" as these are kinda captured by the stack?
+TODO: Change the values to push onto stack to be given by START_BRACE, COLON, etc.
 */
 
 template StateUpdate(MAX_STACK_HEIGHT) {
