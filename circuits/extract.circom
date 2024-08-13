@@ -3,7 +3,7 @@ pragma circom 2.1.9;
 include "utils.circom";
 include "parser.circom";
 
-template Extract(DATA_BYTES) {
+template Extract(DATA_BYTES, MAX_STACK_HEIGHT) {
     signal input data[DATA_BYTES];
 
     // TODO: Add assertions on the inputs here!
@@ -14,7 +14,6 @@ template Extract(DATA_BYTES) {
     component dataASCII = ASCII(DATA_BYTES);
     dataASCII.in <== data;
     //--------------------------------------------------------------------------------------------//
-    var MAX_STACK_HEIGHT = 16;
     // Initialze the parser
     component State[DATA_BYTES];
     State[0] = StateUpdate(MAX_STACK_HEIGHT);
@@ -50,7 +49,7 @@ template Extract(DATA_BYTES) {
 
         // Debugging
         log("State[", DATA_BYTES, "].pointer       ", "= ", State[DATA_BYTES -1].next_pointer);
-        for(var i = 0; i<4; i++) {
+        for(var i = 0; i < MAX_STACK_HEIGHT; i++) {
             log("State[", DATA_BYTES, "].stack[", i,"]    ", "= ", State[DATA_BYTES -1 ].next_stack[i]);
         }
         log("State[", DATA_BYTES, "].parsing_string", "= ", State[DATA_BYTES-1].next_parsing_string);

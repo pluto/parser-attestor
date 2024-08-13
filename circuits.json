@@ -3,35 +3,40 @@
         "file": "extract",
         "template": "Extract",
         "params": [
-            157
+            157,
+            13
         ]
     },
     "value_string": {
         "file": "extract",
         "template": "Extract",
         "params": [
-            12
+            12,
+            2
         ]
     },
     "value_number": {
         "file": "extract",
         "template": "Extract",
         "params": [
-            12
+            12,
+            2
         ]
     },
     "value_array": {
         "file": "extract",
         "template": "Extract",
         "params": [
-            18
+            18,
+            3
         ]
     },
     "value_object": {
         "file": "extract",
         "template": "Extract",
         "params": [
-            21
+            21,
+            4
         ]
     }
 }
