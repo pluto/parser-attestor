@@ -1,62 +1,37 @@
 {
-    "extract_test": {
+    "extract": {
+        "file": "extract",
+        "template": "Extract",
+        "params": [
+            157
+        ]
+    },
+    "value_string": {
         "file": "extract",
         "template": "Extract",
         "params": [
             12
         ]
     },
-    "test_extract_two_key": {
+    "value_number": {
         "file": "extract",
         "template": "Extract",
         "params": [
-            4,
-            40
+            12
         ]
     },
-    "test_extract_depth": {
+    "value_array": {
         "file": "extract",
         "template": "Extract",
         "params": [
-            4,
-            64
+            18
         ]
     },
-    "test_extract_sambhav": {
+    "value_object": {
         "file": "extract",
         "template": "Extract",
         "params": [
-            4,
-            105
-        ]
-    },
-    "extract_array": {
-        "file": "extract",
-        "template": "Extract",
-        "params": [
-            15
-        ]
-    },
-    "extract_number": {
-        "file": "extract",
-        "template": "Extract",
-        "params": [
-            11
-        ]
-    },
-    "test_extract_hard": {
-        "file": "extract",
-        "template": "Extract",
-        "params": [
-            4,
-            48
-        ]
-    },
-    "extract_example": {
-        "file": "extract",
-        "template": "Extract",
-        "params": [
-            157
+            21
         ]
     }
 }
