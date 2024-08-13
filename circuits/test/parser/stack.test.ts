@@ -53,8 +53,8 @@ describe("StateUpdate :: RewriteStack", () => {
         });
     }
 
-    // TODO: Test stack fully works with brackets too
-    // Test 7: Stack Management
+
+    //-TEST_1----------------------------------------------------------//
     // init: read `{`, read another `{`
     // expect: pointer --> 2
     //         stack   --> [1,1,0,0]
@@ -67,7 +67,7 @@ describe("StateUpdate :: RewriteStack", () => {
     in_object_out.next_stack = [1, 1, 0, 0];
     generatePassCase(in_object, in_object_out, ">>>> `{` read");
 
-    // Test 8: Stack Management
+    //-TEST_2----------------------------------------------------------//
     // init: read `{` then read`}`
     // expect: pointer --> 0
     //           stack --> [0, 0, 0, 0]
@@ -76,9 +76,12 @@ describe("StateUpdate :: RewriteStack", () => {
     in_object_to_leave.stack = [1, 0, 0, 0];
     in_object_to_leave.byte = Delimiters.END_BRACE;
     let in_object_to_leave_out = { ...INITIAL_OUT };
-    generatePassCase(in_object_to_leave, in_object_to_leave_out, ">>>> `}` read");
+    generatePassCase(in_object_to_leave,
+        in_object_to_leave_out,
+        ">>>> `}` read"
+    );
 
-    // Test 9: Stack Management
+    //-TEST_3----------------------------------------------------------//
     // init: read `{`, then read `[`
     // expect: pointer --> 2
     //         stack   --> [1,2,0,0]
@@ -89,9 +92,12 @@ describe("StateUpdate :: RewriteStack", () => {
     let in_object_to_read_start_bracket_out = { ...INITIAL_OUT };
     in_object_to_read_start_bracket_out.next_pointer = 2;
     in_object_to_read_start_bracket_out.next_stack = [1, 2, 0, 0];
-    generatePassCase(in_object_to_read_start_bracket, in_object_to_read_start_bracket_out, ">>>> `[` read");
+    generatePassCase(in_object_to_read_start_bracket,
+        in_object_to_read_start_bracket_out,
+        ">>>> `[` read"
+    );
 
-    // Test 10: Stack Management
+    //-TEST_4----------------------------------------------------------//
     // init: read 4x `{`, then read `{`
     // expect: pointer --> 4
     //         stack   --> [1,1,1,1]
@@ -101,7 +107,7 @@ describe("StateUpdate :: RewriteStack", () => {
     in_max_stack.stack = [1, 1, 1, 1];
     generateFailCase(in_max_stack, ">>>> `{` read --> (stack overflow)");
 
-    // Test 11: Stack Management
+    //-TEST_5----------------------------------------------------------//
     // init: read 4x `{`, then read `[`
     // expect: pointer --> 4
     //         stack   --> [1,1,1,1]
@@ -111,7 +117,7 @@ describe("StateUpdate :: RewriteStack", () => {
     in_max_stack_2.stack = [1, 1, 1, 1];
     generateFailCase(in_max_stack, ">>>> `[` read --> (stack overflow)");
 
-    // Test 12: Stack Management
+    //-TEST_6----------------------------------------------------------//
     // init: read `{` and `[`, then read `]`
     // expect: pointer --> 2
     //         stack   --> [1,0,0,0]
@@ -122,9 +128,12 @@ describe("StateUpdate :: RewriteStack", () => {
     let in_object_and_array_out = { ...INITIAL_OUT };
     in_object_and_array_out.next_pointer = 1;
     in_object_and_array_out.next_stack = [1, 0, 0, 0];
-    generatePassCase(in_object_and_array, in_object_and_array_out, ">>>> `]` read");
+    generatePassCase(in_object_and_array,
+        in_object_and_array_out,
+        ">>>> `]` read"
+    );
 
-    // Test 12: Stack Management
+    //-TEST_7----------------------------------------------------------//
     // init: read `{` and `:`, then read `,`
     // expect: pointer --> 2
     //         stack   --> [1,3,0,0]
@@ -135,9 +144,12 @@ describe("StateUpdate :: RewriteStack", () => {
     let in_object_and_value_out = { ...INITIAL_OUT };
     in_object_and_value_out.next_pointer = 1;
     in_object_and_value_out.next_stack = [1, 0, 0, 0];
-    generatePassCase(in_object_and_value, in_object_and_value_out, ">>>> `,` read");
+    generatePassCase(in_object_and_value,
+        in_object_and_value_out,
+        ">>>> `,` read"
+    );
 
-    // Test 13: Stack Management
+    //-TEST_8----------------------------------------------------------//
     // init: read `{` and `:`, then read `,`
     // expect: pointer --> 2
     //         stack   --> [1,3,0,0]
@@ -148,10 +160,12 @@ describe("StateUpdate :: RewriteStack", () => {
     let in_object_and_value_to_leave_object_out = { ...INITIAL_OUT };
     in_object_and_value_to_leave_object_out.next_pointer = 0;
     in_object_and_value_to_leave_object_out.next_stack = [0, 0, 0, 0];
-    generatePassCase(in_object_and_value_to_leave_object, in_object_and_value_to_leave_object_out, ">>>> `,` read");
+    generatePassCase(in_object_and_value_to_leave_object,
+        in_object_and_value_to_leave_object_out,
+        ">>>> `,` read"
+    );
 
-    //-----------------------------------------------------------------------------//
-    // Test SOMETHING: 
+    //-TEST_9----------------------------------------------------------//
     // init: pointer = 1, stack = [1,2,0,0] -> `,` is read
     let inside_array = { ...INITIAL_IN };
     inside_array.pointer = 2;
@@ -161,6 +175,5 @@ describe("StateUpdate :: RewriteStack", () => {
     inside_array_out.next_pointer = 2;
     inside_array_out.next_stack = [1, 2, 0, 0];
     generatePassCase(inside_array, inside_array_out, ">>>> `,` read");
-    //-----------------------------------------------------------------------------//
 
 });
