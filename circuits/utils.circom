@@ -4,7 +4,7 @@ include "circomlib/circuits/bitify.circom";
 include "circomlib/circuits/comparators.circom";
 
 /*
-All tests for this file are located in: `./test/operators.test.ts`
+All tests for this file are located in: `./test/utils/utils.test.ts`
 */
 
 template ASCII(n) {
@@ -108,59 +108,6 @@ template ArrayMul(n) {
         out[i] <== lhs[i] * rhs[i];
     }
 }
-
-// template LessThan(n) {
-//     assert(n <= 252);
-//     signal input in[2];
-//     signal output out;
-
-//     component n2b = Num2Bits(n+1);
-
-//     n2b.in <== in[0]+ (1<<n) - in[1];
-
-//     out <== 1-n2b.out[n];
-// }
-
-
-
-// // N is the number of bits the input  have.
-// // The MSF is the sign bit.
-// template LessEqThan(n) {
-//     signal input in[2];
-//     signal output out;
-
-//     component lt = LessThan(n);
-
-//     lt.in[0] <== in[0];
-//     lt.in[1] <== in[1]+1;
-//     lt.out ==> out;
-// }
-
-// // N is the number of bits the input  have.
-// // The MSF is the sign bit.
-// template GreaterThan(n) {
-//     signal input in[2];
-//     signal output out;
-
-//     component lt = LessThan(n);
-
-//     lt.in[0] <== in[1];
-//     lt.in[1] <== in[0];
-//     lt.out ==> out;
-// }
-
-// // N is the number of bits the input  have.
-// // The MSF is the sign bit.
-// template GreaterEqThan(n) {
-//     signal input in[2];
-//     signal output out;
-
-//     component lt = LessThan(n);
-
-//     lt.in[0] <== in[1];
-//     lt.in[1] <== in[0]+1;
-//     lt.out ==> out;
-// }
 
 template InRange(n) {
     signal input in;

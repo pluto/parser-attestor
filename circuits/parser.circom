@@ -1,110 +1,41 @@
 pragma circom 2.1.9;
 
 include "utils.circom";
-/*
-Notes: for `test.json`
-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
- POINTER | Read In: | STATE
--------------------------------------------------
-State[1] | {        | PARSING TO KEY
--------------------------------------------------
-State[7] | "        | INSIDE KEY
--------------------------------------------------
-State[12]| "        | NOT INSIDE KEY
--------------------------------------------------
-State[13]| :        | PARSING TO VALUE
--------------------------------------------------
-State[15]| "        | INSIDE VALUE
--------------------------------------------------
-State[19]| "        | NOT INSIDE VALUE
--------------------------------------------------
-State[20]| "        | COMPLETE WITH KV PARSING
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-State[20].next_tree_depth == 0 | VALID JSON
-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-*/
+include "language.circom";
 
 /*
-JSON TYPES:
-Number.
-String.
-Boolean.
-Array.
-Object.
-Whitespace.
-Null.
-
 TODO: Might not need the "parsing object" and "parsing array" as these are kinda captured by the stack?
 */
-template Delimeters() {
-    signal output START_BRACE <== 123;
-}
 
 template StateUpdate(MAX_STACK_HEIGHT) {
-    //--------------------------------------------------------------------------------------------//
-    //-Delimeters---------------------------------------------------------------------------------//
-    // - ASCII char: `{`
-    var start_brace = 123;
-    // - ASCII char: `}`
-    var end_brace = 125;
-    // - ASCII char `[`
-    var start_bracket = 91;
-    // - ASCII char `]`
-    var end_bracket = 93;
-    // - ASCII char `"`
-    var quote = 34;
-    // - ASCII char `:`
-    var colon = 58;
-    // - ASCII char `,`
-    var comma = 44;
-    //--------------------------------------------------------------------------------------------//
-    // White space
-    // - ASCII char: `\n`
-    var newline = 10;
-    // - ASCII char: ` `
-    var space = 32;
-    //--------------------------------------------------------------------------------------------//
-    // Escape
-    // - ASCII char: `\`
-    var escape = 92;
-    //--------------------------------------------------------------------------------------------//
-
     signal input byte;  
 
     signal input pointer;             // POINTER -- points to the stack to mark where we currently are inside the JSON.
     signal input stack[MAX_STACK_HEIGHT];            // STACK -- how deep in a JSON nest we are and what type we are currently inside (e.g., `1` for object, `-1` for array).
     signal input parsing_string;
     signal input parsing_number;
+    // TODO
     // signal parsing_boolean;
-    // signal parsing_null; // TODO
+    // signal parsing_null;
 
     signal output next_pointer;
     signal output next_stack[MAX_STACK_HEIGHT];
     signal output next_parsing_string;
     signal output next_parsing_number;
-    //--------------------------------------------------------------------------------------------//
-    //-Instructions for ASCII---------------------------------------------------------------------//
+    
+    component Syntax  = Syntax();
+    component Command = Command();
+
     var pushpop = 0;
     var stack_val = 0;
     var parsing_state[4]     = [pushpop, stack_val, parsing_string, parsing_number];   
-    var do_nothing[4]        = [0,       0,         0,              0             ]; // Command returned by switch if we want to do nothing, e.g. read a whitespace char while looking for a key
-    var hit_start_brace[4]   = [1,       1,         0,              0             ]; // Command returned by switch if we hit a start brace `{`
-    var hit_end_brace[4]     = [-1,      1,        0,              0             ]; // Command returned by switch if we hit a end brace `}`
-    var hit_start_bracket[4] = [1,       2,         0,              0             ]; // TODO: Might want `in_value` to toggle. Command returned by switch if we hit a start bracket `[` (TODO: could likely be combined with end bracket)
-    var hit_end_bracket[4]   = [-1,      2,        0,              0             ]; // Command returned by switch if we hit a start bracket `]` 
-    var hit_quote[4]         = [0,       0,         1,              0             ]; // TODO: Mightn ot want this to toglle `parsing_array`. Command returned by switch if we hit a quote `"`
-    var hit_colon[4]         = [1,       3,         0,              0             ]; // Command returned by switch if we hit a colon `:`
-    var hit_comma[4]         = [-1,      4,        0,              -1            ]; // Command returned by switch if we hit a comma `,`
-    var hit_number[4]        = [0,       0,         0,              1             ]; // Command returned by switch if we hit some decimal number (e.g., ASCII 48-57)
-    //--------------------------------------------------------------------------------------------//
     
     //--------------------------------------------------------------------------------------------//
     //-State machine updating---------------------------------------------------------------------//
     // * yield instruction based on what byte we read *
     component matcher           = SwitchArray(8, 4);
-    var number = 256; // Number beyond a byte to represent an ASCII numeral
-    matcher.branches          <== [start_brace,     end_brace,      quote,     colon,      comma,     start_bracket,     end_bracket,     number    ];
-    matcher.vals              <== [hit_start_brace, hit_end_brace,  hit_quote, hit_colon,  hit_comma, hit_start_bracket, hit_end_bracket, hit_number];
+    matcher.branches          <== [Syntax.START_BRACE,  Syntax.END_BRACE,  Syntax.QUOTE,  Syntax.COLON,  Syntax.COMMA,  Syntax.START_BRACKET,  Syntax.END_BRACKET,  Syntax.NUMBER ];
+    matcher.vals              <== [Command.START_BRACE, Command.END_BRACE, Command.QUOTE, Command.COLON, Command.COMMA, Command.START_BRACKET, Command.END_BRACKET, Command.NUMBER];
     component numeral_range_check = InRange(8);
     numeral_range_check.in    <== byte;
     numeral_range_check.range <== [48, 57]; // ASCII NUMERALS
@@ -125,7 +56,7 @@ template StateUpdate(MAX_STACK_HEIGHT) {
     newStack.pointer         <== pointer;
     newStack.stack           <== stack;
     newStack.pushpop         <== addToState.out[0];
-    newStack.stack_val    <== addToState.out[1];
+    newStack.stack_val       <== addToState.out[1];
     next_pointer             <== newStack.next_pointer;
     next_stack               <== newStack.next_stack;
     next_parsing_string      <== addToState.out[2];
@@ -216,8 +147,6 @@ template RewriteStack(n) {
     signal output next_pointer;
     signal output next_stack[n];
 
-    component Delimeters = Delimeters();
-    var brace = Delimeters.START_BRACE;
     /*
     IDEA:
 
@@ -309,9 +238,9 @@ template RewriteStack(n) {
         isPushAt[i]        <== indicator[i].out * isPush.out; 
 
         // Leave the stack alone except for where we indicate change
-        second_pop_val[i]            <== isPopAtPrev[i] * corrected_stack_val;
-        temp_val[i]                  <== corrected_stack_val + (1 + corrected_stack_val) * isDoublePop;
-        first_pop_val[i]             <== isPopAt[i] * temp_val[i]; // = isPopAt[i] * (corrected_stack_val * (1 - isDoublePop) - 3 * isDoublePop)
+        second_pop_val[i]  <== isPopAtPrev[i] * corrected_stack_val;
+        temp_val[i]        <== corrected_stack_val + (1 + corrected_stack_val) * isDoublePop;
+        first_pop_val[i]   <== isPopAt[i] * temp_val[i]; // = isPopAt[i] * (corrected_stack_val * (1 - isDoublePop) - 3 * isDoublePop)
 
         next_stack[i]      <== stack[i] + isPushAt[i] * corrected_stack_val - first_pop_val[i] - second_pop_val[i];
 
