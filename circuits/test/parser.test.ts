@@ -487,8 +487,8 @@ describe("parser", () => {
         // Test SOMETHING: 
         // init: pointer = 1, stack = [1,2,0,0] -> `,` is read
         let inside_array = { ...init };
-        inside_array.pointer = read_start_brace_out.next_pointer;
-        inside_array.stack = read_start_brace_out.next_stack;
+        inside_array.pointer = 2;
+        inside_array.stack = [1, 2, 0, 0];
         inside_array.byte = comma;
         let inside_array_out = { ...out };
         inside_array_out.next_pointer = 2;

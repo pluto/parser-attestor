@@ -90,7 +90,7 @@ template StateUpdate(MAX_STACK_HEIGHT) {
     var hit_end_bracket[4]   = [-1,      -2,        0,              0             ]; // Command returned by switch if we hit a start bracket `]` 
     var hit_quote[4]         = [0,       0,         1,              0             ]; // TODO: Mightn ot want this to toglle `parsing_array`. Command returned by switch if we hit a quote `"`
     var hit_colon[4]         = [1,       3,         0,              0             ]; // Command returned by switch if we hit a colon `:`
-    var hit_comma[4]         = [-1,      -3,        0,              -1            ]; // Command returned by switch if we hit a comma `,`
+    var hit_comma[4]         = [-1,      -4,        0,              -1            ]; // Command returned by switch if we hit a comma `,`
     var hit_number[4]        = [0,       0,         0,              1             ]; // Command returned by switch if we hit some decimal number (e.g., ASCII 48-57)
     //--------------------------------------------------------------------------------------------//
     
@@ -314,8 +314,24 @@ template RewriteStack(n) {
     */
 
     // Indicate which position in the stack should change (if any)
+    component readComma = IsEqual();
+    readComma.in[0]   <== -4;
+    readComma.in[1]   <== stack_val;
+
+    component topOfStack = GetTopOfStack(n);
+    topOfStack.pointer <== pointer;
+    topOfStack.stack   <== stack;
+
+    component isArray = IsEqual();
+    isArray.in[0]    <== topOfStack.out;
+    isArray.in[1]    <== 2;
+
+    signal READ_COMMA_AND_IN_ARRAY <== (1-readComma.out) + (1-isArray.out);
+    component isReadCommaAndInArray   = IsZero();
+    isReadCommaAndInArray.in       <== READ_COMMA_AND_IN_ARRAY;
+
     component isPop = IsZero();
-    isPop.in      <== pushpop + 1;
+    isPop.in      <== (1 - isReadCommaAndInArray.out) * pushpop + 1;
     component isPush = IsZero();
     isPush.in     <== pushpop - 1;
     component prev_indicator[n];
@@ -325,6 +341,12 @@ template RewriteStack(n) {
 
     component readEndChar = IsZero();
     readEndChar.in <== (stack_val + 1) * (stack_val + 2);
+
+
+
+    signal NOT_READ_COMMA      <== (1-readComma.out) * stack_val;
+    signal READ_COMMA          <== readComma.out * ((1-isArray.out) * (-3) + isArray.out * (-2));
+    signal corrected_stack_val <== READ_COMMA + NOT_READ_COMMA;
 
     // top of stack is a 3, then we need to pop off 3, and check the value underneath 
     // is correct match (i.e., a brace or bracket (1 or 2))
@@ -368,17 +390,24 @@ template RewriteStack(n) {
         isPushAt[i]        <== indicator[i].out * isPush.out; 
 
         // Leave the stack alone except for where we indicate change
-        second_pop_val[i]            <== isPopAtPrev[i] * stack_val;
-        temp_val[i]                  <== stack_val - (3 + stack_val) * isDoublePop;
-        first_pop_val[i]             <== isPopAt[i] * temp_val[i]; // = isPopAt[i] * (stack_val * (1 - isDoublePop) - 3 * isDoublePop)
+        second_pop_val[i]            <== isPopAtPrev[i] * corrected_stack_val;
+        temp_val[i]                  <== corrected_stack_val - (3 + corrected_stack_val) * isDoublePop;
+        first_pop_val[i]             <== isPopAt[i] * temp_val[i]; // = isPopAt[i] * (corrected_stack_val * (1 - isDoublePop) - 3 * isDoublePop)
 
-        next_stack[i]      <== stack[i] + isPushAt[i] * stack_val + first_pop_val[i] + second_pop_val[i];
+        next_stack[i]      <== stack[i] + isPushAt[i] * corrected_stack_val + first_pop_val[i] + second_pop_val[i];
 
         // TODO: Constrain next_stack entries to be 0,1,2,3
     }
 
     // TODO: This decrements by 2 if we hit a ] or } when the top of stack is 3
-    next_pointer <== pointer + (1 + isDoublePop) * pushpop; // If pushpop is 0, pointer doesn't change, if -1, decrement, +1 increment
+    // signal READ_COMMA_AND_IN_ARRAY <== (1-readComma.out) + (1-isArray.out);
+    // log("topOfStack = ", topOfStack.out);
+    // log("readComma  = ", readComma.out);
+    // log("isArray    = ", isArray.out);
+
+    signal IS_READ_COMMA_AND_IN_ARRAY_MODIFIER <== (1-isReadCommaAndInArray.out) * pushpop;
+    // log("IS_READ_COMMA_AND_IN_ARRAY_MODIFIER = ", IS_READ_COMMA_AND_IN_ARRAY_MODIFIER);
+    next_pointer <== pointer + (1 + isDoublePop) * IS_READ_COMMA_AND_IN_ARRAY_MODIFIER; // If pushpop is 0, pointer doesn't change, if -1, decrement, +1 increment
 
     component isOverflow = GreaterThan(8);
     isOverflow.in[0]   <== next_pointer;
