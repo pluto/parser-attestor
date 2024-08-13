@@ -20,22 +20,22 @@ This function reads in a unsigned 8-bit integer and converts it to an array of b
 # Constraints:
 - `in`: must be between `0` and `2**8 - 1`
 */
-template U8ToBits() {
-    signal input in;
-    signal byte[8];
-    var lc1 = 0;
+// template U8ToBits() {
+//     signal input in;
+//     signal byte[8];
+//     var lc1 = 0;
 
-    // log("input to u8ToByte: ", in);
+//     // log("input to u8ToByte: ", in);
 
-    var e2 = 1;
-    for (var i = 0; i < 8; i++) {
-        byte[i] <-- (in >> i) & 1;
-        byte[i] * (byte[i] - 1) === 0;
-        lc1 += byte[i] * e2;
-        e2 = e2 + e2;
-    }
-    lc1 === in;
-}
+//     var e2 = 1;
+//     for (var i = 0; i < 8; i++) {
+//         byte[i] <-- (in >> i) & 1;
+//         byte[i] * (byte[i] - 1) === 0;
+//         lc1 += byte[i] * e2;
+//         e2 = e2 + e2;
+//     }
+//     lc1 === in;
+// }
 
 /*
 This function reads in an array of unsigned numbers that will be constrained to be valid unsigned 8-bit integers.
@@ -47,28 +47,28 @@ This function reads in an array of unsigned numbers that will be constrained to 
 # Constraints:
 - `in[n]`: each element of this array must be between `0` and `2**8-1`
 */
-template ASCII(n) {
-    signal input in[n];
+// template ASCII(n) {
+//     signal input in[n];
 
-    component Byte[n];
-    for(var i = 0; i < n; i++) {
-        Byte[i] = U8ToBits();
-        Byte[i].in <== in[i];
-    }
-}
+//     component Byte[n];
+//     for(var i = 0; i < n; i++) {
+//         Byte[i] = U8ToBits();
+//         Byte[i].in <== in[i];
+//     }
+// }
 
-template Num2Bits(n) {
-    signal input in;
-    signal output out[n];
-    var lc1=0;
+// template Num2Bits(n) {
+//     signal input in;
+//     signal output out[n];
+//     var lc1=0;
 
-    var e2=1;
-    for (var i = 0; i<n; i++) {
-        out[i] <-- (in >> i) & 1;
-        out[i] * (out[i] -1 ) === 0;
-        lc1 += out[i] * e2;
-        e2 = e2+e2;
-    }
+//     var e2=1;
+//     for (var i = 0; i<n; i++) {
+//         out[i] <-- (in >> i) & 1;
+//         out[i] * (out[i] -1 ) === 0;
+//         lc1 += out[i] * e2;
+//         e2 = e2+e2;
+//     }
 
-    lc1 === in;
-}
+//     lc1 === in;
+// }

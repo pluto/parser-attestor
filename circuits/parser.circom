@@ -1,6 +1,6 @@
 pragma circom 2.1.9;
 
-include "operators.circom";
+include "utils.circom";
 /*
 Notes: for `test.json`
 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
@@ -162,79 +162,6 @@ template StateUpdate(MAX_STACK_HEIGHT) {
     //--------------------------------------------------------------------------------------------//
 }
 
-/*
-This function is creates an exhaustive switch statement from `0` up to `n`.
-
-# Inputs:
-- `m`: the number of switch cases
-- `n`: the output array length
-- `case`: which case of the switch to select
-- `branches[m]`: the values that enable taking different branches in the switch 
-    (e.g., if `branch[i] == 10` then if `case == 10` we set `out == `vals[i]`)
-- `vals[m][n]`: the value that is emitted for a given switch case 
-    (e.g., `val[i]` array is emitted on `case == `branch[i]`)
-
-# Outputs
-- `match`: is set to `0` if `case` does not match on any of `branches`
-- `out[n]`: the selected output value if one of `branches` is selected (will be `[0,0,...]` otherwise)
-*/
-template SwitchArray(m, n) {
-    assert(m > 0);
-    assert(n > 0);
-    signal input case;
-    signal input branches[m];
-    signal input vals[m][n];
-    signal output match;
-    signal output out[n];
-
-
-    // Verify that the `case` is in the possible set of branches
-    component indicator[m];
-    component matchChecker = Contains(m);
-    signal component_out[m][n];
-    var sum[n];
-    for(var i = 0; i < m; i++) {
-        indicator[i] = IsZero();
-        indicator[i].in <== case - branches[i]; 
-        matchChecker.array[i] <== 1 - indicator[i].out;
-        for(var j = 0; j < n; j++) {
-            component_out[i][j] <== indicator[i].out * vals[i][j];
-            sum[j] += component_out[i][j];
-        }
-    }
-    matchChecker.in <== 0;
-    match <== matchChecker.out;
-
-    out <== sum;
-}
-
-template Switch(n) {
-    assert(n > 0);
-    signal input case;
-    signal input branches[n];
-    signal input vals[n];
-    signal output match;
-    signal output out;
-
-
-    // Verify that the `case` is in the possible set of branches
-    component indicator[n];
-    component matchChecker = Contains(n);
-    signal temp_val[n];
-    var sum;
-    for(var i = 0; i < n; i++) {
-        indicator[i] = IsZero();
-        indicator[i].in <== case - branches[i]; 
-        matchChecker.array[i] <== 1 - indicator[i].out;
-        temp_val[i] <== indicator[i].out * vals[i];
-        sum += temp_val[i];
-    }
-    matchChecker.in <== 0;
-    match <== matchChecker.out;
-
-    out <== sum;
-}
-
 template StateToMask(n) {
     signal input in[4];
     signal output out[4];
@@ -243,9 +170,6 @@ template StateToMask(n) {
     signal stack_val      <== in[1];
     signal parsing_string <== in[2];
     signal parsing_number <== in[3];
-
-    // component stackTop = Switch(n);
-
 
     // `pushpop` can change: IF NOT `parsing_string`
     out[0] <== (1 - parsing_string);
@@ -399,14 +323,7 @@ template RewriteStack(n) {
         // TODO: Constrain next_stack entries to be 0,1,2,3
     }
 
-    // TODO: This decrements by 2 if we hit a ] or } when the top of stack is 3
-    // signal READ_COMMA_AND_IN_ARRAY <== (1-readComma.out) + (1-isArray.out);
-    // log("topOfStack = ", topOfStack.out);
-    // log("readComma  = ", readComma.out);
-    // log("isArray    = ", isArray.out);
-
     signal IS_READ_COMMA_AND_IN_ARRAY_MODIFIER <== (1-isReadCommaAndInArray.out) * pushpop;
-    // log("IS_READ_COMMA_AND_IN_ARRAY_MODIFIER = ", IS_READ_COMMA_AND_IN_ARRAY_MODIFIER);
     next_pointer <== pointer + (1 + isDoublePop) * IS_READ_COMMA_AND_IN_ARRAY_MODIFIER; // If pushpop is 0, pointer doesn't change, if -1, decrement, +1 increment
 
     component isOverflow = GreaterThan(8);

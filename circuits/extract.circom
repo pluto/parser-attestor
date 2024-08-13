@@ -1,7 +1,6 @@
 pragma circom 2.1.9;
 
-include "bytes.circom";
-include "operators.circom";
+include "utils.circom";
 include "parser.circom";
 
 template Extract(DATA_BYTES) {
