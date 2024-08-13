@@ -55,7 +55,8 @@ describe("StateUpdate :: RewriteStack", () => {
 
 
     //-TEST_1----------------------------------------------------------//
-    // init: read `{`, read another `{`
+    // state:  pointer == 1, stack == [1,0,0,0]
+    // read:   `{`
     // expect: pointer --> 2
     //         stack   --> [1,1,0,0]
     let in_object = { ...INITIAL_IN };
@@ -68,9 +69,10 @@ describe("StateUpdate :: RewriteStack", () => {
     generatePassCase(in_object, in_object_out, ">>>> `{` read");
 
     //-TEST_2----------------------------------------------------------//
-    // init: read `{` then read`}`
+    // state:  pointer == 1, stack == [1,0,0,0]
+    // read:   `}`
     // expect: pointer --> 0
-    //           stack --> [0, 0, 0, 0]
+    //         stack   --> [0,0,0,0]
     let in_object_to_leave = { ...INITIAL_IN };
     in_object_to_leave.pointer = 1;
     in_object_to_leave.stack = [1, 0, 0, 0];
@@ -175,5 +177,19 @@ describe("StateUpdate :: RewriteStack", () => {
     inside_array_out.next_pointer = 2;
     inside_array_out.next_stack = [1, 2, 0, 0];
     generatePassCase(inside_array, inside_array_out, ">>>> `,` read");
+
+    //-TEST_10----------------------------------------------------------//
+    // state:  pointer == 1, stack == [1,0,0,0] 
+    // read:   `:`
+    // expect: pointer --> 2
+    //         stack   --> [1,3,0,0]
+    let parsed_key_wait_to_parse_value = { ...INITIAL_IN };
+    parsed_key_wait_to_parse_value.pointer = 1;
+    parsed_key_wait_to_parse_value.stack = [1, 0, 0, 0];
+    parsed_key_wait_to_parse_value.byte = Delimiters.COLON;
+    let parsed_key_wait_to_parse_value_out = { ...INITIAL_OUT };
+    parsed_key_wait_to_parse_value_out.next_pointer = 2;
+    parsed_key_wait_to_parse_value_out.next_stack = [1, 3, 0, 0];
+    generatePassCase(parsed_key_wait_to_parse_value, parsed_key_wait_to_parse_value_out, ">>>> `:` read");
 
 });
