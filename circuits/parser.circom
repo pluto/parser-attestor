@@ -39,7 +39,7 @@ template StateUpdate(MAX_STACK_HEIGHT) {
     component numeral_range_check = InRange(8);
     numeral_range_check.in    <== byte;
     numeral_range_check.range <== [48, 57]; // ASCII NUMERALS
-    log("isNumeral:", numeral_range_check.out);
+    // log("isNumeral:", numeral_range_check.out);
     signal IS_NUMBER          <==  numeral_range_check.out * Syntax.NUMBER;
     matcher.case              <== (1 - numeral_range_check.out) * byte + IS_NUMBER; // IF (NOT is_number) THEN byte ELSE 256
     
@@ -125,17 +125,17 @@ template StateToMask(n) {
     component toParseNumber   = Switch(16);
     // TODO: Could combine this into something that returns arrays so that we can set the mask more easily.
     toParseNumber.branches  <== [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
-    toParseNumber.vals      <== [1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1,  0,  0,  0,  0,   0];
+    toParseNumber.vals      <== [0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1,  0,  0,  0,  0,   0];
     component stateToNum      = Bits2Num(4);
     stateToNum.in           <== [isParsingString.out, isParsingNumber.out, isNumber.out, isDelimeter.out];
      //                                   1                 2                   4              8
     toParseNumber.case      <== stateToNum.out;
-    log("isNumber:        ", isNumber.out);
-    log("isParsingString: ", isParsingString.out);
-    log("isParsingNumber: ", isParsingNumber.out);
-    log("isDelimeter:     ", isDelimeter.out);
-    log("stateToNum:      ", stateToNum.out);
-    log("toParseNumber:   ", toParseNumber.out);
+    // log("isNumber:        ", isNumber.out);
+    // log("isParsingString: ", isParsingString.out);
+    // log("isParsingNumber: ", isParsingNumber.out);
+    // log("isDelimeter:     ", isDelimeter.out);
+    // log("stateToNum:      ", stateToNum.out);
+    // log("toParseNumber:   ", toParseNumber.out);
 
     out[3] <== toParseNumber.out;
 }
@@ -219,10 +219,10 @@ template RewriteStack(n) {
     signal isPushAt[n];
 
     component readEndChar = IsZero();
-    readEndChar.in <== (stack_val - 1) * (stack_val - 2);
+    readEndChar.in <== (stack_val + 1) * (stack_val + 2);
 
     signal NOT_READ_COMMA      <== (1 - readComma.out) * stack_val;
-    signal READ_COMMA          <== readComma.out * ((1-isArray.out) * (3) + isArray.out * (2));
+    signal READ_COMMA          <== readComma.out * ((1-isArray.out) * (-3) + isArray.out * (-2));
     signal corrected_stack_val <== READ_COMMA + NOT_READ_COMMA;
 
     // top of stack is a 3, then we need to pop off 3, and check the value underneath 
@@ -259,10 +259,10 @@ template RewriteStack(n) {
 
         // Leave the stack alone except for where we indicate change
         second_pop_val[i]  <== isPopAtPrev[i] * corrected_stack_val;
-        temp_val[i]        <== corrected_stack_val + (1 + corrected_stack_val) * isDoublePop;
+        temp_val[i]        <== corrected_stack_val - (3 + corrected_stack_val) * isDoublePop;
         first_pop_val[i]   <== isPopAt[i] * temp_val[i]; // = isPopAt[i] * (corrected_stack_val * (1 - isDoublePop) - 3 * isDoublePop)
 
-        next_stack[i]      <== stack[i] + isPushAt[i] * corrected_stack_val - first_pop_val[i] - second_pop_val[i];
+        next_stack[i]      <== stack[i] + isPushAt[i] * corrected_stack_val + first_pop_val[i] + second_pop_val[i];
 
         // TODO: Constrain next_stack entries to be 0,1,2,3
     }
