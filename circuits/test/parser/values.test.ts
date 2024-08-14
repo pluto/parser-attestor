@@ -52,8 +52,8 @@ describe("StateUpdate :: Values", () => {
     inside_number.parsing_number = 1;
     inside_number.byte = Delimiters.COMMA;
     let inside_number_out = { ...INITIAL_OUT };
-    inside_number_out.next_pointer = 2;
-    inside_number_out.next_stack = [[1, 0], [3, 0], [0, 0], [0, 0]];
+    inside_number_out.next_pointer = 1;
+    inside_number_out.next_stack = [[1, 0], [0, 0], [0, 0], [0, 0]];
     generatePassCase(inside_number, inside_number_out, ">>>> `,` read");
 
     // TODO: Note that reading a space while reading a number will not throw an error!

@@ -4,7 +4,7 @@
 ### JSON Types
 - [x] Object
 - [x] String
-- [ ] Array (PARTIALLY COMPLETED, TODO: Need to parse internally)
+- [x] Array
 - [x] Number
 - [ ] Boolean
 - [ ] Null
