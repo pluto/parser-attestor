@@ -9,6 +9,12 @@
 - [ ] Boolean
 - [ ] Null
 
+Parsing null and bool need to do some kind of look ahead parsing. To handle numbers properly we also probably need that actually since we need to look ahead to where we get white space.
+Need to look ahead for `true` and `false` for example to ensure we get a full match, or we fail or something. Lookaehad might be overkill, but yeah.
+
+#### Numbers
+Numbers can have `e` and decimal `.` in them. Riperoni.
+
 ### string escape
 shouldn't be too hard, just add one more state variable `escaping` that is only enabled when parsing a string and can only be toggled -- next state will always have to set back to 0.
 

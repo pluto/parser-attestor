@@ -47,6 +47,14 @@
             5
         ]
     },
+    "value_array_object_array": {
+        "file": "extract",
+        "template": "Extract",
+        "params": [
+            31,
+            6
+        ]
+    },
     "value_object": {
         "file": "extract",
         "template": "Extract",
