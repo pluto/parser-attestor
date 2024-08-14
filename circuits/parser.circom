@@ -11,7 +11,7 @@ template StateUpdate(MAX_STACK_HEIGHT) {
     signal input byte;  
 
     signal input pointer;             // POINTER -- points to the stack to mark where we currently are inside the JSON.
-    signal input stack[MAX_STACK_HEIGHT];            // STACK -- how deep in a JSON nest we are and what type we are currently inside (e.g., `1` for object, `-1` for array).
+    signal input stack[MAX_STACK_HEIGHT][2];            // STACK -- how deep in a JSON nest we are and what type we are currently inside (e.g., `1` for object, `-1` for array).
     signal input parsing_string;
     signal input parsing_number;
     // TODO
@@ -19,7 +19,7 @@ template StateUpdate(MAX_STACK_HEIGHT) {
     // signal parsing_null;
 
     signal output next_pointer;
-    signal output next_stack[MAX_STACK_HEIGHT];
+    signal output next_stack[MAX_STACK_HEIGHT][2];
     signal output next_parsing_string;
     signal output next_parsing_number;
     
@@ -141,12 +141,12 @@ template StateToMask(n) {
 }
 
 template GetTopOfStack(n) {
-    signal input stack[n];
+    signal input stack[n][2];
     signal input pointer;
 
-    signal output out;
+    signal output out[2];
 
-    component atTop = Switch(n);
+    component atTop = SwitchArray(n,2);
     for(var i = 0; i < n; i++) {
         atTop.branches[i] <== i + 1;
         atTop.vals[i]     <== stack[i];
@@ -161,11 +161,11 @@ template GetTopOfStack(n) {
 template RewriteStack(n) {
     assert(n < 2**8);
     signal input pointer;
-    signal input stack[n];
+    signal input stack[n][2];
     signal input pushpop;
     signal input stack_val;
     signal output next_pointer;
-    signal output next_stack[n];
+    signal output next_stack[n][2];
 
     /*
     IDEA:
@@ -193,17 +193,17 @@ template RewriteStack(n) {
     */
 
     // Indicate which position in the stack should change (if any)
-    component readComma = IsEqual();
-    readComma.in[0]   <== 4;
-    readComma.in[1]   <== stack_val;
-
     component topOfStack = GetTopOfStack(n);
     topOfStack.pointer <== pointer;
     topOfStack.stack   <== stack;
 
     component isArray = IsEqual();
-    isArray.in[0]    <== topOfStack.out;
+    isArray.in[0]    <== topOfStack.out[0];
     isArray.in[1]    <== 2;
+
+    component readComma = IsEqual();
+    readComma.in[0]   <== 4;
+    readComma.in[1]   <== stack_val;
 
     signal READ_COMMA_AND_IN_ARRAY <== (1 - readComma.out) + (1 - isArray.out);
     component isReadCommaAndInArray   = IsZero();
@@ -239,7 +239,7 @@ template RewriteStack(n) {
     }
 
     component atColon = IsEqual();
-    atColon.in[0]   <== topOfStack.out;
+    atColon.in[0]   <== topOfStack.out[0];
     atColon.in[1]   <== 3;
     signal isDoublePop <== atColon.out * readEndChar.out;
 
@@ -262,7 +262,7 @@ template RewriteStack(n) {
         temp_val[i]        <== corrected_stack_val - (3 + corrected_stack_val) * isDoublePop;
         first_pop_val[i]   <== isPopAt[i] * temp_val[i]; // = isPopAt[i] * (corrected_stack_val * (1 - isDoublePop) - 3 * isDoublePop)
 
-        next_stack[i]      <== stack[i] + isPushAt[i] * corrected_stack_val + first_pop_val[i] + second_pop_val[i];
+        next_stack[i][0]      <== stack[i][0] + isPushAt[i] * corrected_stack_val + first_pop_val[i] + second_pop_val[i];
 
         // TODO: Constrain next_stack entries to be 0,1,2,3
     }
