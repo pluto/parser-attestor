@@ -254,7 +254,7 @@ template RewriteStack(n) {
     signal first_pop_val[n];
     signal temp_val[n];
 
-
+log("read_comma_in_array: ", read_comma_in_array);
     for(var i = 0; i < n; i++) {
 
         // Indicators for index to PUSH to or POP from
@@ -269,9 +269,9 @@ template RewriteStack(n) {
         first_pop_val[i]   <== isPopAt[i] * temp_val[i]; // = isPopAt[i] * (corrected_stack_val * (1 - isDoublePop) - 3 * isDoublePop)
 
         next_stack[i][0]      <== stack[i][0] + isPushAt[i] * corrected_stack_val + first_pop_val[i] + second_pop_val[i];
-        next_stack[i][1]      <== prev_indicator[i].out * read_comma_in_array;
+        next_stack[i][1]      <== stack[i][1] +  prev_indicator[i].out * read_comma_in_array;
 
-        log("read_comma_in_array: ", read_comma_in_array);
+        log("prev_indicator[i]: ", prev_indicator[i].out);
         log("next_stack[", i,"]    ", "= [",next_stack[i][0], "][", next_stack[i][1],"]" );
         // TODO: Constrain next_stack entries to be 0,1,2,3
     }

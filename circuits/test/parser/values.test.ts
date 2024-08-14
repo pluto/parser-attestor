@@ -74,7 +74,7 @@ describe("StateUpdate :: Values", () => {
     inside_number_continue_out.next_pointer = 2;
     inside_number_continue_out.next_stack = [[1, 0], [3, 0], [0, 0], [0, 0]];
     inside_number_continue_out.next_parsing_number = 1;
-    generatePassCase(inside_number_continue, inside_number_continue_out, ">>>> `,` read");
+    generatePassCase(inside_number_continue, inside_number_continue_out, ">>>> `1` read");
 
 
 });
