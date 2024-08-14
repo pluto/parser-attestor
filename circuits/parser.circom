@@ -201,13 +201,13 @@ template RewriteStack(n) {
     isArray.in[0]    <== topOfStack.out[0];
     isArray.in[1]    <== 2;
 
-    log("isArray: ", isArray.out);
+    // log("isArray: ", isArray.out);
 
     component readComma = IsEqual();
     readComma.in[0]   <== 4;
     readComma.in[1]   <== stack_val;
 
-    log("readComma: ", readComma.out);
+    // log("readComma: ", readComma.out);
 
     signal READ_COMMA_AND_IN_ARRAY <== (1 - readComma.out) + (1 - isArray.out); // POORLY NAMED. THIS IS MORE LIKE XNOR or something.
     component isReadCommaAndInArray   = IsZero();
