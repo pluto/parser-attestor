@@ -18,6 +18,8 @@ Numbers can have `e` and decimal `.` in them. Riperoni.
 ### string escape
 shouldn't be too hard, just add one more state variable `escaping` that is only enabled when parsing a string and can only be toggled -- next state will always have to set back to 0.
 
+This could also allow for parsing unicode
+
 ## Expected Output
 > This is old at this point, but we should update it.
 ```
