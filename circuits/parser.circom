@@ -101,7 +101,7 @@ template StateToMask(n) {
     signal parsing_number <== in[3];
 
     // `pushpop` can change:  IF NOT `parsing_string`
-    out[0] <== (1 - parsing_string) * (1 - parsing_number);
+    out[0] <== (1 - parsing_string);
 
     // `stack_val`can change: IF NOT `parsing_string` 
     out[1] <== (1 - parsing_string);
@@ -216,7 +216,8 @@ template RewriteStack(n) {
     signal read_comma_in_array <== readComma.out * isArray.out;
 
     component isPop = IsZero();
-    isPop.in      <== (1 - isReadCommaAndInArray.out) * pushpop + 1;
+    isPop.in      <== (1 - isReadCommaAndInArray.out) * pushpop + 1; // TODO: can simplify?
+
     component isPush = IsZero();
     isPush.in     <== pushpop - 1;
     component prev_indicator[n];
@@ -233,6 +234,10 @@ template RewriteStack(n) {
 
     // top of stack is a 3, then we need to pop off 3, and check the value underneath 
     // is correct match (i.e., a brace or bracket (1 or 2))
+
+    component readEndArr = IsZero();
+    readEndArr.in      <== stack_val + 2;
+    signal isPopArr    <== isPop.out * readEndArr.out;
 
     for(var i = 0; i < n; i++) {
         // points to 1 value back from top
@@ -253,8 +258,9 @@ template RewriteStack(n) {
     signal second_pop_val[n];
     signal first_pop_val[n];
     signal temp_val[n];
+    signal temp_val2[n];
 
-log("read_comma_in_array: ", read_comma_in_array);
+// log("read_comma_in_array: ", read_comma_in_array);
     for(var i = 0; i < n; i++) {
 
         // Indicators for index to PUSH to or POP from
@@ -269,10 +275,12 @@ log("read_comma_in_array: ", read_comma_in_array);
         first_pop_val[i]   <== isPopAt[i] * temp_val[i]; // = isPopAt[i] * (corrected_stack_val * (1 - isDoublePop) - 3 * isDoublePop)
 
         next_stack[i][0]      <== stack[i][0] + isPushAt[i] * corrected_stack_val + first_pop_val[i] + second_pop_val[i];
-        next_stack[i][1]      <== stack[i][1] +  prev_indicator[i].out * read_comma_in_array;
 
-        log("prev_indicator[i]: ", prev_indicator[i].out);
-        log("next_stack[", i,"]    ", "= [",next_stack[i][0], "][", next_stack[i][1],"]" );
+        temp_val2[i]          <== prev_indicator[i].out * read_comma_in_array;
+        next_stack[i][1]      <== stack[i][1] + temp_val2[i] - stack[i][1] * isPopArr;
+
+        // log("prev_indicator[i]: ", prev_indicator[i].out);
+        // log("next_stack[", i,"]    ", "= [",next_stack[i][0], "][", next_stack[i][1],"]" );
         // TODO: Constrain next_stack entries to be 0,1,2,3
     }
 

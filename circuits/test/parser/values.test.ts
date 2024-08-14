@@ -76,5 +76,29 @@ describe("StateUpdate :: Values", () => {
     inside_number_continue_out.next_parsing_number = 1;
     generatePassCase(inside_number_continue, inside_number_continue_out, ">>>> `1` read");
 
+    describe("StateUpdate :: Values :: Array", () => {
+        // Internal array parsing -----------------------------------------//
 
+        //-TEST_10----------------------------------------------------------//
+        // init: pointer = 1, stack = [1,2,0,0] -> `,` is read
+        let in_arr = { ...INITIAL_IN };
+        in_arr.pointer = 2;
+        in_arr.stack = [[1, 0], [2, 0], [0, 0], [0, 0]];
+        in_arr.byte = Delimiters.COMMA;
+        let in_arr_out = { ...INITIAL_OUT };
+        in_arr_out.next_pointer = 2;
+        in_arr_out.next_stack = [[1, 0], [2, 1], [0, 0], [0, 0]];
+        generatePassCase(in_arr, in_arr_out, ">>>> `,` read");
+
+        //-TEST_10----------------------------------------------------------//
+        // init: pointer = 1, stack = [1,2,0,0] -> `,` is read
+        let in_arr_idx_to_leave = { ...INITIAL_IN };
+        in_arr_idx_to_leave.pointer = 2;
+        in_arr_idx_to_leave.stack = [[1, 0], [2, 1], [0, 0], [0, 0]];
+        in_arr_idx_to_leave.byte = Delimiters.END_BRACKET;
+        let in_arr_idx_to_leave_out = { ...INITIAL_OUT };
+        in_arr_idx_to_leave_out.next_pointer = 1;
+        in_arr_idx_to_leave_out.next_stack = [[1, 0], [0, 0], [0, 0], [0, 0]];
+        generatePassCase(in_arr_idx_to_leave, in_arr_idx_to_leave_out, ">>>> `]` read");
+    });
 });
