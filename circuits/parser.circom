@@ -104,7 +104,7 @@ template StateToMask(n) {
     out[0] <== (1 - parsing_string) * (1 - parsing_number);
 
     // `stack_val`can change: IF NOT `parsing_string` 
-    out[1] <== (1 - parsing_string) * (1- parsing_number);
+    out[1] <== (1 - parsing_string);
 
     // `parsing_string` can change:
     out[2] <== 1 - 2 * parsing_string;
@@ -201,13 +201,19 @@ template RewriteStack(n) {
     isArray.in[0]    <== topOfStack.out[0];
     isArray.in[1]    <== 2;
 
+    log("isArray: ", isArray.out);
+
     component readComma = IsEqual();
     readComma.in[0]   <== 4;
     readComma.in[1]   <== stack_val;
 
-    signal READ_COMMA_AND_IN_ARRAY <== (1 - readComma.out) + (1 - isArray.out);
+    log("readComma: ", readComma.out);
+
+    signal READ_COMMA_AND_IN_ARRAY <== (1 - readComma.out) + (1 - isArray.out); // POORLY NAMED. THIS IS MORE LIKE XNOR or something.
     component isReadCommaAndInArray   = IsZero();
     isReadCommaAndInArray.in       <== READ_COMMA_AND_IN_ARRAY;
+
+    signal read_comma_in_array <== readComma.out * isArray.out;
 
     component isPop = IsZero();
     isPop.in      <== (1 - isReadCommaAndInArray.out) * pushpop + 1;
@@ -263,10 +269,10 @@ template RewriteStack(n) {
         first_pop_val[i]   <== isPopAt[i] * temp_val[i]; // = isPopAt[i] * (corrected_stack_val * (1 - isDoublePop) - 3 * isDoublePop)
 
         next_stack[i][0]      <== stack[i][0] + isPushAt[i] * corrected_stack_val + first_pop_val[i] + second_pop_val[i];
-        next_stack[i][1]      <== prev_indicator[i].out * isReadCommaAndInArray.out;
+        next_stack[i][1]      <== prev_indicator[i].out * read_comma_in_array;
 
-        log("next_stack[",i,"][0]: ", next_stack[i][0]);
-        log("next_stack[",i,"][1]: ", next_stack[i][1]);
+        log("read_comma_in_array: ", read_comma_in_array);
+        log("next_stack[", i,"]    ", "= [",next_stack[i][0], "][", next_stack[i][1],"]" );
         // TODO: Constrain next_stack entries to be 0,1,2,3
     }
 
