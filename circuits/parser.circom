@@ -231,7 +231,7 @@ template RewriteStack(n) {
     for(var i = 0; i < n; i++) {
         // points to 1 value back from top
         prev_indicator[i] = IsZero();
-        prev_indicator[i].in <== pointer - 2 * isPop.out - i;
+        prev_indicator[i].in <== pointer - 1 - isPop.out - i;
 
         // Points to top of stack if POP else it points to unallocated position
         indicator[i]         = IsZero();
@@ -263,7 +263,10 @@ template RewriteStack(n) {
         first_pop_val[i]   <== isPopAt[i] * temp_val[i]; // = isPopAt[i] * (corrected_stack_val * (1 - isDoublePop) - 3 * isDoublePop)
 
         next_stack[i][0]      <== stack[i][0] + isPushAt[i] * corrected_stack_val + first_pop_val[i] + second_pop_val[i];
+        next_stack[i][1]      <== prev_indicator[i].out * isReadCommaAndInArray.out;
 
+        log("next_stack[",i,"][0]: ", next_stack[i][0]);
+        log("next_stack[",i,"][1]: ", next_stack[i][1]);
         // TODO: Constrain next_stack entries to be 0,1,2,3
     }
 

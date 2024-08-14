@@ -165,18 +165,7 @@ describe("StateUpdate :: RewriteStack", () => {
         ">>>> `}` read"
     );
 
-    //-TEST_9----------------------------------------------------------//
-    // init: pointer = 1, stack = [1,2,0,0] -> `,` is read
-    let inside_array = { ...INITIAL_IN };
-    inside_array.pointer = 2;
-    inside_array.stack = [[1, 0], [2, 0], [0, 0], [0, 0]];
-    inside_array.byte = Delimiters.COMMA;
-    let inside_array_out = { ...INITIAL_OUT };
-    inside_array_out.next_pointer = 2;
-    inside_array_out.next_stack = [[1, 0], [2, 0], [0, 0], [0, 0]];
-    generatePassCase(inside_array, inside_array_out, ">>>> `,` read");
-
-    //-TEST_10----------------------------------------------------------//
+    //-TEST_9-----------------------------------------------------------//
     // state:  pointer == 1, stack == [1,0,0,0] 
     // read:   `:`
     // expect: pointer --> 2
@@ -192,5 +181,18 @@ describe("StateUpdate :: RewriteStack", () => {
         parsed_key_wait_to_parse_value_out,
         ">>>> `:` read"
     );
+
+    // Internal array parsing -----------------------------------------//
+
+    //-TEST_10----------------------------------------------------------//
+    // init: pointer = 1, stack = [1,2,0,0] -> `,` is read
+    let inside_array = { ...INITIAL_IN };
+    inside_array.pointer = 2;
+    inside_array.stack = [[1, 0], [2, 0], [0, 0], [0, 0]];
+    inside_array.byte = Delimiters.COMMA;
+    let inside_array_out = { ...INITIAL_OUT };
+    inside_array_out.next_pointer = 2;
+    inside_array_out.next_stack = [[1, 0], [2, 1], [0, 0], [0, 0]];
+    generatePassCase(inside_array, inside_array_out, ">>>> `,` read");
 
 });
