@@ -10,7 +10,7 @@ template Extract(DATA_BYTES, MAX_STACK_HEIGHT) {
 
     //--------------------------------------------------------------------------------------------//
     //-CONSTRAINTS--------------------------------------------------------------------------------//
-    //--------------------------------------------------------------------------------------------//    
+    //--------------------------------------------------------------------------------------------//
     component dataASCII = ASCII(DATA_BYTES);
     dataASCII.in <== data;
     //--------------------------------------------------------------------------------------------//
@@ -55,4 +55,4 @@ template Extract(DATA_BYTES, MAX_STACK_HEIGHT) {
         log("State[", DATA_BYTES, "].parsing_string", "= ", State[DATA_BYTES-1].next_parsing_string);
         log("State[", DATA_BYTES, "].parsing_number", "= ", State[DATA_BYTES-1].next_parsing_number);
         log("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
-} 
+}

@@ -8,7 +8,7 @@ TODO: Change the values to push onto stack to be given by START_BRACE, COLON, et
 */
 
 template StateUpdate(MAX_STACK_HEIGHT) {
-    signal input byte;  
+    signal input byte;
 
     signal input pointer;             // POINTER -- points to the stack to mark where we currently are inside the JSON.
     signal input stack[MAX_STACK_HEIGHT];            // STACK -- how deep in a JSON nest we are and what type we are currently inside (e.g., `1` for object, `-1` for array).
@@ -22,14 +22,14 @@ template StateUpdate(MAX_STACK_HEIGHT) {
     signal output next_stack[MAX_STACK_HEIGHT];
     signal output next_parsing_string;
     signal output next_parsing_number;
-    
+
     component Syntax  = Syntax();
     component Command = Command();
 
     var pushpop = 0;
     var stack_val = 0;
-    var parsing_state[4]     = [pushpop, stack_val, parsing_string, parsing_number];   
-    
+    var parsing_state[4]     = [pushpop, stack_val, parsing_string, parsing_number];
+
     //--------------------------------------------------------------------------------------------//
     //-State machine updating---------------------------------------------------------------------//
     // * yield instruction based on what byte we read *
@@ -42,7 +42,7 @@ template StateUpdate(MAX_STACK_HEIGHT) {
     matcher.case              <== (1 - numeral_range_check.out) * byte + numeral_range_check.out * 256; // IF (NOT is_number) THEN byte ELSE 256
     // * get the instruction mask based on current state *
     component mask             = StateToMask(MAX_STACK_HEIGHT);
-    mask.in                  <== parsing_state;     
+    mask.in                  <== parsing_state;
     // * multiply the mask array elementwise with the instruction array *
     component mulMaskAndOut    = ArrayMul(4);
     mulMaskAndOut.lhs        <== mask.out;
@@ -88,19 +88,19 @@ template StateUpdate(MAX_STACK_HEIGHT) {
     // next_parsing_key * (1 - next_parsing_key)     === 0; // - constrain that `next_parsing_key` remain a bit flag
     // next_inside_key * (1 - next_inside_key)       === 0; // - constrain that `next_inside_key` remain a bit flag
     // next_parsing_value * (1 - next_parsing_value) === 0; // - constrain that `next_parsing_value` remain a bit flag
-    // next_inside_value * (1 - next_inside_value)   === 0; // - constrain that `next_inside_value` remain a bit flag 
+    // next_inside_value * (1 - next_inside_value)   === 0; // - constrain that `next_inside_value` remain a bit flag
     // // * constrain `tree_depth` to never hit -1 (TODO: should always moves in 1 bit increments?)
-    // component isMinusOne = IsEqual();      
-    // isMinusOne.in[0]   <== -1;             
-    // isMinusOne.in[1]   <== next_tree_depth; 
-    // isMinusOne.out     === 0;              
+    // component isMinusOne = IsEqual();
+    // isMinusOne.in[0]   <== -1;
+    // isMinusOne.in[1]   <== next_tree_depth;
+    // isMinusOne.out     === 0;
     //--------------------------------------------------------------------------------------------//
 }
 
 template StateToMask(n) {
     signal input in[4];
     signal output out[4];
-    
+
     signal pushpop        <== in[0];
     signal stack_val      <== in[1];
     signal parsing_string <== in[2];
@@ -109,14 +109,14 @@ template StateToMask(n) {
     // `pushpop` can change: IF NOT `parsing_string`
     out[0] <== (1 - parsing_string);
 
-    // `stack_val`: IF NOT `parsing_string` OR 
+    // `stack_val`: IF NOT `parsing_string` OR
     // TODO: `parsing_array`
     out[1] <== (1 - parsing_string);
 
     // `parsing_string` can change:
     out[2] <== 1 - 2 * parsing_string;
 
-    // `parsing_number` can change: 
+    // `parsing_number` can change:
     out[3] <== (1 - parsing_string) * (- 2 * parsing_number);
 }
 
@@ -155,7 +155,7 @@ template RewriteStack(n) {
     - if pushpop is 1, we are going to increment the pointer and write a new value
     - if pushpop is -1, we are going to decrement the pointer and delete an old value if it was the same value
 
-    TODO: There's the weird case of "no trailing commas" for KVs in JSON. 
+    TODO: There's the weird case of "no trailing commas" for KVs in JSON.
     This constitutes valid JSON, fortunately, and is NOT optional. Or, at least,
     we should NOT consider it to be for this current impl.
     Basically, JSON must be like:
@@ -205,7 +205,7 @@ template RewriteStack(n) {
     signal READ_COMMA          <== readComma.out * ((1-isArray.out) * (3) + isArray.out * (2));
     signal corrected_stack_val <== READ_COMMA + NOT_READ_COMMA;
 
-    // top of stack is a 3, then we need to pop off 3, and check the value underneath 
+    // top of stack is a 3, then we need to pop off 3, and check the value underneath
     // is correct match (i.e., a brace or bracket (1 or 2))
 
     for(var i = 0; i < n; i++) {
@@ -215,7 +215,7 @@ template RewriteStack(n) {
 
         // Points to top of stack if POP else it points to unallocated position
         indicator[i]         = IsZero();
-        indicator[i].in    <== pointer - isPop.out - i;   
+        indicator[i].in    <== pointer - isPop.out - i;
     }
 
     component atColon = IsEqual();
@@ -235,7 +235,7 @@ template RewriteStack(n) {
         isPopAtPrev[i]     <== prev_indicator[i].out * isDoublePop; // temp signal
         isPopAt[i]         <== indicator[i].out * isPop.out; // want to add: `prev_indicator[i] * isDoublePop`
 
-        isPushAt[i]        <== indicator[i].out * isPush.out; 
+        isPushAt[i]        <== indicator[i].out * isPush.out;
 
         // Leave the stack alone except for where we indicate change
         second_pop_val[i]  <== isPopAtPrev[i] * corrected_stack_val;
