@@ -39,10 +39,16 @@ template StateUpdate(MAX_STACK_HEIGHT) {
     component numeral_range_check = InRange(8);
     numeral_range_check.in    <== byte;
     numeral_range_check.range <== [48, 57]; // ASCII NUMERALS
-    matcher.case              <== (1 - numeral_range_check.out) * byte + numeral_range_check.out * 256; // IF (NOT is_number) THEN byte ELSE 256
+    log("isNumeral:", numeral_range_check.out);
+    signal IS_NUMBER          <==  numeral_range_check.out * Syntax.NUMBER;
+    matcher.case              <== (1 - numeral_range_check.out) * byte + IS_NUMBER; // IF (NOT is_number) THEN byte ELSE 256
+    
     // * get the instruction mask based on current state *
     component mask             = StateToMask(MAX_STACK_HEIGHT);
-    mask.in                  <== parsing_state;     
+    // mask.in                  <== parsing_state;    
+    mask.in <== [matcher.out[0],matcher.out[1],parsing_string,parsing_number];  // TODO: This is awkward. Things need to be rewritten
+
+    
     // * multiply the mask array elementwise with the instruction array *
     component mulMaskAndOut    = ArrayMul(4);
     mulMaskAndOut.lhs        <== mask.out;
@@ -51,6 +57,7 @@ template StateUpdate(MAX_STACK_HEIGHT) {
     component addToState       = ArrayAdd(4);
     addToState.lhs           <== parsing_state;
     addToState.rhs           <== mulMaskAndOut.out;
+
     // * set the new state *
     component newStack         = RewriteStack(MAX_STACK_HEIGHT);
     newStack.pointer         <== pointer;
@@ -61,26 +68,12 @@ template StateUpdate(MAX_STACK_HEIGHT) {
     next_stack               <== newStack.next_stack;
     next_parsing_string      <== addToState.out[2];
     next_parsing_number      <== addToState.out[3];
-    //--------------------------------------------------------------------------------------------//
 
-    //--------------------------------------------------------------------------------------------//
-    // // DEBUGGING: internal state
-    // for(var i = 0; i<7; i++) {
-    //     log("------------------------------------------");
-    //     log(">>>> parsing_state[",i,"]:        ", parsing_state[i]);
-    //     log(">>>> mask[",i,"]         :        ", mask.out[i]);
-    //     log(">>>> command[",i,"]      :        ", matcher.out[i]);
-    //     log(">>>> addToState[",i,"]   :        ", addToState.out[i]);
+    // for(var i = 0; i < 4; i++) {
+    //     log("matcher.out[",i,"]:   ", matcher.out[i]);
+    //     log("mask.out[",i,"]:      ", mask.out[i]);
+    //     log("mulMaskAndOut[",i,"]: ", mulMaskAndOut.out[i]);
     // }
-    // Debugging
-    // log("next_pointer       ", "= ", next_pointer);
-    // for(var i = 0; i<4; i++) {
-    //     log("next_stack[", i,"]    ", "= ", next_stack[i]);
-    // }
-    // log("next_parsing_string", "= ", next_parsing_string);
-    // log("next_parsing_number", "= ", next_parsing_number);
-    // log("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
-    //--------------------------------------------------------------------------------------------//
 
     //--------------------------------------------------------------------------------------------//
     //-Constraints--------------------------------------------------------------------------------//
@@ -98,6 +91,7 @@ template StateUpdate(MAX_STACK_HEIGHT) {
 }
 
 template StateToMask(n) {
+    // TODO: Probably need to assert things are bits where necessary.
     signal input in[4];
     signal output out[4];
     
@@ -106,18 +100,44 @@ template StateToMask(n) {
     signal parsing_string <== in[2];
     signal parsing_number <== in[3];
 
-    // `pushpop` can change: IF NOT `parsing_string`
-    out[0] <== (1 - parsing_string);
+    // `pushpop` can change:  IF NOT `parsing_string`
+    out[0] <== (1 - parsing_string) * (1 - parsing_number);
 
-    // `stack_val`: IF NOT `parsing_string` OR 
-    // TODO: `parsing_array`
-    out[1] <== (1 - parsing_string);
+    // `stack_val`can change: IF NOT `parsing_string` 
+    out[1] <== (1 - parsing_string) * (1- parsing_number);
 
     // `parsing_string` can change:
     out[2] <== 1 - 2 * parsing_string;
 
     // `parsing_number` can change: 
-    out[3] <== (1 - parsing_string) * (- 2 * parsing_number);
+    component isDelimeter   = InRange(8);
+    isDelimeter.in        <== stack_val;
+    isDelimeter.range[0]  <== 1;
+    isDelimeter.range[1]  <== 4;
+    component isNumber      = IsEqual();
+    isNumber.in           <== [stack_val, 256];
+    component isParsingString = IsEqual();
+    isParsingString.in[0]     <== parsing_string;     
+    isParsingString.in[1]     <== 1;
+    component isParsingNumber = IsEqual();
+    isParsingNumber.in[0]     <== parsing_number;     
+    isParsingNumber.in[1]     <== 1;
+    component toParseNumber   = Switch(16);
+    // TODO: Could combine this into something that returns arrays so that we can set the mask more easily.
+    toParseNumber.branches  <== [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+    toParseNumber.vals      <== [1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1,  0,  0,  0,  0,   0];
+    component stateToNum      = Bits2Num(4);
+    stateToNum.in           <== [isParsingString.out, isParsingNumber.out, isNumber.out, isDelimeter.out];
+     //                                   1                 2                   4              8
+    toParseNumber.case      <== stateToNum.out;
+    log("isNumber:        ", isNumber.out);
+    log("isParsingString: ", isParsingString.out);
+    log("isParsingNumber: ", isParsingNumber.out);
+    log("isDelimeter:     ", isDelimeter.out);
+    log("stateToNum:      ", stateToNum.out);
+    log("toParseNumber:   ", toParseNumber.out);
+
+    out[3] <== toParseNumber.out;
 }
 
 template GetTopOfStack(n) {

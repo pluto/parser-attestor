@@ -20,7 +20,7 @@
         "template": "Extract",
         "params": [
             12,
-            2
+            3
         ]
     },
     "value_array": {
