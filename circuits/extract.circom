@@ -24,35 +24,28 @@ template Extract(KEY_BYTES, DATA_BYTES) {
     // Initialze the parser
     component State[DATA_BYTES];
     State[0] = StateUpdate();
-    State[0].byte             <== data[0];
-    State[0].tree_depth       <== 0;
-    State[0].parsing_to_key   <== 1; // Initialize by saying we are parsing to the first key
-    State[0].inside_key       <== 0;
-    State[0].parsing_to_value <== 0;
-    State[0].inside_value     <== 0;
-    State[0].escaping         <== 0;
-    State[0].end_of_kv        <== 0;
+    State[0].byte          <== data[0];
+    State[0].tree_depth    <== 0;
+    State[0].parsing_key   <== 0; 
+    State[0].inside_key    <== 0;
+    State[0].parsing_value <== 0;
+    State[0].inside_value  <== 0;
 
     for(var data_pointer = 1; data_pointer < DATA_BYTES; data_pointer++) {
         State[data_pointer] = StateUpdate();
-        State[data_pointer].byte             <== data[data_pointer];
-        State[data_pointer].tree_depth       <== State[data_pointer - 1].next_tree_depth;
-        State[data_pointer].parsing_to_key   <== State[data_pointer - 1].next_parsing_to_key;
-        State[data_pointer].inside_key       <== State[data_pointer - 1].next_inside_key;
-        State[data_pointer].parsing_to_value <== State[data_pointer - 1].next_parsing_to_value;
-        State[data_pointer].inside_value     <== State[data_pointer - 1].next_inside_value;
-        State[data_pointer].end_of_kv        <== State[data_pointer - 1].next_end_of_kv;
-        // TODO: For the next state, we should use `next_`, this is only to make this compile for now.
-        State[data_pointer].escaping         <== State[data_pointer - 1].escaping;
-
+        State[data_pointer].byte          <== data[data_pointer];
+        State[data_pointer].tree_depth    <== State[data_pointer - 1].next_tree_depth;
+        State[data_pointer].parsing_key   <== State[data_pointer - 1].next_parsing_key;
+        State[data_pointer].inside_key    <== State[data_pointer - 1].next_inside_key;
+        State[data_pointer].parsing_value <== State[data_pointer - 1].next_parsing_value;
+        State[data_pointer].inside_value  <== State[data_pointer - 1].next_inside_value;
 
         // Debugging
         log("State[", data_pointer, "].tree_depth", "= ", State[data_pointer].tree_depth);
-        log("State[", data_pointer, "].parsing_to_key", "= ", State[data_pointer].parsing_to_key);
+        log("State[", data_pointer, "].parsing_key", "= ", State[data_pointer].parsing_key);
         log("State[", data_pointer, "].inside_key", "= ", State[data_pointer].inside_key);
-        log("State[", data_pointer, "].parsing_to_value", "= ", State[data_pointer].parsing_to_value);
+        log("State[", data_pointer, "].parsing_value", "= ", State[data_pointer].parsing_value);
         log("State[", data_pointer, "].inside_value", "= ", State[data_pointer].inside_value);
-        log("State[", data_pointer, "].end_of_kv", "= ", State[data_pointer].end_of_kv);
         log("---");
     }
 

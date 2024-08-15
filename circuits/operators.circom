@@ -123,3 +123,23 @@ template Contains(n) {
     // Apply `not` to this by 1-x
     out <== 1 - someEqual.out;
 }
+
+template ArrayAdd(n) {
+    signal input lhs[n];
+    signal input rhs[n];
+    signal output out[n];
+
+    for(var i = 0; i < n; i++) {
+        out[i] <== lhs[i] + rhs[i];
+    }
+}
+
+template ArrayMul(n) {
+    signal input lhs[n];
+    signal input rhs[n];
+    signal output out[n];
+
+    for(var i = 0; i < n; i++) {
+        out[i] <== lhs[i] * rhs[i];
+    }
+}

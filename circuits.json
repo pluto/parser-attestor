@@ -7,6 +7,30 @@
             21
         ]
     },
+    "test_extract_two_key": {
+        "file": "extract",
+        "template": "Extract",
+        "params": [
+            4,
+            40
+        ]
+    },
+    "test_extract_depth": {
+        "file": "extract",
+        "template": "Extract",
+        "params": [
+            4,
+            64
+        ]
+    },
+    "test_extract_sambhav": {
+        "file": "extract",
+        "template": "Extract",
+        "params": [
+            4,
+            105
+        ]
+    },
     "test_extract_hard": {
         "file": "extract",
         "template": "Extract",

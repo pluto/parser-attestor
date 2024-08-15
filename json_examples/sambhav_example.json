@@ -1,0 +1,7 @@
+{
+    "extract": {
+        "file": "extract",
+        "template": "Extract",
+        "params": ""
+    }
+}
