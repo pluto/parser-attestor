@@ -18,7 +18,6 @@ template Extract(DATA_BYTES, MAX_STACK_HEIGHT) {
     component State[DATA_BYTES];
     State[0] = StateUpdate(MAX_STACK_HEIGHT);
     State[0].byte           <== data[0];
-    State[0].pointer        <== 0;
     for(var i = 0; i < MAX_STACK_HEIGHT; i++) {
         State[0].stack[i]   <== [0,0];
     }
@@ -28,13 +27,11 @@ template Extract(DATA_BYTES, MAX_STACK_HEIGHT) {
     for(var data_idx = 1; data_idx < DATA_BYTES; data_idx++) {
         State[data_idx]                  = StateUpdate(MAX_STACK_HEIGHT);
         State[data_idx].byte           <== data[data_idx];
-        State[data_idx].pointer        <== State[data_idx - 1].next_pointer;
         State[data_idx].stack          <== State[data_idx - 1].next_stack;
         State[data_idx].parsing_string <== State[data_idx - 1].next_parsing_string;
         State[data_idx].parsing_number <== State[data_idx - 1].next_parsing_number;
 
         // Debugging
-        log("State[", data_idx, "].pointer       ", "= ", State[data_idx].pointer);
         for(var i = 0; i<MAX_STACK_HEIGHT; i++) {
             log("State[", data_idx, "].stack[", i,"]    ", "= [",State[data_idx].stack[i][0], "][", State[data_idx].stack[i][1],"]" );
         }

@@ -10,15 +10,13 @@ TODO: Change the values to push onto stack to be given by START_BRACE, COLON, et
 template StateUpdate(MAX_STACK_HEIGHT) {
     signal input byte;  
 
-    signal input pointer;             // POINTER -- points to the stack to mark where we currently are inside the JSON.
-    signal input stack[MAX_STACK_HEIGHT][2];            // STACK -- how deep in a JSON nest we are and what type we are currently inside (e.g., `1` for object, `-1` for array).
+    signal input stack[MAX_STACK_HEIGHT][2];  // STACK -- how deep in a JSON nest we are and what type we are currently inside (e.g., `1` for object, `-1` for array).
     signal input parsing_string;
     signal input parsing_number;
     // TODO
     // signal parsing_boolean;
     // signal parsing_null;
 
-    signal output next_pointer;
     signal output next_stack[MAX_STACK_HEIGHT][2];
     signal output next_parsing_string;
     signal output next_parsing_number;
@@ -27,8 +25,8 @@ template StateUpdate(MAX_STACK_HEIGHT) {
     component Command = Command();
 
     var pushpop = 0;
-    var stack_val = 0;
-    var parsing_state[4]     = [pushpop, stack_val, parsing_string, parsing_number];   
+    var read_write_value = 0;
+    var parsing_state[4]     = [pushpop, read_write_value, parsing_string, parsing_number];   
     
     //--------------------------------------------------------------------------------------------//
     //-State machine updating---------------------------------------------------------------------//
@@ -60,11 +58,9 @@ template StateUpdate(MAX_STACK_HEIGHT) {
 
     // * set the new state *
     component newStack         = RewriteStack(MAX_STACK_HEIGHT);
-    newStack.pointer         <== pointer;
     newStack.stack           <== stack;
     newStack.pushpop         <== addToState.out[0];
-    newStack.stack_val       <== addToState.out[1];
-    next_pointer             <== newStack.next_pointer;
+    newStack.read_write_value       <== addToState.out[1];
     next_stack               <== newStack.next_stack;
     next_parsing_string      <== addToState.out[2];
     next_parsing_number      <== addToState.out[3];
@@ -96,14 +92,15 @@ template StateToMask(n) {
     signal output out[4];
     
     signal pushpop        <== in[0];
-    signal stack_val      <== in[1];
+    signal read_write_value      <== in[1];
     signal parsing_string <== in[2];
     signal parsing_number <== in[3];
 
+    // TODO: Pushpop is probably unecessary actually
     // `pushpop` can change:  IF NOT `parsing_string`
     out[0] <== (1 - parsing_string);
 
-    // `stack_val`can change: IF NOT `parsing_string` 
+    // `read_write_value`can change: IF NOT `parsing_string` 
     out[1] <== (1 - parsing_string);
 
     // `parsing_string` can change:
@@ -111,11 +108,11 @@ template StateToMask(n) {
 
     // `parsing_number` can change: 
     component isDelimeter   = InRange(8);
-    isDelimeter.in        <== stack_val;
+    isDelimeter.in        <== read_write_value;
     isDelimeter.range[0]  <== 1;
     isDelimeter.range[1]  <== 4;
     component isNumber      = IsEqual();
-    isNumber.in           <== [stack_val, 256];
+    isNumber.in           <== [read_write_value, 256];
     component isParsingString = IsEqual();
     isParsingString.in[0]     <== parsing_string;     
     isParsingString.in[1]     <== 1;
@@ -140,30 +137,35 @@ template StateToMask(n) {
     out[3] <== toParseNumber.out;
 }
 
+// TODO: Check if underconstrained
 template GetTopOfStack(n) {
     signal input stack[n][2];
-    signal input pointer;
+    signal output value[2];
+    signal output pointer;
 
-    signal output out[2];
-
+    component isUnallocated[n];
     component atTop = SwitchArray(n,2);
+    var selector = 0;
     for(var i = 0; i < n; i++) {
+        isUnallocated[i]         = IsEqualArray(2);
+        isUnallocated[i].in[0] <== [0,0];
+        isUnallocated[i].in[1] <== stack[i];
+        selector += (1 - isUnallocated[i].out);
         atTop.branches[i] <== i + 1;
         atTop.vals[i]     <== stack[i];
     }
-    atTop.case <== pointer;
-
-    out <== atTop.out;
+    atTop.case <== selector;
+    value      <== atTop.out;
+    pointer    <== selector;
 }
 
 // TODO: IMPORTANT NOTE, THE STACK IS CONSTRAINED TO 2**8 so the LessThan and GreaterThan work (could be changed)
 // TODO: Might be good to change value before increment pointer AND decrement pointer before changing value
 template RewriteStack(n) {
     assert(n < 2**8);
-    signal input pointer;
     signal input stack[n][2];
     signal input pushpop;
-    signal input stack_val;
+    signal input read_write_value;
     signal output next_pointer;
     signal output next_stack[n][2];
 
@@ -190,30 +192,45 @@ template RewriteStack(n) {
     to
     next_stack == [0,0,0,0,...]
     on the case we get a POP instruction reading an object OR an array (no trailing commas in arrays either)
+
+    // top of stack is a 3, then we need to pop off 3, and check the value underneath 
+    // is correct match (i.e., a brace or bracket (1 or 2))
     */
-
-    // Indicate which position in the stack should change (if any)
+    
+    //-----------------------------------------------------------------------------//
+    // * scan value on top of stack *
     component topOfStack = GetTopOfStack(n);
-    topOfStack.pointer <== pointer;
     topOfStack.stack   <== stack;
+    signal pointer     <== topOfStack.pointer;
+    signal current_value[2]    <== topOfStack.value;
+    // * check if value indicates currently in an array *
+    component inArray = IsEqual();
+    inArray.in[0]    <== current_value[0];
+    inArray.in[1]    <== 2;
+    //-----------------------------------------------------------------------------//
 
-    component isArray = IsEqual();
-    isArray.in[0]    <== topOfStack.out[0];
-    isArray.in[1]    <== 2;
-
-    // log("isArray: ", isArray.out);
-
+    //-----------------------------------------------------------------------------//
+    // * check what value was read *
+    // * read in a comma
     component readComma = IsEqual();
     readComma.in[0]   <== 4;
-    readComma.in[1]   <== stack_val;
+    readComma.in[1]   <== read_write_value;
+    // * read in either an end brace `}` or an end bracket `]` *
+    component readEndChar = IsZero();
+    readEndChar.in <== (read_write_value + 1) * (read_write_value + 2);
+    // * read in an end bracket `]` *
+    component readEndArr = IsZero();
+    readEndArr.in      <== read_write_value + 2;
 
-    // log("readComma: ", readComma.out);
-
-    signal READ_COMMA_AND_IN_ARRAY <== (1 - readComma.out) + (1 - isArray.out); // POORLY NAMED. THIS IS MORE LIKE XNOR or something.
+    // TODO: Can remove all the pushpop stuff by checking what character we got. E.g., if it is "negative" or comma, we pop, if it is positive we push, basically
+    signal READ_COMMA_AND_IN_ARRAY <== (1 - readComma.out) + (1 - inArray.out); // POORLY NAMED. THIS IS MORE LIKE XNOR or something.
     component isReadCommaAndInArray   = IsZero();
     isReadCommaAndInArray.in       <== READ_COMMA_AND_IN_ARRAY;
 
-    signal read_comma_in_array <== readComma.out * isArray.out;
+    signal read_comma_in_array <== readComma.out * inArray.out;
+
+
+
 
     component isPop = IsZero();
     isPop.in      <== (1 - isReadCommaAndInArray.out) * pushpop + 1; // TODO: can simplify?
@@ -225,18 +242,12 @@ template RewriteStack(n) {
     signal isPopAt[n];
     signal isPushAt[n];
 
-    component readEndChar = IsZero();
-    readEndChar.in <== (stack_val + 1) * (stack_val + 2);
 
-    signal NOT_READ_COMMA      <== (1 - readComma.out) * stack_val;
-    signal READ_COMMA          <== readComma.out * ((1-isArray.out) * (-3) + isArray.out * (-2));
-    signal corrected_stack_val <== READ_COMMA + NOT_READ_COMMA;
 
-    // top of stack is a 3, then we need to pop off 3, and check the value underneath 
-    // is correct match (i.e., a brace or bracket (1 or 2))
+    signal NOT_READ_COMMA      <== (1 - readComma.out) * read_write_value;
+    signal READ_COMMA          <== readComma.out * ((1-inArray.out) * (-3) + inArray.out * (-2));
+    signal corrected_read_write_value <== READ_COMMA + NOT_READ_COMMA;
 
-    component readEndArr = IsZero();
-    readEndArr.in      <== stack_val + 2;
     signal isPopArr    <== isPop.out * readEndArr.out;
 
     for(var i = 0; i < n; i++) {
@@ -250,7 +261,7 @@ template RewriteStack(n) {
     }
 
     component atColon = IsEqual();
-    atColon.in[0]   <== topOfStack.out[0];
+    atColon.in[0]   <== current_value[0]; // TODO: Move colon to be a toggle in the second stack position.
     atColon.in[1]   <== 3;
     signal isDoublePop <== atColon.out * readEndChar.out;
 
@@ -270,11 +281,11 @@ template RewriteStack(n) {
         isPushAt[i]        <== indicator[i].out * isPush.out; 
 
         // Leave the stack alone except for where we indicate change
-        second_pop_val[i]  <== isPopAtPrev[i] * corrected_stack_val;
-        temp_val[i]        <== corrected_stack_val - (3 + corrected_stack_val) * isDoublePop;
-        first_pop_val[i]   <== isPopAt[i] * temp_val[i]; // = isPopAt[i] * (corrected_stack_val * (1 - isDoublePop) - 3 * isDoublePop)
+        second_pop_val[i]  <== isPopAtPrev[i] * corrected_read_write_value;
+        temp_val[i]        <== corrected_read_write_value - (3 + corrected_read_write_value) * isDoublePop;
+        first_pop_val[i]   <== isPopAt[i] * temp_val[i]; // = isPopAt[i] * (corrected_read_write_value * (1 - isDoublePop) - 3 * isDoublePop)
 
-        next_stack[i][0]      <== stack[i][0] + isPushAt[i] * corrected_stack_val + first_pop_val[i] + second_pop_val[i];
+        next_stack[i][0]      <== stack[i][0] + isPushAt[i] * corrected_read_write_value + first_pop_val[i] + second_pop_val[i];
 
         temp_val2[i]          <== prev_indicator[i].out * read_comma_in_array;
         next_stack[i][1]      <== stack[i][1] + temp_val2[i] - stack[i][1] * isPopArr;
@@ -284,16 +295,14 @@ template RewriteStack(n) {
         // TODO: Constrain next_stack entries to be 0,1,2,3
     }
 
-    signal IS_READ_COMMA_AND_IN_ARRAY_MODIFIER <== (1-isReadCommaAndInArray.out) * pushpop;
-    next_pointer <== pointer + (1 + isDoublePop) * IS_READ_COMMA_AND_IN_ARRAY_MODIFIER; // If pushpop is 0, pointer doesn't change, if -1, decrement, +1 increment
+    // TODO: Reimplement these!
+    // component isOverflow = GreaterThan(8);
+    // isOverflow.in[0]   <== next_pointer;
+    // isOverflow.in[1]   <== n;
+    // isOverflow.out     === 0;
 
-    component isOverflow = GreaterThan(8);
-    isOverflow.in[0]   <== next_pointer;
-    isOverflow.in[1]   <== n;
-    isOverflow.out     === 0;
-
-    component isUnderflow = LessThan(8);
-    isUnderflow.in[0]   <== next_pointer;
-    isUnderflow.in[1]   <== 0;
-    isUnderflow.out     === 0;
+    // component isUnderflow = LessThan(8);
+    // isUnderflow.in[0]   <== next_pointer;
+    // isUnderflow.in[1]   <== 0;
+    // isUnderflow.out     === 0;
 }
