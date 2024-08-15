@@ -20,6 +20,11 @@ shouldn't be too hard, just add one more state variable `escaping` that is only 
 
 This could also allow for parsing unicode
 
+### Other thoughts
+ - Pointer may not actually be necessary, because it just points to the first unallocated position in the stac
+ - How do we know how tall to make the stack? Open braces `{`, open brackets `[` and colons `:` all push onto the stack.
+    - We might not actually need to push the stack higher with a colon, instead we could push state into the second slot of the stack like we do with commas inside of arrays.
+
 ## Expected Output
 > This is old at this point, but we should update it.
 ```
