@@ -11,7 +11,7 @@ template StateUpdate(MAX_STACK_HEIGHT) {
     signal input byte;
 
     signal input pointer;             // POINTER -- points to the stack to mark where we currently are inside the JSON.
-    signal input stack[MAX_STACK_HEIGHT];            // STACK -- how deep in a JSON nest we are and what type we are currently inside (e.g., `1` for object, `-1` for array).
+    signal input stack[MAX_STACK_HEIGHT][2];            // STACK -- how deep in a JSON nest we are and what type we are currently inside (e.g., `1` for object, `-1` for array).
     signal input parsing_string;
     signal input parsing_number;
     // TODO
@@ -19,7 +19,7 @@ template StateUpdate(MAX_STACK_HEIGHT) {
     // signal parsing_null;
 
     signal output next_pointer;
-    signal output next_stack[MAX_STACK_HEIGHT];
+    signal output next_stack[MAX_STACK_HEIGHT][2];
     signal output next_parsing_string;
     signal output next_parsing_number;
 
@@ -39,10 +39,16 @@ template StateUpdate(MAX_STACK_HEIGHT) {
     component numeral_range_check = InRange(8);
     numeral_range_check.in    <== byte;
     numeral_range_check.range <== [48, 57]; // ASCII NUMERALS
-    matcher.case              <== (1 - numeral_range_check.out) * byte + numeral_range_check.out * 256; // IF (NOT is_number) THEN byte ELSE 256
+    // log("isNumeral:", numeral_range_check.out);
+    signal IS_NUMBER          <==  numeral_range_check.out * Syntax.NUMBER;
+    matcher.case              <== (1 - numeral_range_check.out) * byte + IS_NUMBER; // IF (NOT is_number) THEN byte ELSE 256
+
     // * get the instruction mask based on current state *
     component mask             = StateToMask(MAX_STACK_HEIGHT);
-    mask.in                  <== parsing_state;
+    // mask.in                  <== parsing_state;
+    mask.in <== [matcher.out[0],matcher.out[1],parsing_string,parsing_number];  // TODO: This is awkward. Things need to be rewritten
+
+
     // * multiply the mask array elementwise with the instruction array *
     component mulMaskAndOut    = ArrayMul(4);
     mulMaskAndOut.lhs        <== mask.out;
@@ -51,6 +57,7 @@ template StateUpdate(MAX_STACK_HEIGHT) {
     component addToState       = ArrayAdd(4);
     addToState.lhs           <== parsing_state;
     addToState.rhs           <== mulMaskAndOut.out;
+
     // * set the new state *
     component newStack         = RewriteStack(MAX_STACK_HEIGHT);
     newStack.pointer         <== pointer;
@@ -61,26 +68,12 @@ template StateUpdate(MAX_STACK_HEIGHT) {
     next_stack               <== newStack.next_stack;
     next_parsing_string      <== addToState.out[2];
     next_parsing_number      <== addToState.out[3];
-    //--------------------------------------------------------------------------------------------//
 
-    //--------------------------------------------------------------------------------------------//
-    // // DEBUGGING: internal state
-    // for(var i = 0; i<7; i++) {
-    //     log("------------------------------------------");
-    //     log(">>>> parsing_state[",i,"]:        ", parsing_state[i]);
-    //     log(">>>> mask[",i,"]         :        ", mask.out[i]);
-    //     log(">>>> command[",i,"]      :        ", matcher.out[i]);
-    //     log(">>>> addToState[",i,"]   :        ", addToState.out[i]);
+    // for(var i = 0; i < 4; i++) {
+    //     log("matcher.out[",i,"]:   ", matcher.out[i]);
+    //     log("mask.out[",i,"]:      ", mask.out[i]);
+    //     log("mulMaskAndOut[",i,"]: ", mulMaskAndOut.out[i]);
     // }
-    // Debugging
-    // log("next_pointer       ", "= ", next_pointer);
-    // for(var i = 0; i<4; i++) {
-    //     log("next_stack[", i,"]    ", "= ", next_stack[i]);
-    // }
-    // log("next_parsing_string", "= ", next_parsing_string);
-    // log("next_parsing_number", "= ", next_parsing_number);
-    // log("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
-    //--------------------------------------------------------------------------------------------//
 
     //--------------------------------------------------------------------------------------------//
     //-Constraints--------------------------------------------------------------------------------//
@@ -98,6 +91,7 @@ template StateUpdate(MAX_STACK_HEIGHT) {
 }
 
 template StateToMask(n) {
+    // TODO: Probably need to assert things are bits where necessary.
     signal input in[4];
     signal output out[4];
 
@@ -106,27 +100,53 @@ template StateToMask(n) {
     signal parsing_string <== in[2];
     signal parsing_number <== in[3];
 
-    // `pushpop` can change: IF NOT `parsing_string`
+    // `pushpop` can change:  IF NOT `parsing_string`
     out[0] <== (1 - parsing_string);
 
-    // `stack_val`: IF NOT `parsing_string` OR
-    // TODO: `parsing_array`
+    // `stack_val`can change: IF NOT `parsing_string`
     out[1] <== (1 - parsing_string);
 
     // `parsing_string` can change:
     out[2] <== 1 - 2 * parsing_string;
 
     // `parsing_number` can change:
-    out[3] <== (1 - parsing_string) * (- 2 * parsing_number);
+    component isDelimeter   = InRange(8);
+    isDelimeter.in        <== stack_val;
+    isDelimeter.range[0]  <== 1;
+    isDelimeter.range[1]  <== 4;
+    component isNumber      = IsEqual();
+    isNumber.in           <== [stack_val, 256];
+    component isParsingString = IsEqual();
+    isParsingString.in[0]     <== parsing_string;
+    isParsingString.in[1]     <== 1;
+    component isParsingNumber = IsEqual();
+    isParsingNumber.in[0]     <== parsing_number;
+    isParsingNumber.in[1]     <== 1;
+    component toParseNumber   = Switch(16);
+    // TODO: Could combine this into something that returns arrays so that we can set the mask more easily.
+    toParseNumber.branches  <== [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+    toParseNumber.vals      <== [0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1,  0,  0,  0,  0,   0];
+    component stateToNum      = Bits2Num(4);
+    stateToNum.in           <== [isParsingString.out, isParsingNumber.out, isNumber.out, isDelimeter.out];
+     //                                   1                 2                   4              8
+    toParseNumber.case      <== stateToNum.out;
+    // log("isNumber:        ", isNumber.out);
+    // log("isParsingString: ", isParsingString.out);
+    // log("isParsingNumber: ", isParsingNumber.out);
+    // log("isDelimeter:     ", isDelimeter.out);
+    // log("stateToNum:      ", stateToNum.out);
+    // log("toParseNumber:   ", toParseNumber.out);
+
+    out[3] <== toParseNumber.out;
 }
 
 template GetTopOfStack(n) {
-    signal input stack[n];
+    signal input stack[n][2];
     signal input pointer;
 
-    signal output out;
+    signal output out[2];
 
-    component atTop = Switch(n);
+    component atTop = SwitchArray(n,2);
     for(var i = 0; i < n; i++) {
         atTop.branches[i] <== i + 1;
         atTop.vals[i]     <== stack[i];
@@ -141,11 +161,11 @@ template GetTopOfStack(n) {
 template RewriteStack(n) {
     assert(n < 2**8);
     signal input pointer;
-    signal input stack[n];
+    signal input stack[n][2];
     signal input pushpop;
     signal input stack_val;
     signal output next_pointer;
-    signal output next_stack[n];
+    signal output next_stack[n][2];
 
     /*
     IDEA:
@@ -173,24 +193,31 @@ template RewriteStack(n) {
     */
 
     // Indicate which position in the stack should change (if any)
-    component readComma = IsEqual();
-    readComma.in[0]   <== 4;
-    readComma.in[1]   <== stack_val;
-
     component topOfStack = GetTopOfStack(n);
     topOfStack.pointer <== pointer;
     topOfStack.stack   <== stack;
 
     component isArray = IsEqual();
-    isArray.in[0]    <== topOfStack.out;
+    isArray.in[0]    <== topOfStack.out[0];
     isArray.in[1]    <== 2;
 
-    signal READ_COMMA_AND_IN_ARRAY <== (1 - readComma.out) + (1 - isArray.out);
+    // log("isArray: ", isArray.out);
+
+    component readComma = IsEqual();
+    readComma.in[0]   <== 4;
+    readComma.in[1]   <== stack_val;
+
+    // log("readComma: ", readComma.out);
+
+    signal READ_COMMA_AND_IN_ARRAY <== (1 - readComma.out) + (1 - isArray.out); // POORLY NAMED. THIS IS MORE LIKE XNOR or something.
     component isReadCommaAndInArray   = IsZero();
     isReadCommaAndInArray.in       <== READ_COMMA_AND_IN_ARRAY;
 
+    signal read_comma_in_array <== readComma.out * isArray.out;
+
     component isPop = IsZero();
-    isPop.in      <== (1 - isReadCommaAndInArray.out) * pushpop + 1;
+    isPop.in      <== (1 - isReadCommaAndInArray.out) * pushpop + 1; // TODO: can simplify?
+
     component isPush = IsZero();
     isPush.in     <== pushpop - 1;
     component prev_indicator[n];
@@ -199,19 +226,23 @@ template RewriteStack(n) {
     signal isPushAt[n];
 
     component readEndChar = IsZero();
-    readEndChar.in <== (stack_val - 1) * (stack_val - 2);
+    readEndChar.in <== (stack_val + 1) * (stack_val + 2);
 
     signal NOT_READ_COMMA      <== (1 - readComma.out) * stack_val;
-    signal READ_COMMA          <== readComma.out * ((1-isArray.out) * (3) + isArray.out * (2));
+    signal READ_COMMA          <== readComma.out * ((1-isArray.out) * (-3) + isArray.out * (-2));
     signal corrected_stack_val <== READ_COMMA + NOT_READ_COMMA;
 
     // top of stack is a 3, then we need to pop off 3, and check the value underneath
     // is correct match (i.e., a brace or bracket (1 or 2))
 
+    component readEndArr = IsZero();
+    readEndArr.in      <== stack_val + 2;
+    signal isPopArr    <== isPop.out * readEndArr.out;
+
     for(var i = 0; i < n; i++) {
         // points to 1 value back from top
         prev_indicator[i] = IsZero();
-        prev_indicator[i].in <== pointer - 2 * isPop.out - i;
+        prev_indicator[i].in <== pointer - 1 - isPop.out - i;
 
         // Points to top of stack if POP else it points to unallocated position
         indicator[i]         = IsZero();
@@ -219,7 +250,7 @@ template RewriteStack(n) {
     }
 
     component atColon = IsEqual();
-    atColon.in[0]   <== topOfStack.out;
+    atColon.in[0]   <== topOfStack.out[0];
     atColon.in[1]   <== 3;
     signal isDoublePop <== atColon.out * readEndChar.out;
 
@@ -227,8 +258,9 @@ template RewriteStack(n) {
     signal second_pop_val[n];
     signal first_pop_val[n];
     signal temp_val[n];
+    signal temp_val2[n];
 
-
+// log("read_comma_in_array: ", read_comma_in_array);
     for(var i = 0; i < n; i++) {
 
         // Indicators for index to PUSH to or POP from
@@ -239,11 +271,16 @@ template RewriteStack(n) {
 
         // Leave the stack alone except for where we indicate change
         second_pop_val[i]  <== isPopAtPrev[i] * corrected_stack_val;
-        temp_val[i]        <== corrected_stack_val + (1 + corrected_stack_val) * isDoublePop;
+        temp_val[i]        <== corrected_stack_val - (3 + corrected_stack_val) * isDoublePop;
         first_pop_val[i]   <== isPopAt[i] * temp_val[i]; // = isPopAt[i] * (corrected_stack_val * (1 - isDoublePop) - 3 * isDoublePop)
 
-        next_stack[i]      <== stack[i] + isPushAt[i] * corrected_stack_val - first_pop_val[i] - second_pop_val[i];
+        next_stack[i][0]      <== stack[i][0] + isPushAt[i] * corrected_stack_val + first_pop_val[i] + second_pop_val[i];
 
+        temp_val2[i]          <== prev_indicator[i].out * read_comma_in_array;
+        next_stack[i][1]      <== stack[i][1] + temp_val2[i] - stack[i][1] * isPopArr;
+
+        // log("prev_indicator[i]: ", prev_indicator[i].out);
+        // log("next_stack[", i,"]    ", "= [",next_stack[i][0], "][", next_stack[i][1],"]" );
         // TODO: Constrain next_stack entries to be 0,1,2,3
     }
 

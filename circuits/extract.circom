@@ -20,9 +20,8 @@ template Extract(DATA_BYTES, MAX_STACK_HEIGHT) {
     State[0].byte           <== data[0];
     State[0].pointer        <== 0;
     for(var i = 0; i < MAX_STACK_HEIGHT; i++) {
-        State[0].stack[i]   <== 0;
+        State[0].stack[i]   <== [0,0];
     }
-    // State[0].stack          <== [0,0,0,0,0,0,0,0,0,0,0,0];
     State[0].parsing_string <== 0;
     State[0].parsing_number <== 0;
 
@@ -37,7 +36,7 @@ template Extract(DATA_BYTES, MAX_STACK_HEIGHT) {
         // Debugging
         log("State[", data_idx, "].pointer       ", "= ", State[data_idx].pointer);
         for(var i = 0; i<MAX_STACK_HEIGHT; i++) {
-            log("State[", data_idx, "].stack[", i,"]    ", "= ", State[data_idx].stack[i]);
+            log("State[", data_idx, "].stack[", i,"]    ", "= [",State[data_idx].stack[i][0], "][", State[data_idx].stack[i][1],"]" );
         }
         log("State[", data_idx, "].parsing_string", "= ", State[data_idx].parsing_string);
         log("State[", data_idx, "].parsing_number", "= ", State[data_idx].parsing_number);
@@ -50,7 +49,8 @@ template Extract(DATA_BYTES, MAX_STACK_HEIGHT) {
         // Debugging
         log("State[", DATA_BYTES, "].pointer       ", "= ", State[DATA_BYTES -1].next_pointer);
         for(var i = 0; i < MAX_STACK_HEIGHT; i++) {
-            log("State[", DATA_BYTES, "].stack[", i,"]    ", "= ", State[DATA_BYTES -1 ].next_stack[i]);
+            log("State[", DATA_BYTES, "].stack[", i,"]    ", "= [",State[DATA_BYTES -1].next_stack[i][0], "][", State[DATA_BYTES - 1].next_stack[i][1],"]" );
+            // log("State[", DATA_BYTES, "].stack[", i,"]    ", "= ", State[DATA_BYTES -1 ].next_stack[i]);
         }
         log("State[", DATA_BYTES, "].parsing_string", "= ", State[DATA_BYTES-1].next_parsing_string);
         log("State[", DATA_BYTES, "].parsing_number", "= ", State[DATA_BYTES-1].next_parsing_number);

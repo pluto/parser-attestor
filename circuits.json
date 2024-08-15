@@ -20,7 +20,7 @@
         "template": "Extract",
         "params": [
             12,
-            2
+            3
         ]
     },
     "value_array": {
@@ -29,6 +29,30 @@
         "params": [
             18,
             3
+        ]
+    },
+    "value_array_nested": {
+        "file": "extract",
+        "template": "Extract",
+        "params": [
+            24,
+            5
+        ]
+    },
+    "value_array_object": {
+        "file": "extract",
+        "template": "Extract",
+        "params": [
+            25,
+            5
+        ]
+    },
+    "value_array_object_array": {
+        "file": "extract",
+        "template": "Extract",
+        "params": [
+            31,
+            6
         ]
     },
     "value_object": {

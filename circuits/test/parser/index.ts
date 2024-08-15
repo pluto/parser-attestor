@@ -45,7 +45,7 @@ export const Escape = {
 export const INITIAL_IN = {
     byte: 0,
     pointer: 0,
-    stack: [0, 0, 0, 0],
+    stack: [[0, 0], [0, 0], [0, 0], [0, 0]],
     parsing_string: 0,
     parsing_number: 0,
 };

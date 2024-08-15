@@ -1,6 +1,3 @@
-# Notes on this JSON for reference
-
-
 { "a":        // 7
 { "b": "c",   // 19
 "d": {        // 25
