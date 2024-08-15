@@ -6,3 +6,4 @@ build/*
 ptau/*
 circuits/test/*.circom
 circuits/main/*
+inputs/**/*.json
