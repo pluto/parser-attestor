@@ -54,6 +54,21 @@ describe("StateUpdate :: Values", () => {
     inside_number_continue_out.next_parsing_number = 1;
     generatePassCase(inside_number_continue, inside_number_continue_out, ">>>> `1` read");
 
+    //-TEST_3----------------------------------------------------------//
+    // idea:   Inside a string key inside an object
+    // state:  stack == [[1, 0], [0, 0], [0, 0], [0, 0]], parsing_string == 1
+    // read:   `,`
+    // expect: stack          --> [[1, 0], [0, 0], [0, 0], [0, 0]]
+    //         parsing_string --> 0
+    let inside_number = { ...INITIAL_IN };
+    inside_number.stack = [[1, 1], [0, 0], [0, 0], [0, 0]];
+    inside_number.parsing_string = 1;
+    inside_number.byte = Delimiters.COMMA;
+    let inside_number_out = { ...INITIAL_OUT };
+    inside_number_out.next_stack = [[1, 0], [0, 0], [0, 0], [0, 0]];
+    inside_number_out.next_parsing_string = 1;
+    generatePassCase(inside_number, inside_number_out, ">>>> `,` read");
+
     describe("StateUpdate :: Values :: Array", () => {
         // Internal array parsing -----------------------------------------//
 
