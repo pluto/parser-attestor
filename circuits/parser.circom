@@ -23,28 +23,52 @@ template StateUpdate(MAX_STACK_HEIGHT) {
     signal output next_parsing_number;
     
     component Syntax  = Syntax();
-    component Command = Command();
-
-    var read_write_value = 0;
-    var parsing_state[3]     = [read_write_value, parsing_string, parsing_number];   
+    component Command = Command();   
     
     //--------------------------------------------------------------------------------------------//
-    //-State machine updating---------------------------------------------------------------------//
+    // Read new byte
     // * yield instruction based on what byte we read *
     component matcher           = SwitchArray(8, 3);
     matcher.branches          <== [Syntax.START_BRACE,  Syntax.END_BRACE,  Syntax.QUOTE,  Syntax.COLON,  Syntax.COMMA,  Syntax.START_BRACKET,  Syntax.END_BRACKET,  Syntax.NUMBER ];
     matcher.vals              <== [Command.START_BRACE, Command.END_BRACE, Command.QUOTE, Command.COLON, Command.COMMA, Command.START_BRACKET, Command.END_BRACKET, Command.NUMBER];
-    component numeral_range_check = InRange(8);
-    numeral_range_check.in    <== byte;
-    numeral_range_check.range <== [48, 57]; // ASCII NUMERALS
-    // log("isNumeral:", numeral_range_check.out);
-    signal IS_NUMBER          <==  numeral_range_check.out * Syntax.NUMBER;
-    matcher.case              <== (1 - numeral_range_check.out) * byte + IS_NUMBER; // IF (NOT is_number) THEN byte ELSE 256
-    
+    component readNumber = InRange(8);
+    readNumber.in    <== byte;
+    readNumber.range <== [48, 57]; // ASCII NUMERALS
+    signal IS_NUMBER          <==  readNumber.out * Syntax.NUMBER;
+    matcher.case              <== (1 - readNumber.out) * byte + IS_NUMBER; // IF (NOT is_number) THEN byte ELSE 256
+    //--------------------------------------------------------------------------------------------//
+
+    //--------------------------------------------------------------------------------------------//
+    // Break down what was read
+    // * read in a start brace `{` *
+    component readStartBrace     = IsEqual();
+    readStartBrace.in          <== [matcher.out[0], 1];
+    // * read in a start bracket `[` *
+    component readStartBracket   = IsEqual();
+    readStartBracket.in        <== [matcher.out[0], 2];
+    // * read in an end brace `}` *
+    component readEndBrace       = IsEqual();
+    readEndBrace.in            <== [matcher.out[0], -1];
+    // * read in an end bracket `]` *
+    component readEndBracket     = IsEqual();
+    readEndBracket.in          <== [matcher.out[0], -2];
+    // * read in a colon `:` *
+    component readColon          = IsEqual();
+    readColon.in               <== [matcher.out[0], 3];
+    // * read in a comma `,` *
+    component readComma          = IsEqual();
+    readComma.in            <== [matcher.out[0], 4];
+
+    component readDelimeter   = Contains(6);
+    readDelimeter.in        <== matcher.out[0];
+    readDelimeter.array     <== [1,-1,2,-2,3,4];
+
     // * get the instruction mask based on current state *
     component mask             = StateToMask(MAX_STACK_HEIGHT);
-    // mask.in                  <== parsing_state;    
-    mask.in <== [matcher.out[0],parsing_string,parsing_number];  // TODO: This is awkward. Things need to be rewritten
+    mask.readDelimeter        <== readDelimeter.out;
+    mask.readNumber           <== readNumber.out;
+    mask.parsing_string       <== parsing_string;
+    mask.parsing_number       <== parsing_number;
 
     
     // * multiply the mask array elementwise with the instruction array *
@@ -53,13 +77,21 @@ template StateUpdate(MAX_STACK_HEIGHT) {
     mulMaskAndOut.rhs        <== matcher.out;
     // * add the masked instruction to the state to get new state *
     component addToState       = ArrayAdd(3);
-    addToState.lhs           <== parsing_state;
+    addToState.lhs           <== [0, parsing_string, parsing_number];
     addToState.rhs           <== mulMaskAndOut.out;
 
     // * set the new state *
     component newStack         = RewriteStack(MAX_STACK_HEIGHT);
     newStack.stack            <== stack;
     newStack.read_write_value <== addToState.out[0];
+    newStack.readStartBrace   <== readStartBrace.out;
+    newStack.readStartBracket <== readStartBracket.out;
+    newStack.readEndBrace     <== readEndBrace.out;
+    newStack.readEndBracket   <== readEndBracket.out;
+    newStack.readColon        <== readColon.out;
+    newStack.readComma        <== readComma.out;
+
+
     next_stack                <== newStack.next_stack;
     next_parsing_string       <== addToState.out[1];
     next_parsing_number       <== addToState.out[2];
@@ -81,12 +113,12 @@ template StateUpdate(MAX_STACK_HEIGHT) {
 
 template StateToMask(n) {
     // TODO: Probably need to assert things are bits where necessary.
-    signal input in[3];
+    signal input readDelimeter;
+    signal input readNumber;
+    signal input parsing_string;
+    signal input parsing_number;
     signal output out[3];
     
-    signal read_write_value <== in[0];
-    signal parsing_string   <== in[1];
-    signal parsing_number   <== in[2];
 
     // `read_write_value`can change: IF NOT `parsing_string` 
     out[0] <== (1 - parsing_string);
@@ -95,14 +127,8 @@ template StateToMask(n) {
     out[1] <== 1 - 2 * parsing_string;
 
     // // `parsing_number` can change: 
-    component readDelimeter   = InRange(8);
-    readDelimeter.in        <== read_write_value;
-    readDelimeter.range[0]  <== 1;
-    readDelimeter.range[1]  <== 4;
-    log("readDelimeter:", readDelimeter.out);
-    component readNumber      = IsEqual();
-    readNumber.in           <== [read_write_value, 256];
-    log("readNumber: ", readNumber.out);
+  
+    // log("readNumber: ", readNumber.out);
     // component isParsingString = IsEqual();
     // isParsingString.in[0]     <== parsing_string;     
     // isParsingString.in[1]     <== 1;
@@ -119,12 +145,12 @@ template StateToMask(n) {
     // toParseNumber.case      <== stateToNum.out;
 
     // out[2] <== toParseNumber.out;
-    signal parsingNumberReadDelimeter <== parsing_number * (readDelimeter.out); // 10 above used
-    signal readNumberNotParsingNumber <== (1 - parsing_number) * readNumber.out; // 4 above
+    signal parsingNumberReadDelimeter <== parsing_number * (readDelimeter); // 10 above used
+    signal readNumberNotParsingNumber <== (1 - parsing_number) * readNumber; // 4 above
     signal notParsingStringAndParsingNumberReadDelimeterOrReadNumberNotParsingNumber <== (1 - parsing_string) * (parsingNumberReadDelimeter + readNumberNotParsingNumber);
     //                                    10 above ^^^^^^^^^^^^^^^^^     4 above ^^^^^^^^^^^^^^^
-    signal temp <== parsing_number * (1 - readNumber.out) ;
-    signal parsingNumberNotReadNumberNotReadDelimeter <== temp * (1-readDelimeter.out);
+    signal temp <== parsing_number * (1 - readNumber) ;
+    signal parsingNumberNotReadNumberNotReadDelimeter <== temp * (1-readDelimeter);
     out[2] <== notParsingStringAndParsingNumberReadDelimeterOrReadNumberNotParsingNumber + parsingNumberNotReadNumberNotReadDelimeter;
 }
 
@@ -155,6 +181,13 @@ template RewriteStack(n) {
     assert(n < 2**8);
     signal input stack[n][2];
     signal input read_write_value;
+    signal input readStartBrace;
+    signal input readStartBracket;
+    signal input readEndBrace;
+    signal input readEndBracket;
+    signal input readColon;
+    signal input readComma;
+
     signal output next_stack[n][2];
     
     //-----------------------------------------------------------------------------//
@@ -174,50 +207,29 @@ template RewriteStack(n) {
     //-----------------------------------------------------------------------------//
 
     //-----------------------------------------------------------------------------//
-    // * check what value was read *
-    // * read in a start brace `{` *
-    component readStartBrace     = IsEqual();
-    readStartBrace.in          <== [read_write_value, 1];
-    // * read in a start bracket `[` *
-    component readStartBracket   = IsEqual();
-    readStartBracket.in        <== [read_write_value, 2];
-    // * read in an end brace `}` *
-    component readEndBrace       = IsEqual();
-    readEndBrace.in            <== [read_write_value, -1];
-    // * read in an end bracket `]` *
-    component readEndBracket     = IsEqual();
-    readEndBracket.in          <== [read_write_value, -2];
-    // * read in a colon `:` *
-    component readColon          = IsEqual();
-    readColon.in[0]            <== 3;
-    readColon.in[1]            <== read_write_value;
-    // * read in a comma `,` *
-    component readComma          = IsEqual();
-    readComma.in[0]            <== 4;
-    readComma.in[1]            <== read_write_value;
     // * composite signals *
-    signal readEndChar         <== readEndBrace.out + readEndBracket.out;
-    signal readCommaInArray    <== readComma.out * inArray.out;
-    signal readCommaNotInArray <== readComma.out * (1 - inArray.out);
+    signal readEndChar         <== readEndBrace + readEndBracket;
+    signal readCommaInArray    <== readComma * inArray.out;
+    signal readCommaNotInArray <== readComma * (1 - inArray.out);
     //-----------------------------------------------------------------------------//
 
     //-----------------------------------------------------------------------------//
     // * determine whether we are pushing or popping from the stack *
     component isPush       = IsEqual();
-    isPush.in            <== [readStartBrace.out + readStartBracket.out, 1];
+    isPush.in            <== [readStartBrace + readStartBracket, 1];
     component isPop        = IsEqual();
-    isPop.in             <== [readEndBrace.out + readEndBracket.out, 1];
+    isPop.in             <== [readEndBrace + readEndBracket, 1];
     // * set an indicator array for where we are pushing to or popping from* 
     component indicator[n];
     for(var i = 0; i < n; i++) {
         // Points
         indicator[i]       = IsZero();
-        indicator[i].in  <== pointer - isPop.out - readColon.out - readComma.out - i; // Note, pointer points to unallocated region!
+        indicator[i].in  <== pointer - isPop.out - readColon - readComma - i; // Note, pointer points to unallocated region!
     }
     //-----------------------------------------------------------------------------//
 
 
-    signal stack_change_value[2] <== [(isPush.out + isPop.out) * read_write_value, readColon.out + readCommaInArray - readCommaNotInArray];
+    signal stack_change_value[2] <== [(isPush.out + isPop.out) * read_write_value, readColon + readCommaInArray - readCommaNotInArray];
     signal second_index_clear[n];
     for(var i = 0; i < n; i++) {
         next_stack[i][0]         <== stack[i][0] + indicator[i].out * stack_change_value[0];
