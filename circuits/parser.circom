@@ -3,20 +3,12 @@ pragma circom 2.1.9;
 include "utils.circom";
 include "language.circom";
 
-/*
-TODO: OKAY, so one big thing to notice is that we are effectively doubling up (if not tripling up) on checking what byte we have just read. If we mess with the Commands, matcher, mask, and rewrite stack, I think we can reduce the times
-we call these sorts of things and consolidate this greatly. Probably can cut constraints down by a factor of 2.
-*/
-
 template StateUpdate(MAX_STACK_HEIGHT) {
     signal input byte;  
 
-    signal input stack[MAX_STACK_HEIGHT][2];  // STACK -- how deep in a JSON nest we are and what type we are currently inside (e.g., `1` for object, `-1` for array).
+    signal input stack[MAX_STACK_HEIGHT][2]; 
     signal input parsing_string;
     signal input parsing_number;
-    // TODO
-    // signal parsing_boolean;
-    // signal parsing_null;
 
     signal output next_stack[MAX_STACK_HEIGHT][2];
     signal output next_parsing_string;
@@ -57,20 +49,18 @@ template StateUpdate(MAX_STACK_HEIGHT) {
     readColon.in               <== [matcher.out[0], 3];
     // * read in a comma `,` *
     component readComma          = IsEqual();
-    readComma.in            <== [matcher.out[0], 4];
-
-    component readDelimeter   = Contains(6);
-    readDelimeter.in        <== matcher.out[0];
-    readDelimeter.array     <== [1,-1,2,-2,3,4];
-
+    readComma.in               <== [matcher.out[0], 4];
+    component readDelimeter      = Contains(6);
+    readDelimeter.in           <== matcher.out[0];
+    readDelimeter.array        <== [1,-1,2,-2,3,4];
+    //--------------------------------------------------------------------------------------------//
+    // Apply state changing data
     // * get the instruction mask based on current state *
-    component mask             = StateToMask(MAX_STACK_HEIGHT);
+    component mask              = StateToMask(MAX_STACK_HEIGHT);
     mask.readDelimeter        <== readDelimeter.out;
     mask.readNumber           <== readNumber.out;
     mask.parsing_string       <== parsing_string;
     mask.parsing_number       <== parsing_number;
-
-    
     // * multiply the mask array elementwise with the instruction array *
     component mulMaskAndOut    = ArrayMul(3);
     mulMaskAndOut.lhs        <== mask.out;
@@ -79,8 +69,7 @@ template StateUpdate(MAX_STACK_HEIGHT) {
     component addToState       = ArrayAdd(3);
     addToState.lhs           <== [0, parsing_string, parsing_number];
     addToState.rhs           <== mulMaskAndOut.out;
-
-    // * set the new state *
+    // * compute the new stack *
     component newStack         = RewriteStack(MAX_STACK_HEIGHT);
     newStack.stack            <== stack;
     newStack.read_write_value <== addToState.out[0];
@@ -90,24 +79,10 @@ template StateUpdate(MAX_STACK_HEIGHT) {
     newStack.readEndBracket   <== readEndBracket.out;
     newStack.readColon        <== readColon.out;
     newStack.readComma        <== readComma.out;
-
-
+    // * set all the next state of the parser * 
     next_stack                <== newStack.next_stack;
     next_parsing_string       <== addToState.out[1];
     next_parsing_number       <== addToState.out[2];
-
-    //--------------------------------------------------------------------------------------------//
-    //-Constraints--------------------------------------------------------------------------------//
-    // * constrain bit flags *
-    // next_parsing_key * (1 - next_parsing_key)     === 0; // - constrain that `next_parsing_key` remain a bit flag
-    // next_inside_key * (1 - next_inside_key)       === 0; // - constrain that `next_inside_key` remain a bit flag
-    // next_parsing_value * (1 - next_parsing_value) === 0; // - constrain that `next_parsing_value` remain a bit flag
-    // next_inside_value * (1 - next_inside_value)   === 0; // - constrain that `next_inside_value` remain a bit flag 
-    // // * constrain `tree_depth` to never hit -1 (TODO: should always moves in 1 bit increments?)
-    // component isMinusOne = IsEqual();      
-    // isMinusOne.in[0]   <== -1;             
-    // isMinusOne.in[1]   <== next_tree_depth; 
-    // isMinusOne.out     === 0;              
     //--------------------------------------------------------------------------------------------//
 }
 
@@ -126,32 +101,28 @@ template StateToMask(n) {
     // `parsing_string` can change:
     out[1] <== 1 - 2 * parsing_string;
 
-    // // `parsing_number` can change: 
-  
-    // log("readNumber: ", readNumber.out);
-    // component isParsingString = IsEqual();
-    // isParsingString.in[0]     <== parsing_string;     
-    // isParsingString.in[1]     <== 1;
-    // component isParsingNumber = IsEqual();
-    // isParsingNumber.in[0]     <== parsing_number;     
-    // isParsingNumber.in[1]     <== 1;
-    // component toParseNumber   = Switch(16);
-    // // TODO: Could combine this into something that returns arrays so that we can set the mask more easily.
-    // toParseNumber.branches  <== [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
-    // toParseNumber.vals      <== [0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1,  0,  0,  0,  0,   0]; // These cases are useful to think about
-    // component stateToNum      = Bits2Num(4);
-    // stateToNum.in           <== [isParsingString.out, isParsingNumber.out, readNumber.out, readDelimeter.out];
-    //  //                                   1                 2                   4              8
-    // toParseNumber.case      <== stateToNum.out;
 
-    // out[2] <== toParseNumber.out;
-    signal parsingNumberReadDelimeter <== parsing_number * (readDelimeter); // 10 above used
-    signal readNumberNotParsingNumber <== (1 - parsing_number) * readNumber; // 4 above
+    //--------------------------------------------------------------------------------------------//
+    // `parsing_number` is more complicated to deal with
+    /* We have the possible relevant states below:
+    [isParsingString, isParsingNumber, readNumber, readDelimeter];
+             1                2             4             8
+    Above is the binary value for each if is individually enabled
+    This is a total of 2^4 states
+    [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+    [0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1,  0,  0,  0,  0,   0]; 
+    and the above is what we want to set `next_parsing_number` to given those 
+    possible.
+    Below is an optimized version that could instead be done with a `Switch`
+    */
+    signal parsingNumberReadDelimeter <== parsing_number * (readDelimeter); 
+    signal readNumberNotParsingNumber <== (1 - parsing_number) * readNumber;
     signal notParsingStringAndParsingNumberReadDelimeterOrReadNumberNotParsingNumber <== (1 - parsing_string) * (parsingNumberReadDelimeter + readNumberNotParsingNumber);
-    //                                    10 above ^^^^^^^^^^^^^^^^^     4 above ^^^^^^^^^^^^^^^
+    //                                                                                                           10 above ^^^^^^^^^^^^^^^^^   4 above ^^^^^^^^^^^^^^^^^^
     signal temp <== parsing_number * (1 - readNumber) ;
     signal parsingNumberNotReadNumberNotReadDelimeter <== temp * (1-readDelimeter);
     out[2] <== notParsingStringAndParsingNumberReadDelimeterOrReadNumberNotParsingNumber + parsingNumberNotReadNumberNotReadDelimeter;
+    // Sorry about the long names, but they hopefully read clearly!
 }
 
 // TODO: Check if underconstrained
@@ -176,7 +147,7 @@ template GetTopOfStack(n) {
     pointer    <== selector;
 }
 
-// TODO: IMPORTANT NOTE, THE STACK IS CONSTRAINED TO 2**8 so the LessThan and GreaterThan work (could be changed)
+// TODO: IMPORTANT NOTE, THE STACK IS CONSTRAINED TO 2**8 so the InRange work (could be changed)
 template RewriteStack(n) {
     assert(n < 2**8);
     signal input stack[n][2];
@@ -190,7 +161,7 @@ template RewriteStack(n) {
 
     signal output next_stack[n][2];
     
-    //-----------------------------------------------------------------------------//
+    //--------------------------------------------------------------------------------------------//
     // * scan value on top of stack *
     component topOfStack      = GetTopOfStack(n);
     topOfStack.stack        <== stack;
@@ -204,16 +175,16 @@ template RewriteStack(n) {
     component inArray         = IsEqual();
     inArray.in[0]           <== current_value[0];
     inArray.in[1]           <== 2;
-    //-----------------------------------------------------------------------------//
+    //--------------------------------------------------------------------------------------------//
 
-    //-----------------------------------------------------------------------------//
+    //--------------------------------------------------------------------------------------------//
     // * composite signals *
     signal readEndChar         <== readEndBrace + readEndBracket;
     signal readCommaInArray    <== readComma * inArray.out;
     signal readCommaNotInArray <== readComma * (1 - inArray.out);
-    //-----------------------------------------------------------------------------//
+    //--------------------------------------------------------------------------------------------//
 
-    //-----------------------------------------------------------------------------//
+    //--------------------------------------------------------------------------------------------//
     // * determine whether we are pushing or popping from the stack *
     component isPush       = IsEqual();
     isPush.in            <== [readStartBrace + readStartBracket, 1];
@@ -226,9 +197,10 @@ template RewriteStack(n) {
         indicator[i]       = IsZero();
         indicator[i].in  <== pointer - isPop.out - readColon - readComma - i; // Note, pointer points to unallocated region!
     }
-    //-----------------------------------------------------------------------------//
+    //--------------------------------------------------------------------------------------------//
 
-
+    //--------------------------------------------------------------------------------------------//
+    // * loop to modify the stack by rebuilding it *
     signal stack_change_value[2] <== [(isPush.out + isPop.out) * read_write_value, readColon + readCommaInArray - readCommaNotInArray];
     signal second_index_clear[n];
     for(var i = 0; i < n; i++) {
@@ -236,10 +208,13 @@ template RewriteStack(n) {
         second_index_clear[i]    <== stack[i][1] * readEndChar;
         next_stack[i][1]         <== stack[i][1] + indicator[i].out * (stack_change_value[1] - second_index_clear[i]);
     }
+    //--------------------------------------------------------------------------------------------//
 
-    // TODO: WE CAN'T LEAVE 8 HERE, THIS HAS TO DEPEND ON THE STACK HEIGHT AS IT IS THE NUM BITS NEEDED TO REPR STACK HEIGHT IN BINARY
+    //--------------------------------------------------------------------------------------------//
+    // * check for under or overflow
     component isUnderflowOrOverflow = InRange(8);
     isUnderflowOrOverflow.in     <== pointer - isPop.out + isPush.out;
     isUnderflowOrOverflow.range  <== [0,n];
     isUnderflowOrOverflow.out    === 1;
+    //--------------------------------------------------------------------------------------------//
 }
