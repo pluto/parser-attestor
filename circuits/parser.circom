@@ -249,20 +249,20 @@ template RewriteStack(n) {
 
 
     signal stack_change_value[2]  <== [(isPush.out + isPop.out) * read_write_value, readColon.out + readCommaInArray - readCommaNotInArray];
-    log("isPush:           ", isPush.out);
-    log("isPop:            ", isPop.out);
-    log("readColon:        ", readColon.out);
-    log("read_write_value: ", read_write_value);
+    // log("isPush:           ", isPush.out);
+    // log("isPop:            ", isPop.out);
+    // log("readColon:        ", readColon.out);
+    // log("read_write_value: ", read_write_value);
     signal second_index_clear[n];
     for(var i = 0; i < n; i++) {
         next_stack[i][0] <== stack[i][0] + indicator[i].out * stack_change_value[0];
         second_index_clear[i] <== stack[i][1] * readEndChar;
         next_stack[i][1] <== stack[i][1] + indicator[i].out * (stack_change_value[1] - second_index_clear[i]);
-        log("next_stack[", i,"]    ", "= [",next_stack[i][0], "][", next_stack[i][1],"]" );
+        // log("next_stack[", i,"]    ", "= [",next_stack[i][0], "][", next_stack[i][1],"]" );
     }
 
     // TODO: WE CAN'T LEAVE 8 HERE, THIS HAS TO DEPEND ON THE STACK HEIGHT AS IT IS THE NUM BITS NEEDED TO REPR STACK HEIGHT IN BINARY
-    log("next_pointer:    ", pointer - isPop.out + isPush.out);
+    // log("next_pointer:    ", pointer - isPop.out + isPush.out);
     component isUnderflowOrOverflow = InRange(8);
     isUnderflowOrOverflow.in      <== pointer - isPop.out + isPush.out;
     isUnderflowOrOverflow.range   <== [0,n];

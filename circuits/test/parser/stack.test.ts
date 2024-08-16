@@ -173,24 +173,50 @@ describe("StateUpdate :: RewriteStack", () => {
         ">>>> `}` read"
     );
 
+    //-TEST_9----------------------------------------------------------//
+    // idea:   Inside a number value after a key in an object.
+    // state:  stack == [[1, 1], [0, 0], [0, 0], [0, 0]], parsing_number == 1
+    // read:   `,`
+    // expect: pointer        --> 2
+    //         stack          --> [[1, 0], [0, 0], [0, 0], [0, 0]]
+    //         parsing_number --> 0
+    let inside_number = { ...INITIAL_IN };
+    inside_number.stack = [[1, 1], [0, 0], [0, 0], [0, 0]];
+    inside_number.parsing_number = 1;
+    inside_number.byte = Delimiters.COMMA;
+    let inside_number_out = { ...INITIAL_OUT };
+    inside_number_out.next_stack = [[1, 0], [0, 0], [0, 0], [0, 0]];
+    generatePassCase(inside_number, inside_number_out, ">>>> `,` read");
 
-    // TODO: FAIL CASES, ADD STACK UNDERFLOW CASES TOO
-    // //-TEST_4----------------------------------------------------------//
-    // // init:   stack == [[1, 0], [1, 0], [1, 0], [1, 0]]
-    // // expect: FAIL, STACK OVERFLOW
-    // let in_max_stack = { ...INITIAL_IN };
-    // in_max_stack.byte = Delimiters.START_BRACE;
-    // in_max_stack.stack = [[1, 0], [1, 0], [1, 0], [1, 0]];
-    // generateFailCase(in_max_stack, ">>>> `{` read --> (stack overflow)");
 
-    // //-TEST_5----------------------------------------------------------//
-    // // init:   stack  == [[1, 0], [1, 0], [1, 0], [1, 0]]
-    // // expect: FAIL, STACK OVERFLOW
-    // let in_max_stack_2 = { ...INITIAL_IN };
-    // in_max_stack_2.byte = Delimiters.START_BRACKET;
-    // in_max_stack_2.stack = [[1, 0], [1, 0], [1, 0], [1, 0]];
-    // generateFailCase(in_max_stack, ">>>> `[` read --> (stack overflow)");
+    // TODO: FAIL CASES, ADD STACK UNDERFLOW CASES TOO and RENUMBER
+    //-TEST_3----------------------------------------------------------//
+    // state:  INIT
+    // read:   `}`
+    // expect: FAIL (stack underflow)
+    let read_end_brace = { ...INITIAL_IN };
+    read_end_brace.byte = Delimiters.END_BRACE;
+    generateFailCase(read_end_brace,
+        ">>>> `}` read --> (stack underflow)"
+    );
 
+    //-TEST_9----------------------------------------------------------//
+    // init:   stack == [[1, 0], [1, 0], [1, 0], [1, 0]]
+    // expect: FAIL, STACK OVERFLOW
+    let in_max_stack = { ...INITIAL_IN };
+    in_max_stack.byte = Delimiters.START_BRACE;
+    in_max_stack.stack = [[1, 0], [1, 0], [1, 0], [1, 0]];
+    generateFailCase(in_max_stack, ">>>> `{` read --> (stack overflow)");
+
+    //-TEST_10----------------------------------------------------------//
+    // init:   stack  == [[1, 0], [1, 0], [1, 0], [1, 0]]
+    // expect: FAIL, STACK OVERFLOW
+    let in_max_stack_2 = { ...INITIAL_IN };
+    in_max_stack_2.byte = Delimiters.START_BRACKET;
+    in_max_stack_2.stack = [[1, 0], [1, 0], [1, 0], [1, 0]];
+    generateFailCase(in_max_stack, ">>>> `[` read --> (stack overflow)");
+
+    // TODO: This requires a more careful check of the stack that popping clears the current value. Use an IsZero
     // //-TEST_3----------------------------------------------------------//
     // // init:   stack == [1,0,0,0]
     // // read:   `]`
