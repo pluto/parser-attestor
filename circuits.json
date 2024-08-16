@@ -12,7 +12,7 @@
         "template": "Extract",
         "params": [
             12,
-            2
+            1
         ]
     },
     "value_number": {
@@ -20,7 +20,7 @@
         "template": "Extract",
         "params": [
             12,
-            3
+            2
         ]
     },
     "value_array": {
@@ -28,7 +28,7 @@
         "template": "Extract",
         "params": [
             18,
-            3
+            2
         ]
     },
     "value_array_nested": {
@@ -36,7 +36,7 @@
         "template": "Extract",
         "params": [
             24,
-            5
+            4
         ]
     },
     "value_array_object": {
@@ -44,7 +44,7 @@
         "template": "Extract",
         "params": [
             25,
-            5
+            4
         ]
     },
     "value_array_object_array": {
@@ -52,7 +52,7 @@
         "template": "Extract",
         "params": [
             31,
-            6
+            5
         ]
     },
     "value_object": {
@@ -60,7 +60,7 @@
         "template": "Extract",
         "params": [
             21,
-            4
+            3
         ]
     }
 }

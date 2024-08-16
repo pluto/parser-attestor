@@ -44,10 +44,8 @@ template Extract(DATA_BYTES, MAX_STACK_HEIGHT) {
     // State[DATA_BYTES - 1].next_tree_depth === 0;
 
         // Debugging
-        log("State[", DATA_BYTES, "].pointer       ", "= ", State[DATA_BYTES -1].next_pointer);
         for(var i = 0; i < MAX_STACK_HEIGHT; i++) {
             log("State[", DATA_BYTES, "].stack[", i,"]    ", "= [",State[DATA_BYTES -1].next_stack[i][0], "][", State[DATA_BYTES - 1].next_stack[i][1],"]" );
-            // log("State[", DATA_BYTES, "].stack[", i,"]    ", "= ", State[DATA_BYTES -1 ].next_stack[i]);
         }
         log("State[", DATA_BYTES, "].parsing_string", "= ", State[DATA_BYTES-1].next_parsing_string);
         log("State[", DATA_BYTES, "].parsing_number", "= ", State[DATA_BYTES-1].next_parsing_number);
