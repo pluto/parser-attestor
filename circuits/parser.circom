@@ -153,40 +153,11 @@ template GetTopOfStack(n) {
 }
 
 // TODO: IMPORTANT NOTE, THE STACK IS CONSTRAINED TO 2**8 so the LessThan and GreaterThan work (could be changed)
-// TODO: Might be good to change value before increment pointer AND decrement pointer before changing value
 template RewriteStack(n) {
     assert(n < 2**8);
     signal input stack[n][2];
     signal input read_write_value;
     signal output next_stack[n][2];
-
-    /*
-    IDEA:
-
-    We want to look at the old data
-    - if pushpop is 0, we are going to just return the old stack
-    - if pushpop is 1, we are going to increment the pointer and write a new value
-    - if pushpop is -1, we are going to decrement the pointer and delete an old value if it was the same value
-
-    TODO: There's the weird case of "no trailing commas" for KVs in JSON. 
-    This constitutes valid JSON, fortunately, and is NOT optional. Or, at least,
-    we should NOT consider it to be for this current impl.
-    Basically, JSON must be like:
-    ```
-    {
-        "a": "valA",
-        "b": "valB"
-    }
-    ```
-    so there is the one end here where we have to go from:
-    stack      == [1,3,0,0,...]
-    to
-    next_stack == [0,0,0,0,...]
-    on the case we get a POP instruction reading an object OR an array (no trailing commas in arrays either)
-
-    // top of stack is a 3, then we need to pop off 3, and check the value underneath 
-    // is correct match (i.e., a brace or bracket (1 or 2))
-    */
     
     //-----------------------------------------------------------------------------//
     // * scan value on top of stack *
@@ -196,8 +167,8 @@ template RewriteStack(n) {
     signal current_value[2] <== topOfStack.value;
     // * check if we are currently in a value of an object *
     component inObjectValue   = IsEqualArray(2);
-    inObjectValue.in[0]        <== current_value; // TODO: Move colon to be a toggle in the second stack position.
-    inObjectValue.in[1]        <== [1,1];
+    inObjectValue.in[0]     <== current_value;
+    inObjectValue.in[1]     <== [1,1];
     // * check if value indicates currently in an array *
     component inArray         = IsEqual();
     inArray.in[0]           <== current_value[0];
@@ -207,64 +178,58 @@ template RewriteStack(n) {
     //-----------------------------------------------------------------------------//
     // * check what value was read *
     // * read in a start brace `{` *
-    component readStartBrace   = IsEqual();
-    readStartBrace.in        <== [read_write_value, 1];
+    component readStartBrace     = IsEqual();
+    readStartBrace.in          <== [read_write_value, 1];
     // * read in a start bracket `[` *
-    component readStartBracket = IsEqual();
-    readStartBracket.in      <== [read_write_value, 2];
+    component readStartBracket   = IsEqual();
+    readStartBracket.in        <== [read_write_value, 2];
     // * read in an end brace `}` *
-    component readEndBrace     = IsEqual();
-    readEndBrace.in          <== [read_write_value, -1];
+    component readEndBrace       = IsEqual();
+    readEndBrace.in            <== [read_write_value, -1];
     // * read in an end bracket `]` *
     component readEndBracket     = IsEqual();
     readEndBracket.in          <== [read_write_value, -2];
     // * read in a colon `:` *
-    component readColon = IsEqual();
-    readColon.in[0]   <== 3;
-    readColon.in[1]   <== read_write_value;
+    component readColon          = IsEqual();
+    readColon.in[0]            <== 3;
+    readColon.in[1]            <== read_write_value;
     // * read in a comma `,` *
-    component readComma = IsEqual();
-    readComma.in[0]   <== 4;
-    readComma.in[1]   <== read_write_value;
+    component readComma          = IsEqual();
+    readComma.in[0]            <== 4;
+    readComma.in[1]            <== read_write_value;
     // * composite signals *
-    signal readEndChar      <== readEndBrace.out + readEndBracket.out;
-    signal readCommaInArray <== readComma.out * inArray.out;
+    signal readEndChar         <== readEndBrace.out + readEndBracket.out;
+    signal readCommaInArray    <== readComma.out * inArray.out;
     signal readCommaNotInArray <== readComma.out * (1 - inArray.out);
     //-----------------------------------------------------------------------------//
 
     //-----------------------------------------------------------------------------//
     // * determine whether we are pushing or popping from the stack *
-    component isPush = IsEqual();
-    isPush.in      <== [readStartBrace.out + readStartBracket.out, 1];
-    component isPop  = IsEqual();
-    isPop.in       <== [readEndBrace.out + readEndBracket.out, 1];
+    component isPush       = IsEqual();
+    isPush.in            <== [readStartBrace.out + readStartBracket.out, 1];
+    component isPop        = IsEqual();
+    isPop.in             <== [readEndBrace.out + readEndBracket.out, 1];
     // * set an indicator array for where we are pushing to or popping from* 
     component indicator[n];
     for(var i = 0; i < n; i++) {
         // Points
-        indicator[i]         = IsZero();
-        indicator[i].in    <== pointer - isPop.out - readColon.out - readComma.out - i; // Note, pointer points to unallocated region!
+        indicator[i]       = IsZero();
+        indicator[i].in  <== pointer - isPop.out - readColon.out - readComma.out - i; // Note, pointer points to unallocated region!
     }
     //-----------------------------------------------------------------------------//
 
 
-    signal stack_change_value[2]  <== [(isPush.out + isPop.out) * read_write_value, readColon.out + readCommaInArray - readCommaNotInArray];
-    // log("isPush:           ", isPush.out);
-    // log("isPop:            ", isPop.out);
-    // log("readColon:        ", readColon.out);
-    // log("read_write_value: ", read_write_value);
+    signal stack_change_value[2] <== [(isPush.out + isPop.out) * read_write_value, readColon.out + readCommaInArray - readCommaNotInArray];
     signal second_index_clear[n];
     for(var i = 0; i < n; i++) {
-        next_stack[i][0] <== stack[i][0] + indicator[i].out * stack_change_value[0];
-        second_index_clear[i] <== stack[i][1] * readEndChar;
-        next_stack[i][1] <== stack[i][1] + indicator[i].out * (stack_change_value[1] - second_index_clear[i]);
-        // log("next_stack[", i,"]    ", "= [",next_stack[i][0], "][", next_stack[i][1],"]" );
+        next_stack[i][0]         <== stack[i][0] + indicator[i].out * stack_change_value[0];
+        second_index_clear[i]    <== stack[i][1] * readEndChar;
+        next_stack[i][1]         <== stack[i][1] + indicator[i].out * (stack_change_value[1] - second_index_clear[i]);
     }
 
     // TODO: WE CAN'T LEAVE 8 HERE, THIS HAS TO DEPEND ON THE STACK HEIGHT AS IT IS THE NUM BITS NEEDED TO REPR STACK HEIGHT IN BINARY
-    // log("next_pointer:    ", pointer - isPop.out + isPush.out);
     component isUnderflowOrOverflow = InRange(8);
-    isUnderflowOrOverflow.in      <== pointer - isPop.out + isPush.out;
-    isUnderflowOrOverflow.range   <== [0,n];
-    isUnderflowOrOverflow.out     === 1;
+    isUnderflowOrOverflow.in     <== pointer - isPop.out + isPush.out;
+    isUnderflowOrOverflow.range  <== [0,n];
+    isUnderflowOrOverflow.out    === 1;
 }
