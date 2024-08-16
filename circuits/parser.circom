@@ -190,14 +190,18 @@ template RewriteStack(n) {
     
     //-----------------------------------------------------------------------------//
     // * scan value on top of stack *
-    component topOfStack = GetTopOfStack(n);
-    topOfStack.stack   <== stack;
-    signal pointer     <== topOfStack.pointer;
-    signal current_value[2]    <== topOfStack.value;
+    component topOfStack      = GetTopOfStack(n);
+    topOfStack.stack        <== stack;
+    signal pointer          <== topOfStack.pointer;
+    signal current_value[2] <== topOfStack.value;
+    // * check if we are currently in a value of an object *
+    component inObjectValue   = IsEqualArray(2);
+    inObjectValue.in[0]        <== current_value; // TODO: Move colon to be a toggle in the second stack position.
+    inObjectValue.in[1]        <== [1,1];
     // * check if value indicates currently in an array *
-    component inArray = IsEqual();
-    inArray.in[0]    <== current_value[0];
-    inArray.in[1]    <== 2;
+    component inArray         = IsEqual();
+    inArray.in[0]           <== current_value[0];
+    inArray.in[1]           <== 2;
     //-----------------------------------------------------------------------------//
 
     //-----------------------------------------------------------------------------//
@@ -214,90 +218,53 @@ template RewriteStack(n) {
     // * read in an end bracket `]` *
     component readEndBracket     = IsEqual();
     readEndBracket.in          <== [read_write_value, -2];
-    // * read in either an end brace `}` or an end bracket `]` *
-    component readEndChar = IsZero();
-    readEndChar.in <== (read_write_value + 1) * (read_write_value + 2);
+    // * read in a colon `:` *
+    component readColon = IsEqual();
+    readColon.in[0]   <== 3;
+    readColon.in[1]   <== read_write_value;
     // * read in a comma `,` *
     component readComma = IsEqual();
     readComma.in[0]   <== 4;
     readComma.in[1]   <== read_write_value;
+    // * composite signals *
+    signal readEndChar      <== readEndBrace.out + readEndBracket.out;
+    signal readCommaInArray <== readComma.out * inArray.out;
+    signal readCommaNotInArray <== readComma.out * (1 - inArray.out);
     //-----------------------------------------------------------------------------//
 
     //-----------------------------------------------------------------------------//
     // * determine whether we are pushing or popping from the stack *
-    component isPop  = IsZero();
-    isPop.in       <== readStartBrace.out + readStartBracket.out;
-    component isPush = IsZero();
-    isPush.in      <== readEndBrace.out + readEndBracket.out;
-    
-
-    // TODO: Can remove all the pushpop stuff by checking what character we got. E.g., if it is "negative" or comma, we pop, if it is positive we push, basically
-    signal READ_COMMA_AND_IN_ARRAY <== (1 - readComma.out) + (1 - inArray.out); // POORLY NAMED. THIS IS MORE LIKE XNOR or something.
-    component isReadCommaAndInArray   = IsZero();
-    isReadCommaAndInArray.in       <== READ_COMMA_AND_IN_ARRAY;
-
-    signal read_comma_in_array <== readComma.out * inArray.out;
-
-
-    component prev_indicator[n];
+    component isPush = IsEqual();
+    isPush.in      <== [readStartBrace.out + readStartBracket.out, 1];
+    component isPop  = IsEqual();
+    isPop.in       <== [readEndBrace.out + readEndBracket.out, 1];
+    // * set an indicator array for where we are pushing to or popping from* 
     component indicator[n];
-    signal isPopAt[n];
-    signal isPushAt[n];
-
-    signal NOT_READ_COMMA      <== (1 - readComma.out) * read_write_value;
-    signal READ_COMMA          <== readComma.out * ((1-inArray.out) * (-3) + inArray.out * (-2));
-    signal corrected_read_write_value <== READ_COMMA + NOT_READ_COMMA;
-
-    signal isPopArr    <== isPop.out * readEndBracket.out;
-
     for(var i = 0; i < n; i++) {
-        // points to 1 value back from top
-        prev_indicator[i] = IsZero();
-        prev_indicator[i].in <== pointer - 1 - isPop.out - i;
-
-        // Points to top of stack if POP else it points to unallocated position
+        // Points
         indicator[i]         = IsZero();
-        indicator[i].in    <== pointer - isPop.out - i;   
+        indicator[i].in    <== pointer - isPop.out - readColon.out - readComma.out - i; // Note, pointer points to unallocated region!
     }
+    //-----------------------------------------------------------------------------//
 
-    component atColon = IsEqual();
-    atColon.in[0]   <== current_value[0]; // TODO: Move colon to be a toggle in the second stack position.
-    atColon.in[1]   <== 3;
-    signal isDoublePop <== atColon.out * readEndChar.out;
 
-    signal isPopAtPrev[n];
-    signal second_pop_val[n];
-    signal first_pop_val[n];
-    signal temp_val[n];
-    signal temp_val2[n];
-
-// log("read_comma_in_array: ", read_comma_in_array);
+    signal stack_change_value[2]  <== [(isPush.out + isPop.out) * read_write_value, readColon.out + readCommaInArray - readCommaNotInArray];
+    log("isPush:           ", isPush.out);
+    log("isPop:            ", isPop.out);
+    log("readColon:        ", readColon.out);
+    log("read_write_value: ", read_write_value);
+    signal second_index_clear[n];
     for(var i = 0; i < n; i++) {
-
-        // Indicators for index to PUSH to or POP from
-        isPopAtPrev[i]     <== prev_indicator[i].out * isDoublePop; // temp signal
-        isPopAt[i]         <== indicator[i].out * isPop.out; // want to add: `prev_indicator[i] * isDoublePop`
-
-        isPushAt[i]        <== indicator[i].out * isPush.out; 
-
-        // Leave the stack alone except for where we indicate change
-        second_pop_val[i]  <== isPopAtPrev[i] * corrected_read_write_value;
-        temp_val[i]        <== corrected_read_write_value - (3 + corrected_read_write_value) * isDoublePop;
-        first_pop_val[i]   <== isPopAt[i] * temp_val[i]; // = isPopAt[i] * (corrected_read_write_value * (1 - isDoublePop) - 3 * isDoublePop)
-
-        next_stack[i][0]      <== stack[i][0] + isPushAt[i] * corrected_read_write_value + first_pop_val[i] + second_pop_val[i];
-
-        temp_val2[i]          <== prev_indicator[i].out * read_comma_in_array;
-        next_stack[i][1]      <== stack[i][1] + temp_val2[i] - stack[i][1] * isPopArr;
-
-        // log("prev_indicator[i]: ", prev_indicator[i].out);
-        // log("next_stack[", i,"]    ", "= [",next_stack[i][0], "][", next_stack[i][1],"]" );
-        // TODO: Constrain next_stack entries to be 0,1,2,3
+        next_stack[i][0] <== stack[i][0] + indicator[i].out * stack_change_value[0];
+        second_index_clear[i] <== stack[i][1] * readEndChar;
+        next_stack[i][1] <== stack[i][1] + indicator[i].out * (stack_change_value[1] - second_index_clear[i]);
+        log("next_stack[", i,"]    ", "= [",next_stack[i][0], "][", next_stack[i][1],"]" );
     }
 
     // TODO: WE CAN'T LEAVE 8 HERE, THIS HAS TO DEPEND ON THE STACK HEIGHT AS IT IS THE NUM BITS NEEDED TO REPR STACK HEIGHT IN BINARY
+    log("next_pointer:    ", pointer - isPop.out + isPush.out);
     component isUnderflowOrOverflow = InRange(8);
-    isUnderflowOrOverflow.in   <== pointer - isPop.out + isPush.out;
+    isUnderflowOrOverflow.in      <== pointer - isPop.out + isPush.out;
     isUnderflowOrOverflow.range   <== [0,n];
     isUnderflowOrOverflow.out     === 1;
 }

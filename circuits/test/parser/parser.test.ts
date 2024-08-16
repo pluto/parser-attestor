@@ -40,22 +40,6 @@ describe("StateUpdate", () => {
     // // expect: ZEROS
     // generatePassCase(INITIAL_IN, INITIAL_OUT, ">>>> `NUL` read");
 
-    // // TODO: Consider moving to `stack.test.ts`
-    // //-TEST_2----------------------------------------------------------//
-    // // init:   INIT
-    // // read:   `{`
-    // // expect: pointer --> 1
-    // //         stack   --> [1,0,0,0]
-    // let read_start_brace = { ...INITIAL_IN };
-    // read_start_brace.byte = Delimiters.START_BRACE;
-    // let read_start_brace_out = { ...INITIAL_OUT };
-    // read_start_brace_out.next_pointer = 1;
-    // read_start_brace_out.next_stack = [[1, 0], [0, 0], [0, 0], [0, 0]];
-    // generatePassCase(read_start_brace,
-    //     read_start_brace_out,
-    //     ">>>> `{` read"
-    // );
-
     // //-TEST_3----------------------------------------------------------//
     // // state:  INIT
     // // read:   `}`

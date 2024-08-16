@@ -67,8 +67,20 @@ describe("StateUpdate :: RewriteStack", () => {
         });
     }
 
-
     //-TEST_1----------------------------------------------------------//
+    // init:   stack  == [[0, 0], [0, 0], [0, 0], [0, 0]]
+    // read:   `{`
+    // expect: stack --> [[1, 0], [0, 0], [0, 0], [0, 0]]
+    let read_start_brace = { ...INITIAL_IN };
+    read_start_brace.byte = Delimiters.START_BRACE;
+    let read_start_brace_out = { ...INITIAL_OUT };
+    read_start_brace_out.next_stack = [[1, 0], [0, 0], [0, 0], [0, 0]];
+    generatePassCase(read_start_brace,
+        read_start_brace_out,
+        ">>>> `{` read"
+    );
+
+    //-TEST_2----------------------------------------------------------//
     // state:  stack ==  [[1, 0], [0, 0], [0, 0], [0, 0]]
     // read:   `{`
     // expect: stack --> [[1, 0], [1, 0], [0, 0], [0, 0]]
@@ -79,7 +91,7 @@ describe("StateUpdate :: RewriteStack", () => {
     in_object_out.next_stack = [[1, 0], [1, 0], [0, 0], [0, 0]];
     generatePassCase(in_object, in_object_out, ">>>> `{` read");
 
-    //-TEST_2----------------------------------------------------------//
+    //-TEST_3----------------------------------------------------------//
     // state:  stack  == [[1, 0], [0, 0], [0, 0], [0, 0]]
     // read:   `}`
     // expect: stack --> [[0, 0], [0, 0], [0, 0], [0, 0]]
@@ -92,7 +104,7 @@ describe("StateUpdate :: RewriteStack", () => {
         ">>>> `}` read"
     );
 
-    //-TEST_3----------------------------------------------------------//
+    //-TEST_4----------------------------------------------------------//
     // init:   stack  == [[1, 0], [0, 0], [0, 0], [0, 0]]
     // read:   `[`
     // expect: stack --> [[1, 0], [2, 0], [0, 0], [0, 0]]
@@ -106,7 +118,7 @@ describe("StateUpdate :: RewriteStack", () => {
         ">>>> `[` read"
     );
 
-    //-TEST_4----------------------------------------------------------//
+    //-TEST_5----------------------------------------------------------//
     // init:   stack  == [[1, 0], [2, 0], [0, 0], [0, 0]]
     // read:   `]`
     // expect: stack --> [[1, 0], [0, 0], [0, 0], [0, 0]]
@@ -120,12 +132,26 @@ describe("StateUpdate :: RewriteStack", () => {
         ">>>> `]` read"
     );
 
+    //-TEST_6-----------------------------------------------------------//
+    // state:  stack  == [[1, 0], [0, 0], [0, 0], [0, 0]]
+    // read:   `:`
+    // expect: stack --> [[1, 1], [0, 0], [0, 0], [0, 0]]
+    let parsed_key_wait_to_parse_value = { ...INITIAL_IN };
+    parsed_key_wait_to_parse_value.stack = [[1, 0], [0, 0], [0, 0], [0, 0]];
+    parsed_key_wait_to_parse_value.byte = Delimiters.COLON;
+    let parsed_key_wait_to_parse_value_out = { ...INITIAL_OUT };
+    parsed_key_wait_to_parse_value_out.next_stack = [[1, 1], [0, 0], [0, 0], [0, 0]];
+    generatePassCase(parsed_key_wait_to_parse_value,
+        parsed_key_wait_to_parse_value_out,
+        ">>>> `:` read"
+    );
+
     //-TEST_7----------------------------------------------------------//
-    // init:   stack  == [[1, 0], [3, 0], [0, 0], [0, 0]]
+    // init:   stack  == [[1, 0], [0, 0], [0, 0], [0, 0]]
     // expect: stack --> [[1, 0], [0, 0], [0, 0], [0, 0]]
     let in_object_and_value = { ...INITIAL_IN };
     in_object_and_value.byte = Delimiters.COMMA;
-    in_object_and_value.stack = [[1, 0], [3, 0], [0, 0], [0, 0]];
+    in_object_and_value.stack = [[1, 1], [0, 0], [0, 0], [0, 0]];
     let in_object_and_value_out = { ...INITIAL_OUT };
     in_object_and_value_out.next_stack = [[1, 0], [0, 0], [0, 0], [0, 0]];
     generatePassCase(in_object_and_value,
@@ -133,57 +159,37 @@ describe("StateUpdate :: RewriteStack", () => {
         ">>>> `,` read"
     );
 
-    // //-TEST_8----------------------------------------------------------//
-    // // init:   pointer == 2, stack == [1,3,0,0]
-    // // read:   `}`
-    // // expect: pointer --> 2
-    // //         stack   --> [1,3,0,0]
-    // let in_object_and_value_to_leave_object = { ...INITIAL_IN };
-    // in_object_and_value_to_leave_object.byte = Delimiters.END_BRACE;
-    // in_object_and_value_to_leave_object.pointer = 2;
-    // in_object_and_value_to_leave_object.stack = [[1, 0], [3, 0], [0, 0], [0, 0]];
-    // let in_object_and_value_to_leave_object_out = { ...INITIAL_OUT };
-    // in_object_and_value_to_leave_object_out.next_pointer = 0;
-    // in_object_and_value_to_leave_object_out.next_stack = [[0, 0], [0, 0], [0, 0], [0, 0]];
-    // generatePassCase(in_object_and_value_to_leave_object,
-    //     in_object_and_value_to_leave_object_out,
-    //     ">>>> `}` read"
-    // );
-
-    // //-TEST_9-----------------------------------------------------------//
-    // // state:  pointer == 1, stack == [1,0,0,0] 
-    // // read:   `:`
-    // // expect: pointer --> 2
-    // //         stack   --> [1,3,0,0]
-    // let parsed_key_wait_to_parse_value = { ...INITIAL_IN };
-    // parsed_key_wait_to_parse_value.pointer = 1;
-    // parsed_key_wait_to_parse_value.stack = [[1, 0], [0, 0], [0, 0], [0, 0]];
-    // parsed_key_wait_to_parse_value.byte = Delimiters.COLON;
-    // let parsed_key_wait_to_parse_value_out = { ...INITIAL_OUT };
-    // parsed_key_wait_to_parse_value_out.next_pointer = 2;
-    // parsed_key_wait_to_parse_value_out.next_stack = [[1, 0], [3, 0], [0, 0], [0, 0]];
-    // generatePassCase(parsed_key_wait_to_parse_value,
-    //     parsed_key_wait_to_parse_value_out,
-    //     ">>>> `:` read"
-    // );
+    //-TEST_8----------------------------------------------------------//
+    // init:   stack  == [[1, 1], [0, 0], [0, 0], [0, 0]]
+    // read:   `}`
+    // expect: stack --> [[0, 0], [0, 0], [0, 0], [0, 0]]
+    let in_object_and_value_to_leave_object = { ...INITIAL_IN };
+    in_object_and_value_to_leave_object.byte = Delimiters.END_BRACE;
+    in_object_and_value_to_leave_object.stack = [[1, 1], [0, 0], [0, 0], [0, 0]];
+    let in_object_and_value_to_leave_object_out = { ...INITIAL_OUT };
+    in_object_and_value_to_leave_object_out.next_stack = [[0, 0], [0, 0], [0, 0], [0, 0]];
+    generatePassCase(in_object_and_value_to_leave_object,
+        in_object_and_value_to_leave_object_out,
+        ">>>> `}` read"
+    );
 
 
     // TODO: FAIL CASES, ADD STACK UNDERFLOW CASES TOO
-    //-TEST_4----------------------------------------------------------//
-    // init:   stack == [[1, 0], [1, 0], [1, 0], [1, 0]]
-    // expect: FAIL, STACK OVERFLOW
-    let in_max_stack = { ...INITIAL_IN };
-    in_max_stack.byte = Delimiters.START_BRACE;
-    in_max_stack.stack = [[1, 0], [1, 0], [1, 0], [1, 0]];
-    generateFailCase(in_max_stack, ">>>> `{` read --> (stack overflow)");
+    // //-TEST_4----------------------------------------------------------//
+    // // init:   stack == [[1, 0], [1, 0], [1, 0], [1, 0]]
+    // // expect: FAIL, STACK OVERFLOW
+    // let in_max_stack = { ...INITIAL_IN };
+    // in_max_stack.byte = Delimiters.START_BRACE;
+    // in_max_stack.stack = [[1, 0], [1, 0], [1, 0], [1, 0]];
+    // generateFailCase(in_max_stack, ">>>> `{` read --> (stack overflow)");
 
-    //-TEST_5----------------------------------------------------------//
-    // init:   stack  == [[1, 0], [1, 0], [1, 0], [1, 0]]
-    // expect: FAIL, STACK OVERFLOW
-    let in_max_stack_2 = { ...INITIAL_IN };
-    in_max_stack_2.byte = Delimiters.START_BRACKET;
-    in_max_stack_2.stack = [[1, 0], [1, 0], [1, 0], [1, 0]];
-    generateFailCase(in_max_stack, ">>>> `[` read --> (stack overflow)");
+    // //-TEST_5----------------------------------------------------------//
+    // // init:   stack  == [[1, 0], [1, 0], [1, 0], [1, 0]]
+    // // expect: FAIL, STACK OVERFLOW
+    // let in_max_stack_2 = { ...INITIAL_IN };
+    // in_max_stack_2.byte = Delimiters.START_BRACKET;
+    // in_max_stack_2.stack = [[1, 0], [1, 0], [1, 0], [1, 0]];
+    // generateFailCase(in_max_stack, ">>>> `[` read --> (stack overflow)");
 
     // //-TEST_3----------------------------------------------------------//
     // // init:   stack == [1,0,0,0]
