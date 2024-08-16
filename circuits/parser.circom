@@ -4,7 +4,8 @@ include "utils.circom";
 include "language.circom";
 
 /*
-TODO: Change the values to push onto stack to be given by START_BRACE, COLON, etc.
+TODO: OKAY, so one big thing to notice is that we are effectively doubling up (if not tripling up) on checking what byte we have just read. If we mess with the Commands, matcher, mask, and rewrite stack, I think we can reduce the times
+we call these sorts of things and consolidate this greatly. Probably can cut constraints down by a factor of 2.
 */
 
 template StateUpdate(MAX_STACK_HEIGHT) {
@@ -63,12 +64,6 @@ template StateUpdate(MAX_STACK_HEIGHT) {
     next_parsing_string       <== addToState.out[1];
     next_parsing_number       <== addToState.out[2];
 
-    // for(var i = 0; i < 4; i++) {
-    //     log("matcher.out[",i,"]:   ", matcher.out[i]);
-    //     log("mask.out[",i,"]:      ", mask.out[i]);
-    //     log("mulMaskAndOut[",i,"]: ", mulMaskAndOut.out[i]);
-    // }
-
     //--------------------------------------------------------------------------------------------//
     //-Constraints--------------------------------------------------------------------------------//
     // * constrain bit flags *
@@ -99,35 +94,38 @@ template StateToMask(n) {
     // `parsing_string` can change:
     out[1] <== 1 - 2 * parsing_string;
 
-    // `parsing_number` can change: 
-    component isDelimeter   = InRange(8);
-    isDelimeter.in        <== read_write_value;
-    isDelimeter.range[0]  <== 1;
-    isDelimeter.range[1]  <== 4;
-    component isNumber      = IsEqual();
-    isNumber.in           <== [read_write_value, 256];
-    component isParsingString = IsEqual();
-    isParsingString.in[0]     <== parsing_string;     
-    isParsingString.in[1]     <== 1;
-    component isParsingNumber = IsEqual();
-    isParsingNumber.in[0]     <== parsing_number;     
-    isParsingNumber.in[1]     <== 1;
-    component toParseNumber   = Switch(16);
-    // TODO: Could combine this into something that returns arrays so that we can set the mask more easily.
-    toParseNumber.branches  <== [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
-    toParseNumber.vals      <== [0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1,  0,  0,  0,  0,   0];
-    component stateToNum      = Bits2Num(4);
-    stateToNum.in           <== [isParsingString.out, isParsingNumber.out, isNumber.out, isDelimeter.out];
-     //                                   1                 2                   4              8
-    toParseNumber.case      <== stateToNum.out;
-    // log("isNumber:        ", isNumber.out);
-    // log("isParsingString: ", isParsingString.out);
-    // log("isParsingNumber: ", isParsingNumber.out);
-    // log("isDelimeter:     ", isDelimeter.out);
-    // log("stateToNum:      ", stateToNum.out);
-    // log("toParseNumber:   ", toParseNumber.out);
+    // // `parsing_number` can change: 
+    component readDelimeter   = InRange(8);
+    readDelimeter.in        <== read_write_value;
+    readDelimeter.range[0]  <== 1;
+    readDelimeter.range[1]  <== 4;
+    log("readDelimeter:", readDelimeter.out);
+    component readNumber      = IsEqual();
+    readNumber.in           <== [read_write_value, 256];
+    log("readNumber: ", readNumber.out);
+    // component isParsingString = IsEqual();
+    // isParsingString.in[0]     <== parsing_string;     
+    // isParsingString.in[1]     <== 1;
+    // component isParsingNumber = IsEqual();
+    // isParsingNumber.in[0]     <== parsing_number;     
+    // isParsingNumber.in[1]     <== 1;
+    // component toParseNumber   = Switch(16);
+    // // TODO: Could combine this into something that returns arrays so that we can set the mask more easily.
+    // toParseNumber.branches  <== [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+    // toParseNumber.vals      <== [0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1,  0,  0,  0,  0,   0]; // These cases are useful to think about
+    // component stateToNum      = Bits2Num(4);
+    // stateToNum.in           <== [isParsingString.out, isParsingNumber.out, readNumber.out, readDelimeter.out];
+    //  //                                   1                 2                   4              8
+    // toParseNumber.case      <== stateToNum.out;
 
-    out[2] <== toParseNumber.out;
+    // out[2] <== toParseNumber.out;
+    signal parsingNumberReadDelimeter <== parsing_number * (readDelimeter.out); // 10 above used
+    signal readNumberNotParsingNumber <== (1 - parsing_number) * readNumber.out; // 4 above
+    signal notParsingStringAndParsingNumberReadDelimeterOrReadNumberNotParsingNumber <== (1 - parsing_string) * (parsingNumberReadDelimeter + readNumberNotParsingNumber);
+    //                                    10 above ^^^^^^^^^^^^^^^^^     4 above ^^^^^^^^^^^^^^^
+    signal temp <== parsing_number * (1 - readNumber.out) ;
+    signal parsingNumberNotReadNumberNotReadDelimeter <== temp * (1-readDelimeter.out);
+    out[2] <== notParsingStringAndParsingNumberReadDelimeterOrReadNumberNotParsingNumber + parsingNumberNotReadNumberNotReadDelimeter;
 }
 
 // TODO: Check if underconstrained
