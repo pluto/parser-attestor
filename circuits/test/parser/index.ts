@@ -44,14 +44,12 @@ export const Escape = {
 
 export const INITIAL_IN = {
     byte: 0,
-    pointer: 0,
     stack: [[0, 0], [0, 0], [0, 0], [0, 0]],
     parsing_string: 0,
     parsing_number: 0,
 };
 
 export const INITIAL_OUT = {
-    next_pointer: INITIAL_IN.pointer,
     next_stack: INITIAL_IN.stack,
     next_parsing_string: INITIAL_IN.parsing_string,
     next_parsing_number: INITIAL_IN.parsing_number,

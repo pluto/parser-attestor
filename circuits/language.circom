@@ -29,14 +29,14 @@ template Syntax() {
 }
 
 template Command() {
-    //            STATE              = [pushpop, stack_val, parsing_string, parsing_number]
-    signal output NOTHING[4]       <== [0,       0,         0,              -1            ]; // Command returned by switch if we want to do nothing, e.g. read a whitespace char while looking for a key
-    signal output START_BRACE[4]   <== [1,       1,         0,              0             ]; // Command returned by switch if we hit a start brace `{`
-    signal output END_BRACE[4]     <== [-1,      -1,         0,              -1            ]; // Command returned by switch if we hit a end brace `}`
-    signal output START_BRACKET[4] <== [1,       2,         0,              0             ]; // TODO: Might want `in_value` to toggle. Command returned by switch if we hit a start bracket `[` (TODO: could likely be combined with end bracket)
-    signal output END_BRACKET[4]   <== [-1,      -2,         0,              -1            ]; // Command returned by switch if we hit a start bracket `]` 
-    signal output QUOTE[4]         <== [0,       0,         1,              0             ]; // TODO: Mightn ot want this to toglle `parsing_array`. Command returned by switch if we hit a quote `"`
-    signal output COLON[4]         <== [1,       3,         0,              0             ]; // Command returned by switch if we hit a colon `:`
-    signal output COMMA[4]         <== [-1,      4,         0,              -1            ]; // Command returned by switch if we hit a comma `,`
-    signal output NUMBER[4]        <== [0,       256,         0,              1             ]; // Command returned by switch if we hit some decimal number (e.g., ASCII 48-57)
+    //            STATE              = [read_write_value, parsing_string, parsing_number]
+    signal output NOTHING[3]       <== [0,                0,              -1            ]; // Command returned by switch if we want to do nothing, e.g. read a whitespace char while looking for a key
+    signal output START_BRACE[3]   <== [1,                0,              0             ]; // Command returned by switch if we hit a start brace `{`
+    signal output END_BRACE[3]     <== [-1,               0,              -1            ]; // Command returned by switch if we hit a end brace `}`
+    signal output START_BRACKET[3] <== [2,                0,              0             ]; // TODO: Might want `in_value` to toggle. Command returned by switch if we hit a start bracket `[` (TODO: could likely be combined with end bracket)
+    signal output END_BRACKET[3]   <== [-2,               0,              -1            ]; // Command returned by switch if we hit a start bracket `]` 
+    signal output QUOTE[3]         <== [0,                1,              0             ]; // TODO: Mightn ot want this to toglle `parsing_array`. Command returned by switch if we hit a quote `"`
+    signal output COLON[3]         <== [3,                0,              0             ]; // Command returned by switch if we hit a colon `:`
+    signal output COMMA[3]         <== [4,                0,              -1            ]; // Command returned by switch if we hit a comma `,`
+    signal output NUMBER[3]        <== [256,              0,              1             ]; // Command returned by switch if we hit some decimal number (e.g., ASCII 48-57)
 }

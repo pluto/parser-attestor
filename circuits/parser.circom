@@ -24,14 +24,13 @@ template StateUpdate(MAX_STACK_HEIGHT) {
     component Syntax  = Syntax();
     component Command = Command();
 
-    var pushpop = 0;
     var read_write_value = 0;
-    var parsing_state[4]     = [pushpop, read_write_value, parsing_string, parsing_number];   
+    var parsing_state[3]     = [read_write_value, parsing_string, parsing_number];   
     
     //--------------------------------------------------------------------------------------------//
     //-State machine updating---------------------------------------------------------------------//
     // * yield instruction based on what byte we read *
-    component matcher           = SwitchArray(8, 4);
+    component matcher           = SwitchArray(8, 3);
     matcher.branches          <== [Syntax.START_BRACE,  Syntax.END_BRACE,  Syntax.QUOTE,  Syntax.COLON,  Syntax.COMMA,  Syntax.START_BRACKET,  Syntax.END_BRACKET,  Syntax.NUMBER ];
     matcher.vals              <== [Command.START_BRACE, Command.END_BRACE, Command.QUOTE, Command.COLON, Command.COMMA, Command.START_BRACKET, Command.END_BRACKET, Command.NUMBER];
     component numeral_range_check = InRange(8);
@@ -44,26 +43,25 @@ template StateUpdate(MAX_STACK_HEIGHT) {
     // * get the instruction mask based on current state *
     component mask             = StateToMask(MAX_STACK_HEIGHT);
     // mask.in                  <== parsing_state;    
-    mask.in <== [matcher.out[0],matcher.out[1],parsing_string,parsing_number];  // TODO: This is awkward. Things need to be rewritten
+    mask.in <== [matcher.out[0],parsing_string,parsing_number];  // TODO: This is awkward. Things need to be rewritten
 
     
     // * multiply the mask array elementwise with the instruction array *
-    component mulMaskAndOut    = ArrayMul(4);
+    component mulMaskAndOut    = ArrayMul(3);
     mulMaskAndOut.lhs        <== mask.out;
     mulMaskAndOut.rhs        <== matcher.out;
     // * add the masked instruction to the state to get new state *
-    component addToState       = ArrayAdd(4);
+    component addToState       = ArrayAdd(3);
     addToState.lhs           <== parsing_state;
     addToState.rhs           <== mulMaskAndOut.out;
 
     // * set the new state *
     component newStack         = RewriteStack(MAX_STACK_HEIGHT);
-    newStack.stack           <== stack;
-    newStack.pushpop         <== addToState.out[0];
-    newStack.read_write_value       <== addToState.out[1];
-    next_stack               <== newStack.next_stack;
-    next_parsing_string      <== addToState.out[2];
-    next_parsing_number      <== addToState.out[3];
+    newStack.stack            <== stack;
+    newStack.read_write_value <== addToState.out[0];
+    next_stack                <== newStack.next_stack;
+    next_parsing_string       <== addToState.out[1];
+    next_parsing_number       <== addToState.out[2];
 
     // for(var i = 0; i < 4; i++) {
     //     log("matcher.out[",i,"]:   ", matcher.out[i]);
@@ -88,23 +86,18 @@ template StateUpdate(MAX_STACK_HEIGHT) {
 
 template StateToMask(n) {
     // TODO: Probably need to assert things are bits where necessary.
-    signal input in[4];
-    signal output out[4];
+    signal input in[3];
+    signal output out[3];
     
-    signal pushpop        <== in[0];
-    signal read_write_value      <== in[1];
-    signal parsing_string <== in[2];
-    signal parsing_number <== in[3];
-
-    // TODO: Pushpop is probably unecessary actually
-    // `pushpop` can change:  IF NOT `parsing_string`
-    out[0] <== (1 - parsing_string);
+    signal read_write_value <== in[0];
+    signal parsing_string   <== in[1];
+    signal parsing_number   <== in[2];
 
     // `read_write_value`can change: IF NOT `parsing_string` 
-    out[1] <== (1 - parsing_string);
+    out[0] <== (1 - parsing_string);
 
     // `parsing_string` can change:
-    out[2] <== 1 - 2 * parsing_string;
+    out[1] <== 1 - 2 * parsing_string;
 
     // `parsing_number` can change: 
     component isDelimeter   = InRange(8);
@@ -134,7 +127,7 @@ template StateToMask(n) {
     // log("stateToNum:      ", stateToNum.out);
     // log("toParseNumber:   ", toParseNumber.out);
 
-    out[3] <== toParseNumber.out;
+    out[2] <== toParseNumber.out;
 }
 
 // TODO: Check if underconstrained
@@ -164,9 +157,7 @@ template GetTopOfStack(n) {
 template RewriteStack(n) {
     assert(n < 2**8);
     signal input stack[n][2];
-    signal input pushpop;
     signal input read_write_value;
-    signal output next_pointer;
     signal output next_stack[n][2];
 
     /*
@@ -211,16 +202,34 @@ template RewriteStack(n) {
 
     //-----------------------------------------------------------------------------//
     // * check what value was read *
-    // * read in a comma
-    component readComma = IsEqual();
-    readComma.in[0]   <== 4;
-    readComma.in[1]   <== read_write_value;
+    // * read in a start brace `{` *
+    component readStartBrace   = IsEqual();
+    readStartBrace.in        <== [read_write_value, 1];
+    // * read in a start bracket `[` *
+    component readStartBracket = IsEqual();
+    readStartBracket.in      <== [read_write_value, 2];
+    // * read in an end brace `}` *
+    component readEndBrace     = IsEqual();
+    readEndBrace.in          <== [read_write_value, -1];
+    // * read in an end bracket `]` *
+    component readEndBracket     = IsEqual();
+    readEndBracket.in          <== [read_write_value, -2];
     // * read in either an end brace `}` or an end bracket `]` *
     component readEndChar = IsZero();
     readEndChar.in <== (read_write_value + 1) * (read_write_value + 2);
-    // * read in an end bracket `]` *
-    component readEndArr = IsZero();
-    readEndArr.in      <== read_write_value + 2;
+    // * read in a comma `,` *
+    component readComma = IsEqual();
+    readComma.in[0]   <== 4;
+    readComma.in[1]   <== read_write_value;
+    //-----------------------------------------------------------------------------//
+
+    //-----------------------------------------------------------------------------//
+    // * determine whether we are pushing or popping from the stack *
+    component isPop  = IsZero();
+    isPop.in       <== readStartBrace.out + readStartBracket.out;
+    component isPush = IsZero();
+    isPush.in      <== readEndBrace.out + readEndBracket.out;
+    
 
     // TODO: Can remove all the pushpop stuff by checking what character we got. E.g., if it is "negative" or comma, we pop, if it is positive we push, basically
     signal READ_COMMA_AND_IN_ARRAY <== (1 - readComma.out) + (1 - inArray.out); // POORLY NAMED. THIS IS MORE LIKE XNOR or something.
@@ -230,25 +239,16 @@ template RewriteStack(n) {
     signal read_comma_in_array <== readComma.out * inArray.out;
 
 
-
-
-    component isPop = IsZero();
-    isPop.in      <== (1 - isReadCommaAndInArray.out) * pushpop + 1; // TODO: can simplify?
-
-    component isPush = IsZero();
-    isPush.in     <== pushpop - 1;
     component prev_indicator[n];
     component indicator[n];
     signal isPopAt[n];
     signal isPushAt[n];
 
-
-
     signal NOT_READ_COMMA      <== (1 - readComma.out) * read_write_value;
     signal READ_COMMA          <== readComma.out * ((1-inArray.out) * (-3) + inArray.out * (-2));
     signal corrected_read_write_value <== READ_COMMA + NOT_READ_COMMA;
 
-    signal isPopArr    <== isPop.out * readEndArr.out;
+    signal isPopArr    <== isPop.out * readEndBracket.out;
 
     for(var i = 0; i < n; i++) {
         // points to 1 value back from top
@@ -295,14 +295,9 @@ template RewriteStack(n) {
         // TODO: Constrain next_stack entries to be 0,1,2,3
     }
 
-    // TODO: Reimplement these!
-    // component isOverflow = GreaterThan(8);
-    // isOverflow.in[0]   <== next_pointer;
-    // isOverflow.in[1]   <== n;
-    // isOverflow.out     === 0;
-
-    // component isUnderflow = LessThan(8);
-    // isUnderflow.in[0]   <== next_pointer;
-    // isUnderflow.in[1]   <== 0;
-    // isUnderflow.out     === 0;
+    // TODO: WE CAN'T LEAVE 8 HERE, THIS HAS TO DEPEND ON THE STACK HEIGHT AS IT IS THE NUM BITS NEEDED TO REPR STACK HEIGHT IN BINARY
+    component isUnderflowOrOverflow = InRange(8);
+    isUnderflowOrOverflow.in   <== pointer - isPop.out + isPush.out;
+    isUnderflowOrOverflow.range   <== [0,n];
+    isUnderflowOrOverflow.out     === 1;
 }
