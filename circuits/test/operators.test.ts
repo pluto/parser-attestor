@@ -158,4 +158,44 @@ describe("operators", () => {
         });
 
     });
+
+    describe("ArrayAdd", () => {
+        let circuit: WitnessTester<["lhs", "rhs"], ["out"]>;
+        before(async () => {
+            circuit = await circomkit.WitnessTester(`ArrayAdd`, {
+                file: "circuits/utils/operators",
+                template: "ArrayAdd",
+                params: [3],
+            });
+            console.log("#constraints:", await circuit.getConstraintCount());
+        });
+
+        it("witness: lhs = [0,1,2], rhs = [3,5,7]", async () => {
+            await circuit.expectPass(
+                { lhs: [0, 1, 2], rhs: [3, 5, 7] },
+                { out: [3, 6, 9] }
+            );
+        });
+
+    });
+
+    describe("ArrayMul", () => {
+        let circuit: WitnessTester<["lhs", "rhs"], ["out"]>;
+        before(async () => {
+            circuit = await circomkit.WitnessTester(`ArrayMul`, {
+                file: "circuits/utils/operators",
+                template: "ArrayMul",
+                params: [3],
+            });
+            console.log("#constraints:", await circuit.getConstraintCount());
+        });
+
+        it("witness: lhs = [0,1,2], rhs = [3,5,7]", async () => {
+            await circuit.expectPass(
+                { lhs: [0, 1, 2], rhs: [3, 5, 7] },
+                { out: [0, 5, 14] }
+            );
+        });
+
+    });
 });
