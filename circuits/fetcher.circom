@@ -191,15 +191,24 @@ template ExtractNumber(DATA_BYTES, MAX_STACK_HEIGHT, keyLen, maxValueLen) {
     signal input data[DATA_BYTES];
     signal input key[keyLen];
 
-    signal output value[maxValueLen];
+    signal value_string[maxValueLen];
+    signal output value;
 
     signal value_starting_index[DATA_BYTES];
 
     value_starting_index <== ExtractValue(DATA_BYTES, MAX_STACK_HEIGHT, keyLen, maxValueLen)(data, key);
 
-    value <== SelectSubArray(DATA_BYTES, maxValueLen)(data, value_starting_index[DATA_BYTES-2], maxValueLen);
+    value_string <== SelectSubArray(DATA_BYTES, maxValueLen)(data, value_starting_index[DATA_BYTES-2], maxValueLen);
 
     for (var i=0 ; i<maxValueLen; i++) {
-        log("value[",i,"]=", value[i]);
+        log("value[",i,"]=", value_string[i]);
     }
+
+    signal number_value[maxValueLen];
+    number_value[0] <== (value_string[0]-48);
+    for (var i=1 ; i<maxValueLen ; i++) {
+        number_value[i] <== number_value[i-1] * 10 + (value_string[i]-48);
+    }
+
+    value <== number_value[maxValueLen-1];
 }

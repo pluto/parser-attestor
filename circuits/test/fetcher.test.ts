@@ -76,7 +76,8 @@ describe("ExtractValue", () => {
 
         let [input1, keyUnicode1, output1] = readInputFile("value_number.json", "k");
         console.log("output:", input1, output1);
-        await circuit.expectPass({ data: input1, key: keyUnicode1 }, { value: output1 });
+        let num = parseInt(output1.map(num => String.fromCharCode(num)).join(''), 10)
+        await circuit.expectPass({ data: input1, key: keyUnicode1 }, { value: num });
 
 
         // let [input2, keyUnicode2, output2] = readInputFile("two_keys.json", "key2");
