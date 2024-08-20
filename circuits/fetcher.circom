@@ -8,6 +8,10 @@ include "circomlib/circuits/mux1.circom";
 include "@zk-email/circuits/utils/functions.circom";
 include "@zk-email/circuits/utils/array.circom";
 
+// TODOs:
+// - remove use of random_signal in key match from 100
+//
+
 template InsideKey(n) {
     signal input stack[n][2];
     signal input parsing_string;
@@ -42,6 +46,23 @@ template InsideValue(n) {
     out <== if_parsing_value * parsing_string_or_number;
 }
 
+template InsideArrayIndex(n, index) {
+    signal input stack[n][2];
+    signal input parsing_string;
+    signal input parsing_number;
+
+    signal output out;
+
+    component topOfStack = GetTopOfStack(n);
+    topOfStack.stack <== stack;
+    signal current_val[2] <== topOfStack.value;
+
+    signal inside_array <== IsEqual()([current_val[0], 2]);
+    signal inside_index <== IsEqual()([current_val[1], index]);
+    signal inside_array_index <== inside_array * inside_index;
+    out <== inside_array_index * (parsing_string + parsing_number);
+}
+
 template NextKVPair(n) {
     signal input stack[n][2];
     signal input curr_byte;
@@ -51,10 +72,10 @@ template NextKVPair(n) {
     topOfStack.stack <== stack;
     signal current_val[2] <== topOfStack.value;
 
-    signal isNextPair <== IsEqualArray(2)([current_val, [1, 1]]);
+    signal isNextPair <== IsEqualArray(2)([current_val, [1, 0]]);
     signal isComma <== IsEqual()([curr_byte, 44]); // `, -> 44`
 
-    out <== isNextPair * isComma;
+    out <== isNextPair*isComma ;
 }
 
 template KeyMatch(dataLen, keyLen) {
@@ -138,7 +159,7 @@ template ExtractValue(DATA_BYTES, MAX_STACK_HEIGHT, keyLen, maxValueLen) {
         // `is_key_match = 1` -> 1 until new kv pair
         // `new kv pair = 1`  -> 0
         is_next_pair[data_idx-1] <== NextKVPair(MAX_STACK_HEIGHT)(State[data_idx].stack, data[data_idx-1]);
-        // log("is_new_kv_pair:", is_next_pair[data_idx]);
+        // log("is_new_kv_pair:", is_next_pair[data_idx-1]);
 
         is_key_match_for_value[data_idx] <== Mux1()([is_key_match_for_value[data_idx-1] * (1-is_next_pair[data_idx-1]), is_key_match[data_idx-1] * (1-is_next_pair[data_idx-1])], is_key_match[data_idx-1]);
         // log("is_key_match_for_value:", is_key_match_for_value[data_idx]);
@@ -211,4 +232,116 @@ template ExtractNumber(DATA_BYTES, MAX_STACK_HEIGHT, keyLen, maxValueLen) {
     }
 
     value <== number_value[maxValueLen-1];
+}
+
+template ExtractArray(DATA_BYTES, MAX_STACK_HEIGHT, keyLen, index, maxValueLen) {
+        signal input data[DATA_BYTES];
+    signal input key[keyLen];
+
+    signal value_starting_index[DATA_BYTES];
+    signal output value[maxValueLen];
+
+
+    signal mask[DATA_BYTES];
+    // mask[0] <== 0;
+
+    var logDataLen = log2Ceil(DATA_BYTES);
+
+    component State[DATA_BYTES];
+    State[0] = StateUpdate(MAX_STACK_HEIGHT);
+    State[0].byte           <== data[0];
+    for(var i = 0; i < MAX_STACK_HEIGHT; i++) {
+        State[0].stack[i]   <== [0,0];
+    }
+    State[0].parsing_string <== 0;
+    State[0].parsing_number <== 0;
+
+    signal parsing_key[DATA_BYTES];
+    signal parsing_value[DATA_BYTES];
+    signal is_key_match[DATA_BYTES];
+    signal is_key_match_and_inside_key[DATA_BYTES];
+    signal is_key_match_for_value[DATA_BYTES];
+    is_key_match_for_value[0] <== 0; // TODO: this might not be correct way to initialise
+    signal value_mask[DATA_BYTES];
+    signal is_next_pair[DATA_BYTES];
+    for(var data_idx = 1; data_idx < DATA_BYTES; data_idx++) {
+        // Debugging
+        for(var i = 0; i<MAX_STACK_HEIGHT; i++) {
+            log("State[", data_idx-1, "].stack[", i,"]    ", "= [",State[data_idx-1].next_stack[i][0], "][", State[data_idx-1].next_stack[i][1],"]" );
+        }
+        log("State[", data_idx-1, "].byte", "= ", data[data_idx-1]);
+        log("State[", data_idx-1, "].parsing_string", "= ", State[data_idx-1].next_parsing_string);
+        log("State[", data_idx-1, "].parsing_number", "= ", State[data_idx-1].next_parsing_number);
+
+        State[data_idx]                  = StateUpdate(MAX_STACK_HEIGHT);
+        State[data_idx].byte           <== data[data_idx];
+        State[data_idx].stack          <== State[data_idx - 1].next_stack;
+        State[data_idx].parsing_string <== State[data_idx - 1].next_parsing_string;
+        State[data_idx].parsing_number <== State[data_idx - 1].next_parsing_number;
+
+        parsing_key[data_idx-1] <== InsideKey(MAX_STACK_HEIGHT)(State[data_idx].stack, State[data_idx].parsing_string, State[data_idx].parsing_number);
+        // log("parsing key:", parsing_key[data_idx]);
+
+        parsing_value[data_idx-1] <== InsideArrayIndex(MAX_STACK_HEIGHT, index)(State[data_idx].stack, State[data_idx].parsing_string, State[data_idx].parsing_number);
+        // log("parsing value:", parsing_value[data_idx]);
+
+        is_key_match[data_idx-1] <== KeyMatch(DATA_BYTES, keyLen)(data, key, 100, data_idx-1, parsing_key[data_idx-1]);
+        // log("is_key_match", is_key_match[data_idx]);
+
+        // is the value getting parsed has a matched key?
+        // use mux1 to carry parse_key forward to value
+        // is_key_match_for_value should reset when moving to next kv pair
+        // `is_key_match = 0` -> 0
+        // `is_key_match = 1` -> 1 until new kv pair
+        // `new kv pair = 1`  -> 0
+        is_next_pair[data_idx-1] <== NextKVPair(MAX_STACK_HEIGHT)(State[data_idx].stack, data[data_idx-1]);
+        // log("is_new_kv_pair:", is_next_pair[data_idx]);
+
+        is_key_match_for_value[data_idx] <== Mux1()([is_key_match_for_value[data_idx-1] * (1-is_next_pair[data_idx-1]), is_key_match[data_idx-1] * (1-is_next_pair[data_idx-1])], is_key_match[data_idx-1]);
+        // log("is_key_match_for_value:", is_key_match_for_value[data_idx]);
+
+        // mask[i] = data[i] * parsing_value[i] * is_key_match_for_value[i]
+        value_mask[data_idx-1] <== data[data_idx-1] * parsing_value[data_idx-1];
+        mask[data_idx-1] <== value_mask[data_idx-1] * is_key_match_for_value[data_idx];
+        log("mask", mask[data_idx-1]);
+        log("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
+    }
+
+    // Debugging
+    for(var i = 0; i < MAX_STACK_HEIGHT; i++) {
+        log("State[", DATA_BYTES-1, "].stack[", i,"]    ", "= [",State[DATA_BYTES -1].next_stack[i][0], "][", State[DATA_BYTES - 1].next_stack[i][1],"]" );
+    }
+    log("State[", DATA_BYTES-1, "].parsing_string", "= ", State[DATA_BYTES-1].next_parsing_string);
+    log("State[", DATA_BYTES-1, "].parsing_number", "= ", State[DATA_BYTES-1].next_parsing_number);
+    log("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
+
+    // signal value_starting_index[DATA_BYTES];
+    signal is_zero_mask[DATA_BYTES];
+    signal is_prev_starting_index[DATA_BYTES];
+    value_starting_index[0] <== 0;
+    is_zero_mask[0] <== IsZero()(mask[0]);
+    for (var i=1 ; i<DATA_BYTES-1 ; i++) {
+        is_zero_mask[i] <== IsZero()(mask[i]);
+        is_prev_starting_index[i] <== IsZero()(value_starting_index[i-1]);
+        value_starting_index[i] <== value_starting_index[i-1] + i * (1-is_zero_mask[i]) * is_prev_starting_index[i];
+    }
+
+    signal value_string[maxValueLen];
+
+    value_string <== SelectSubArray(DATA_BYTES, maxValueLen)(data, value_starting_index[DATA_BYTES-2]+1, maxValueLen);
+
+    // for (var i=0 ; i<maxValueLen; i++) {
+        // log("value[",i,"]=", value_string[i]);
+        // value[i-1] <== value_string[i];
+    // }
+
+    value <== value_string;
+
+    // signal number_value[maxValueLen];
+    // number_value[0] <== (value_string[0]-48);
+    // for (var i=1 ; i<maxValueLen ; i++) {
+    //     number_value[i] <== number_value[i-1] * 10 + (value_string[i]-48);
+    // }
+
+    // value <== number_value[maxValueLen-1];
 }

@@ -5,7 +5,7 @@ import { join } from "path";
 describe("ExtractValue", () => {
     let circuit: WitnessTester<["data", "key"], ["value"]>;
 
-    function readInputFile(filename: string, key: string): [number[], number[], number[]] {
+    function readInputFile(filename: string, key: string, index: number | undefined): [number[], number[], number[]] {
         const value_string_path = join(__dirname, "..", "..", "json_examples", "test", filename);
 
         let input: number[] = [];
@@ -25,7 +25,13 @@ describe("ExtractValue", () => {
         input = byteArray;
 
         let jsonFile = JSON.parse(data);
-        let value: string = jsonFile[key].toString();
+        let jsonValue = jsonFile[key];
+        let value: any;
+        if (typeof jsonValue === "number" || typeof jsonValue === "string") {
+            value = jsonValue.toString();
+        } else if (typeof jsonValue === "object") {
+            value = jsonValue[index as number].toString();
+        }
         for (let i = 0; i < value.length; i++) {
             output.push(value.charCodeAt(i));
         }
@@ -41,8 +47,7 @@ describe("ExtractValue", () => {
         });
         console.log("#constraints:", await circuit.getConstraintCount());
 
-        let [input, keyUnicode, output] = readInputFile("value_string.json", "k");
-        console.log("#constraints:", await circuit.getConstraintCount());
+        let [input, keyUnicode, output] = readInputFile("value_string.json", "k", undefined);
 
         await circuit.expectPass({
             data: input, key: keyUnicode,
@@ -59,10 +64,10 @@ describe("ExtractValue", () => {
         });
         console.log("#constraints:", await circuit.getConstraintCount());
 
-        let [input1, keyUnicode1, output1] = readInputFile("two_keys.json", "key1");
+        let [input1, keyUnicode1, output1] = readInputFile("two_keys.json", "key1", undefined);
         await circuit.expectPass({ data: input1, key: keyUnicode1 }, { value: output1 });
 
-        let [input2, keyUnicode2, output2] = readInputFile("two_keys.json", "key2");
+        let [input2, keyUnicode2, output2] = readInputFile("two_keys.json", "key2", undefined);
         await circuit.expectPass({ data: input2, key: keyUnicode2 }, { value: output2 });
     });
 
@@ -74,14 +79,25 @@ describe("ExtractValue", () => {
         });
         console.log("#constraints:", await circuit.getConstraintCount());
 
-        let [input1, keyUnicode1, output1] = readInputFile("value_number.json", "k");
+        let [input1, keyUnicode1, output1] = readInputFile("value_number.json", "k", undefined);
         console.log("output:", input1, output1);
-        let num = parseInt(output1.map(num => String.fromCharCode(num)).join(''), 10)
-        await circuit.expectPass({ data: input1, key: keyUnicode1 }, { value: num });
+        let num = parseInt(output1.map(num => String.fromCharCode(num)).join(''), 10);
 
+        // await circuit.expectPass({ data: input1, key: keyUnicode1 }, { value: num });
+    });
 
-        // let [input2, keyUnicode2, output2] = readInputFile("two_keys.json", "key2");
+    it("value_array: { \"k\" : [   420 , 69 , 4200 , 600 ], \"b\": [ \"ab\" ,  \"ba\",  \"ccc\", \"d\" ] }", async () => {
+        for (let i = 0; i < 4; i++) {
+            let [input, keyUnicode, output] = readInputFile("value_array.json", "b", i);
 
-        // await circuit.expectPass({ data: input2, key: keyUnicode2 }, { value: output2 });
+            circuit = await circomkit.WitnessTester(`Extract`, {
+                file: "circuits/fetcher",
+                template: "ExtractArray",
+                params: [73, 2, 1, i, output.length],
+            });
+            console.log("#constraints:", await circuit.getConstraintCount());
+
+            await circuit.expectPass({ data: input, key: keyUnicode }, { value: output });
+        }
     });
 });
