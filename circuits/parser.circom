@@ -50,21 +50,26 @@ template StateUpdate(MAX_STACK_HEIGHT) {
     // * read in a comma `,` *
     component readComma          = IsEqual();
     readComma.in               <== [matcher.out[0], 4];
+    // * read a delimiter `{` or `}` or `[` or `]` or `,` or `:` * //
     component readDelimeter      = Contains(6);
     readDelimeter.in           <== matcher.out[0];
     readDelimeter.array        <== [1,-1,2,-2,3,4];
+    // * read a value NOT in the list of language tokens, e.g., ` ` or `$`, and most of ASCII, really *//
+    component readOther          = IsEqualArray(3);
+    readOther.in               <== [matcher.out, [0,0,0]];
     //--------------------------------------------------------------------------------------------//
     // Apply state changing data
     // * get the instruction mask based on current state *
     component mask              = StateToMask(MAX_STACK_HEIGHT);
     mask.readDelimeter        <== readDelimeter.out;
     mask.readNumber           <== readNumber.out;
+    mask.readOther            <== readOther.out;
     mask.parsing_string       <== parsing_string;
     mask.parsing_number       <== parsing_number;
     // * multiply the mask array elementwise with the instruction array *
     component mulMaskAndOut    = ArrayMul(3);
     mulMaskAndOut.lhs        <== mask.out;
-    mulMaskAndOut.rhs        <== matcher.out;
+    mulMaskAndOut.rhs        <== [matcher.out[0], matcher.out[1], matcher.out[2] - readOther.out]; // if we read a non-language character, then we can change `parsing_number` unless masked
     // * add the masked instruction to the state to get new state *
     component addToState       = ArrayAdd(3);
     addToState.lhs           <== [0, parsing_string, parsing_number];
@@ -90,6 +95,7 @@ template StateToMask(n) {
     // TODO: Probably need to assert things are bits where necessary.
     signal input readDelimeter;
     signal input readNumber;
+    signal input readOther;
     signal input parsing_string;
     signal input parsing_number;
     signal output out[3];

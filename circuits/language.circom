@@ -30,7 +30,6 @@ template Syntax() {
 
 template Command() {
     //            STATE              = [read_write_value, parsing_string, parsing_number]
-    signal output NOTHING[3]       <== [0,                0,              -1            ]; // Command returned by switch if we want to do nothing, e.g. read a whitespace char while looking for a key
     signal output START_BRACE[3]   <== [1,                0,              0             ]; // Command returned by switch if we hit a start brace `{`
     signal output END_BRACE[3]     <== [-1,               0,              -1            ]; // Command returned by switch if we hit a end brace `}`
     signal output START_BRACKET[3] <== [2,                0,              0             ]; // Command returned by switch if we hit a start bracket `[`
