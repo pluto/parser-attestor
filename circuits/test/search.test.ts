@@ -131,9 +131,15 @@ describe("search", () => {
             );
         });
 
-        it("data = inputs.json:data, key = wrong key", async () => {
+        it("data = inputs.json:data, key = invalid key byte", async () => {
             await circuit.expectFail(
                 { data: witness["data"], key: witness["key"].concat(257) },
+            );
+        });
+
+        it("data = inputs.json:data, key = wrong key", async () => {
+            await circuit.expectFail(
+                { data: witness["data"], key: witness["key"].concat(0) },
             );
         });
     });
