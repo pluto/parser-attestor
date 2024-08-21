@@ -13,10 +13,9 @@ function readInputFile(filename: string, key: any[]): [number[], number[][], num
     let keyUnicode: number[][] = [];
     for (let i = 0; i < key.length; i++) {
         keyUnicode[i] = [];
-        let key_string = key.toString();
-        for (let j = 0; j < key_string[i].length; j++) {
-
-            keyUnicode[i].push(key_string[i].charCodeAt(j));
+        let key_string = key[i].toString();
+        for (let j = 0; j < key_string.length; j++) {
+            keyUnicode[i].push(key_string.charCodeAt(j));
         }
     }
 
@@ -95,7 +94,7 @@ describe("ExtractValue", () => {
             });
             console.log("#constraints:", await circuit.getConstraintCount());
 
-            await circuit.expectPass({ data: input, key: keyUnicode }, { value: output });
+            await circuit.expectPass({ data: input, key: keyUnicode[0] }, { value: output });
         }
     });
 });
@@ -109,7 +108,7 @@ describe("ExtractValueMultiDepth", () => {
         circuit = await circomkit.WitnessTester(`Extract`, {
             file: "circuits/fetcher",
             template: "ExtractStringMultiDepth",
-            params: [input.length, 3, 1, 1, 1, 2, 1],
+            params: [input.length, 3, 1, 0, 1, 1, 1],
         });
         console.log("#constraints:", await circuit.getConstraintCount());
 
@@ -117,6 +116,22 @@ describe("ExtractValueMultiDepth", () => {
 
         let [input1, keyUnicode1, output1] = readInputFile("value_object.json", ["e", "f"]);
         await circuit.expectPass({ data: input1, key1: keyUnicode1[0], key2: keyUnicode1[1] }, { value: output1 });
+    });
+
+    it("value_array_object: {\"a\":[{\"b\":[1,4]},{\"c\":\"b\"}]}", async () => {
+        let index_0 = 0;
+        let index_1 = 0;
+        let [input, keyUnicode, output] = readInputFile("value_array_object.json", ["a", index_0, "b", index_1]);
+        // console.log(`input: ${input}, key: ${keyUnicode}, output: ${output}`);
+
+        circuit = await circomkit.WitnessTester(`Extract`, {
+            file: "circuits/fetcher",
+            template: "ExtractStringMultiDepthNested",
+            params: [input.length, 4, 1, 0, 1, 2, index_0, 1, index_1, 3, 1],
+        });
+        console.log("#constraints:", await circuit.getConstraintCount());
+
+        await circuit.expectPass({ data: input, key1: keyUnicode[0], key2: keyUnicode[2] }, { value: output });
     });
 });
 
@@ -127,7 +142,7 @@ describe("ExtractValueMultiDepth", () => {
         let index_0 = 1;
         let index_1 = 0;
         let [input, keyUnicode, output] = readInputFile("value_array_nested.json", ["a", index_0, index_1]);
-        console.log(input, keyUnicode, output);
+
         circuit = await circomkit.WitnessTester(`Extract`, {
             file: "circuits/fetcher",
             template: "ExtractNestedArray",
