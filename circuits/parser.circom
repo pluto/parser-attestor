@@ -87,6 +87,8 @@ template StateUpdate(MAX_STACK_HEIGHT) {
     // * read in a quote `"` *
     component readQuote        = IsEqual();
     readQuote.in             <== [byte, Syntax.QUOTE];
+    component readOther        = IsZero();
+    readOther.in             <== readDelimeter + readNumber.out + readQuote.out;
     //--------------------------------------------------------------------------------------------//
     // Yield instruction based on what byte we read *
     component readStartBraceInstruction   = ScalarArrayMul(3);
@@ -130,7 +132,7 @@ template StateUpdate(MAX_STACK_HEIGHT) {
     // * multiply the mask array elementwise with the instruction array *
     component mulMaskAndOut    = ArrayMul(3);
     mulMaskAndOut.lhs        <== mask.out;
-    mulMaskAndOut.rhs        <== Instruction.out;
+    mulMaskAndOut.rhs        <== [Instruction.out[0], Instruction.out[1], Instruction.out[2]  - readOther.out];
     // * compute the new stack *
     component newStack         = RewriteStack(MAX_STACK_HEIGHT);
     newStack.stack            <== stack;
