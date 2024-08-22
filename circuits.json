@@ -1,50 +1,66 @@
 {
-    "test_extract": {
-        "file": "extract",
-        "template": "Extract",
-        "params": [
-            4,
-            21
-        ]
-    },
-    "test_extract_two_key": {
-        "file": "extract",
-        "template": "Extract",
-        "params": [
-            4,
-            40
-        ]
-    },
-    "test_extract_depth": {
-        "file": "extract",
-        "template": "Extract",
-        "params": [
-            4,
-            64
-        ]
-    },
-    "test_extract_sambhav": {
-        "file": "extract",
-        "template": "Extract",
-        "params": [
-            4,
-            105
-        ]
-    },
-    "test_extract_hard": {
-        "file": "extract",
-        "template": "Extract",
-        "params": [
-            4,
-            48
-        ]
-    },
     "extract": {
         "file": "extract",
         "template": "Extract",
         "params": [
-            10,
-            787
+            157,
+            13
+        ]
+    },
+    "value_string": {
+        "file": "extract",
+        "template": "Extract",
+        "params": [
+            12,
+            1
+        ]
+    },
+    "value_number": {
+        "file": "extract",
+        "template": "Extract",
+        "params": [
+            12,
+            2
+        ]
+    },
+    "value_array": {
+        "file": "extract",
+        "template": "Extract",
+        "params": [
+            18,
+            2
+        ]
+    },
+    "value_array_nested": {
+        "file": "extract",
+        "template": "Extract",
+        "params": [
+            24,
+            4
+        ]
+    },
+    "value_array_object": {
+        "file": "extract",
+        "template": "Extract",
+        "params": [
+            25,
+            4
+        ]
+    },
+    "value_array_object_array": {
+        "file": "extract",
+        "template": "Extract",
+        "params": [
+            31,
+            5
+        ]
+    },
+    "value_object": {
+        "file": "extract",
+        "template": "Extract",
+        "params": [
+            21,
+            3
         ]
     }
 }
