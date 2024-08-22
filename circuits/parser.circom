@@ -16,6 +16,9 @@ The key ingredients of `parser` are:
 `parser` brings in many functions from the `utils` module and `language`.
 The inclusion of `langauge` allows for this file to (eventually) be generic over
 a grammar for different applications (e.g., HTTP, YAML, TOML, etc.).
+
+## Testing
+Tests for this module are located in the files: `circuits/test/parser/*.test.ts
 */
 
 pragma circom 2.1.9;
@@ -64,6 +67,7 @@ template StateUpdate(MAX_STACK_HEIGHT) {
     component readNumber       = InRange(8);
     readNumber.in            <== byte;
     readNumber.range         <== [48, 57]; // This is the range where ASCII digits are
+    // * read in a quote `"` *
     component readQuote        = IsEqual();
     readQuote.in             <== [byte, Syntax.QUOTE];
     //--------------------------------------------------------------------------------------------//
@@ -164,8 +168,8 @@ template StateToMask(n) {
     signal readNumberNotParsingNumber <== (1 - parsing_number) * readNumber;
     signal notParsingStringAndParsingNumberReadDelimeterOrReadNumberNotParsingNumber <== (1 - parsing_string) * (parsingNumberReadDelimeter + readNumberNotParsingNumber);
     //                                                                                                           10 above ^^^^^^^^^^^^^^^^^   4 above ^^^^^^^^^^^^^^^^^^
-    signal temp <== parsing_number * (1 - readNumber) ;
-    signal parsingNumberNotReadNumberNotReadDelimeter <== temp * (1-readDelimeter);
+    signal parsingNumberNotReadNumber <== parsing_number * (1 - readNumber) ;
+    signal parsingNumberNotReadNumberNotReadDelimeter <== parsingNumberNotReadNumber * (1-readDelimeter);
     out[2] <== notParsingStringAndParsingNumberReadDelimeterOrReadNumberNotParsingNumber + parsingNumberNotReadNumberNotReadDelimeter;
     // Sorry about the long names, but they hopefully read clearly!
 }
@@ -193,6 +197,9 @@ template GetTopOfStack(n) {
 }
 
 // TODO: IMPORTANT NOTE, THE STACK IS CONSTRAINED TO 2**8 so the InRange work (could be changed)
+/*
+
+*/
 template RewriteStack(n) {
     assert(n < 2**8);
     signal input stack[n][2];
@@ -224,7 +231,6 @@ template RewriteStack(n) {
 
     //--------------------------------------------------------------------------------------------//
     // * composite signals *
-    signal readEndChar         <== readEndBrace + readEndBracket;
     signal readCommaInArray    <== readComma * inArray.out;
     signal readCommaNotInArray <== readComma * (1 - inArray.out);
     //--------------------------------------------------------------------------------------------//
@@ -250,7 +256,7 @@ template RewriteStack(n) {
     signal second_index_clear[n];
     for(var i = 0; i < n; i++) {
         next_stack[i][0]         <== stack[i][0] + indicator[i].out * stack_change_value[0];
-        second_index_clear[i]    <== stack[i][1] * readEndChar;
+        second_index_clear[i]    <== stack[i][1] * (readEndBrace + readEndBracket); // Checking if we read some end char
         next_stack[i][1]         <== stack[i][1] + indicator[i].out * (stack_change_value[1] - second_index_clear[i]);
     }
     //--------------------------------------------------------------------------------------------//
