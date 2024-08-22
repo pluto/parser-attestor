@@ -109,6 +109,29 @@ template ArrayMul(n) {
     }
 }
 
+template GenericArrayAdd(m,n) {
+    signal input arrays[n][m];
+    signal output out[m];
+
+    var accum[m];
+    for(var i = 0; i < m; i++) {
+        for(var j = 0; j < n; j++) {
+            accum[i] += arrays[j][i];
+        }
+    }
+    out <== accum;
+}
+
+template ScalarArrayMul(n) {
+    signal input array[n];
+    signal input scalar;
+    signal output out[n];
+
+    for(var i = 0; i < n; i++) {
+        out[i] <== scalar * array[i];
+    }
+}
+
 template InRange(n) {
     signal input in;
     signal input range[2];

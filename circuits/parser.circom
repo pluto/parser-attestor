@@ -40,37 +40,64 @@ template StateUpdate(MAX_STACK_HEIGHT) {
     //--------------------------------------------------------------------------------------------//
     // Break down what was read
     // * read in a start brace `{` *
-    component readStartBrace     = IsEqual();
-    readStartBrace.in          <== [byte, Syntax.START_BRACE];
+    component readStartBrace   = IsEqual();
+    readStartBrace.in        <== [byte, Syntax.START_BRACE];
     // * read in an end brace `}` *
-    component readEndBrace       = IsEqual();
-    readEndBrace.in            <== [byte, Syntax.END_BRACE];
+    component readEndBrace     = IsEqual();
+    readEndBrace.in          <== [byte, Syntax.END_BRACE];
     // * read in a start bracket `[` *
-    component readStartBracket   = IsEqual();
-    readStartBracket.in        <== [byte, Syntax.START_BRACKET];
+    component readStartBracket = IsEqual();
+    readStartBracket.in      <== [byte, Syntax.START_BRACKET];
     // * read in an end bracket `]` *
-    component readEndBracket     = IsEqual();
-    readEndBracket.in          <== [byte, Syntax.END_BRACKET];
+    component readEndBracket   = IsEqual();
+    readEndBracket.in        <== [byte, Syntax.END_BRACKET];
     // * read in a colon `:` *
-    component readColon          = IsEqual();
-    readColon.in               <== [byte, Syntax.COLON];
+    component readColon        = IsEqual();
+    readColon.in             <== [byte, Syntax.COLON];
     // * read in a comma `,` *
-    component readComma          = IsEqual();
-    readComma.in               <== [byte, Syntax.COMMA];
+    component readComma        = IsEqual();
+    readComma.in             <== [byte, Syntax.COMMA];
     // * read in some delimeter *
-    signal readDelimeter       <== readStartBrace.out + readEndBrace.out + readStartBracket.out + readEndBracket.out
-                                 + readColon.out + readComma.out;
+    signal readDelimeter     <== readStartBrace.out + readEndBrace.out + readStartBracket.out + readEndBracket.out
+                               + readColon.out + readComma.out;
     // * read in some number *
-    component readNumber = InRange(8);
-    readNumber.in    <== byte;
-    readNumber.range <== [48, 57]; // ASCII NUMERALS
-    signal isNumberSyntax          <==  readNumber.out * Syntax.NUMBER;
+    component readNumber       = InRange(8);
+    readNumber.in            <== byte;
+    readNumber.range         <== [48, 57]; // This is the range where ASCII digits are
+    component readQuote        = IsEqual();
+    readQuote.in             <== [byte, Syntax.QUOTE];
     //--------------------------------------------------------------------------------------------//
     // Yield instruction based on what byte we read *
-    component matcher           = SwitchArray(8, 3);
-    matcher.branches          <== [Syntax.START_BRACE,  Syntax.END_BRACE,  Syntax.QUOTE,  Syntax.COLON,  Syntax.COMMA,  Syntax.START_BRACKET,  Syntax.END_BRACKET,  Syntax.NUMBER ];
-    matcher.vals              <== [Command.START_BRACE, Command.END_BRACE, Command.QUOTE, Command.COLON, Command.COMMA, Command.START_BRACKET, Command.END_BRACKET, Command.NUMBER];
-    matcher.case              <== (1 - readNumber.out) * byte + isNumberSyntax; // IF (NOT readNumber) THEN byte ELSE Syntax.NUMBER
+    component readStartBraceInstruction   = ScalarArrayMul(3);
+    readStartBraceInstruction.scalar    <== readStartBrace.out;
+    readStartBraceInstruction.array     <== Command.START_BRACE;
+    component readEndBraceInstruction     = ScalarArrayMul(3);
+    readEndBraceInstruction.scalar      <== readEndBrace.out;
+    readEndBraceInstruction.array       <== Command.END_BRACE;
+    component readStartBracketInstruction = ScalarArrayMul(3);
+    readStartBracketInstruction.scalar  <== readStartBracket.out;
+    readStartBracketInstruction.array   <== Command.START_BRACKET;
+    component readEndBracketInstruction   = ScalarArrayMul(3);
+    readEndBracketInstruction.scalar    <== readEndBracket.out;
+    readEndBracketInstruction.array     <== Command.END_BRACKET;
+    component readColonInstruction        = ScalarArrayMul(3);
+    readColonInstruction.scalar         <== readColon.out;
+    readColonInstruction.array          <== Command.COLON;
+    component readCommaInstruction        = ScalarArrayMul(3);
+    readCommaInstruction.scalar         <== readComma.out;
+    readCommaInstruction.array          <== Command.COMMA;
+    component readNumberInstruction       = ScalarArrayMul(3);
+    readNumberInstruction.scalar        <== readNumber.out;
+    readNumberInstruction.array         <== Command.NUMBER;
+    component readQuoteInstruction        = ScalarArrayMul(3);
+    readQuoteInstruction.scalar         <== readQuote.out;
+    readQuoteInstruction.array          <== Command.QUOTE;
+
+    component Instruction                 = GenericArrayAdd(3,8);
+    Instruction.arrays                  <== [readStartBraceInstruction.out, readEndBraceInstruction.out, 
+                                             readStartBracketInstruction.out, readEndBracketInstruction.out,
+                                             readColonInstruction.out, readCommaInstruction.out, 
+                                             readNumberInstruction.out, readQuoteInstruction.out];
     //--------------------------------------------------------------------------------------------//
     // Apply state changing data
     // * get the instruction mask based on current state *
@@ -82,7 +109,7 @@ template StateUpdate(MAX_STACK_HEIGHT) {
     // * multiply the mask array elementwise with the instruction array *
     component mulMaskAndOut    = ArrayMul(3);
     mulMaskAndOut.lhs        <== mask.out;
-    mulMaskAndOut.rhs        <== matcher.out;
+    mulMaskAndOut.rhs        <== Instruction.out;
     // * add the masked instruction to the state to get new state *
     component addToState       = ArrayAdd(3);
     addToState.lhs           <== [0, parsing_string, parsing_number];

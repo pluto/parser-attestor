@@ -159,6 +159,26 @@ describe("ArrayMul", () => {
 
 });
 
+describe("GenericArrayAdd", () => {
+    let circuit: WitnessTester<["arrays"], ["out"]>;
+    before(async () => {
+        circuit = await circomkit.WitnessTester(`ArrayAdd`, {
+            file: "circuits/utils",
+            template: "GenericArrayAdd",
+            params: [3, 2],
+        });
+        console.log("#constraints:", await circuit.getConstraintCount());
+    });
+
+    it("witness: arrays = [[0,1,2],[3,5,7]]", async () => {
+        await circuit.expectPass(
+            { arrays: [[0, 1, 2], [3, 5, 7]] },
+            { out: [3, 6, 9] }
+        );
+    });
+
+});
+
 describe("InRange", () => {
     let circuit: WitnessTester<["in", "range"], ["out"]>;
     before(async () => {
