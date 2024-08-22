@@ -26,6 +26,23 @@ pragma circom 2.1.9;
 include "utils.circom";
 include "language.circom";
 
+/*
+This template is for updating the state of the parser from a current state to a next state.
+
+# Params:
+ - `MAX_STACK_HEIGHT`: the maximum stack height that can be used before triggering overflow.
+
+# Inputs:
+ - `byte`                      : the byte value of ASCII that was read by the parser.
+ - `stack[MAX_STACK_HEIGHT][2]`: the stack machine's current stack.
+ - `parsing_number`            : a bool flag that indicates whether the parser is currently parsing a string or not.
+ - `parsing_number`            : a bool flag that indicates whether the parser is currently parsing a number or not.
+
+# Outputs:
+ - `next_stack[MAX_STACK_HEIGHT][2]`: the stack machine's stack after reading `byte`.
+ - `next_parsing_number`            : a bool flag that indicates whether the parser is currently parsing a string or not after reading `byte`.
+ - `next_parsing_number`            : a bool flag that indicates whether the parser is currently parsing a number or not after reading `byte`.
+*/
 template StateUpdate(MAX_STACK_HEIGHT) {
     signal input byte; // TODO: Does this need to be constrained within here?
 
@@ -114,14 +131,10 @@ template StateUpdate(MAX_STACK_HEIGHT) {
     component mulMaskAndOut    = ArrayMul(3);
     mulMaskAndOut.lhs        <== mask.out;
     mulMaskAndOut.rhs        <== Instruction.out;
-    // * add the masked instruction to the state to get new state *
-    component addToState       = ArrayAdd(3);
-    addToState.lhs           <== [0, parsing_string, parsing_number];
-    addToState.rhs           <== mulMaskAndOut.out;
     // * compute the new stack *
     component newStack         = RewriteStack(MAX_STACK_HEIGHT);
     newStack.stack            <== stack;
-    newStack.read_write_value <== addToState.out[0];
+    newStack.read_write_value <== mulMaskAndOut.out[0];
     newStack.readStartBrace   <== readStartBrace.out;
     newStack.readStartBracket <== readStartBracket.out;
     newStack.readEndBrace     <== readEndBrace.out;
@@ -130,11 +143,29 @@ template StateUpdate(MAX_STACK_HEIGHT) {
     newStack.readComma        <== readComma.out;
     // * set all the next state of the parser * 
     next_stack                <== newStack.next_stack;
-    next_parsing_string       <== addToState.out[1];
-    next_parsing_number       <== addToState.out[2];
+    next_parsing_string       <== parsing_string + mulMaskAndOut.out[1];
+    next_parsing_number       <== parsing_number + mulMaskAndOut.out[2];
     //--------------------------------------------------------------------------------------------//
 }
 
+/*
+This template is for updating the state of the parser from a current state to a next state.
+
+# Params:
+ - `n`: tunable parameter for the number of `parsing_states` needed (TODO: could be removed).
+
+# Inputs:
+ - `readDelimeter` : a bool flag that indicates whether the byte value read was a delimeter.
+ - `readNumber`    : a bool flag that indicates whether the byte value read was a number.
+ - `parsing_number`: a bool flag that indicates whether the parser is currently parsing a string or not.
+ - `parsing_number`: a bool flag that indicates whether the parser is currently parsing a number or not.
+
+# Outputs:
+ - `out[3]`: an array of values fed to update the stack and the parsing state flags.
+    - 0: mask for `read_write_value`
+    - 1: mask for `parsing_string`
+    - 2: mask for `parsing_number`
+*/
 template StateToMask(n) {
     // TODO: Probably need to assert things are bits where necessary.
     signal input readDelimeter;
@@ -175,6 +206,19 @@ template StateToMask(n) {
 }
 
 // TODO: Check if underconstrained
+/*
+This template is for getting the values at the top of the stack as well as the pointer to the top.
+
+# Params:
+ - `n`: tunable parameter for the stack height.
+
+# Inputs:
+ - `stack[n][2]` : the stack to get the values and pointer of.
+
+# Outputs:
+ - `value[2]`: the value at the top of the stack
+ - `pointer` : the pointer for the top of stack index 
+*/
 template GetTopOfStack(n) {
     signal input stack[n][2];
     signal output value[2];
@@ -198,7 +242,22 @@ template GetTopOfStack(n) {
 
 // TODO: IMPORTANT NOTE, THE STACK IS CONSTRAINED TO 2**8 so the InRange work (could be changed)
 /*
+This template is for updating the stack given the current stack and the byte we read in `StateUpdate`.
 
+# Params:
+ - `n`: tunable parameter for the number of bits needed to represent the `MAX_STACK_HEIGHT`.
+
+# Inputs:
+ - `read_write_value` : what value should be pushed to or popped from the stack.
+ - `readStartBrace`   : a bool flag that indicates whether the byte value read was a start brace `{`.
+ - `readEndBrace`     : a bool flag that indicates whether the byte value read was a end brace `}`.
+ - `readStartBracket` : a bool flag that indicates whether the byte value read was a start bracket `[`.
+ - `readEndBracket`   : a bool flag that indicates whether the byte value read was a end bracket `]`.
+ - `readColon`        : a bool flag that indicates whether the byte value read was a colon `:`.
+ - `readComma`        : a bool flag that indicates whether the byte value read was a comma `,`.
+
+# Outputs:
+ - `next_stack[n][2]`: the next stack of the parser.  
 */
 template RewriteStack(n) {
     assert(n < 2**8);
