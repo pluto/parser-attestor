@@ -1,5 +1,5 @@
-import { circomkit, WitnessTester } from "./common";
-import { PoseidonModular } from "./common/poseidon";
+import { circomkit, WitnessTester } from "../common";
+import { PoseidonModular } from "../common/poseidon";
 
 describe("hash", () => {
     describe("PoseidonModular_16", () => {
