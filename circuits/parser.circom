@@ -178,8 +178,6 @@ template StateToMask(n) {
     signal input parsing_number;
     signal output out[3];
 
-    // `parsing_string` can change:
-    out[1] <== 1 - 2 * parsing_string;
 
     // `read_write_value`can change: IF NOT `parsing_string`
     out[0] <== (1 - parsing_string);

@@ -81,7 +81,7 @@ describe("search", () => {
     });
 
     describe("SubstringMatchWithIndex", () => {
-        let circuit: WitnessTester<["data", "key", "r", "start"]>;
+        let circuit: WitnessTester<["data", "key", "r", "start"], ["out"]>;
 
         before(async () => {
             circuit = await circomkit.WitnessTester(`SubstringSearch`, {
@@ -100,17 +100,19 @@ describe("search", () => {
                     r: PoseidonModular(witness["key"].concat(witness["data"])),
                     start: 6
                 },
+                { out: 1 },
             );
         });
 
-        it("data = witness.json:data, key = witness.json:key, r = hash(key+data),  incorrect position", async () => {
-            await circuit.expectFail(
+        it("data = witness.json:data, key = witness.json:key, r = hash(key+data),  output false", async () => {
+            await circuit.expectPass(
                 {
                     data: witness["data"],
                     key: witness["key"],
                     r: PoseidonModular(witness["key"].concat(witness["data"])),
                     start: 98
                 },
+                { out: 0 }
             );
         });
     });

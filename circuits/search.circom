@@ -113,6 +113,8 @@ template SubstringMatchWithIndex(dataLen, keyLen) {
     signal input r;
     signal input start;
 
+    signal output out;
+
     // key end index in `data`
     signal end;
     end <== start + keyLen;
@@ -198,7 +200,7 @@ template SubstringMatchWithIndex(dataLen, keyLen) {
     }
 
     // final sum for data and key should be equal
-    hashMaskedData[dataLen - 1] === hashMaskedKey[keyLen - 1];
+    out <== IsZero()(hashMaskedData[dataLen-1]-hashMaskedKey[keyLen-1]);
 }
 
 /*
@@ -236,7 +238,8 @@ template SubstringMatch(dataLen, keyLen) {
 
     // matches a `key` in `data` at `pos`
     // NOTE: constrained verification assures correctness
-    SubstringMatchWithIndex(dataLen, keyLen)(data, key, r, start);
+    signal isMatch <== SubstringMatchWithIndex(dataLen, keyLen)(data, key, r, start);
+    isMatch === 1;
 
     position <== start;
 }

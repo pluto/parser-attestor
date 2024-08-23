@@ -3,7 +3,8 @@ pragma circom 2.1.9;
 include "extract.circom";
 include "parser.circom";
 include "language.circom";
-include "utils.circom";
+include "search.circom";
+include "./utils/array.circom";
 include "circomlib/circuits/mux1.circom";
 include "circomlib/circuits/gates.circom";
 include "@zk-email/circuits/utils/functions.circom";
@@ -152,7 +153,7 @@ template KeyMatch(dataLen, keyLen) {
     signal start_of_key <== IndexSelector(dataLen)(data, index - 1);
     signal is_start_of_key_equal_to_quote <== IsEqual()([start_of_key, 34]);
 
-    signal substring_match <== IsSubstringMatchWithIndex(dataLen, keyLen)(data, key, 100, index);
+    signal substring_match <== SubstringMatchWithIndex(dataLen, keyLen)(data, key, 100, index);
 
     signal is_key_between_quotes <== is_start_of_key_equal_to_quote * is_end_of_key_equal_to_quote;
     signal is_parsing_correct_key <== is_key_between_quotes * parsing_key;
@@ -179,7 +180,7 @@ template KeyMatchAtDepth(dataLen, n, keyLen, depth) {
     signal start_of_key <== IndexSelector(dataLen)(data, index - 1);
     signal is_start_of_key_equal_to_quote <== IsEqual()([start_of_key, 34]);
 
-    signal substring_match <== IsSubstringMatchWithIndex(dataLen, keyLen)(data, key, 100, index);
+    signal substring_match <== SubstringMatchWithIndex(dataLen, keyLen)(data, key, 100, index);
 
     signal is_key_between_quotes <== is_start_of_key_equal_to_quote * is_end_of_key_equal_to_quote;
     log("key pointer", pointer, depth);
