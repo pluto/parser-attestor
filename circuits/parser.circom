@@ -23,7 +23,9 @@ Tests for this module are located in the files: `circuits/test/parser/*.test.ts
 
 pragma circom 2.1.9;
 
-include "utils.circom";
+include "./utils/array.circom";
+include "./utils/bytes.circom";
+include "./utils/operators.circom";
 include "language.circom";
 
 /*
@@ -46,16 +48,16 @@ This template is for updating the state of the parser from a current state to a 
 template StateUpdate(MAX_STACK_HEIGHT) {
     signal input byte; // TODO: Does this need to be constrained within here?
 
-    signal input stack[MAX_STACK_HEIGHT][2]; 
+    signal input stack[MAX_STACK_HEIGHT][2];
     signal input parsing_string;
     signal input parsing_number;
 
     signal output next_stack[MAX_STACK_HEIGHT][2];
     signal output next_parsing_string;
     signal output next_parsing_number;
-    
+
     component Syntax  = Syntax();
-    component Command = Command();   
+    component Command = Command();
 
     //--------------------------------------------------------------------------------------------//
     // Break down what was read
@@ -117,9 +119,9 @@ template StateUpdate(MAX_STACK_HEIGHT) {
     readQuoteInstruction.array          <== Command.QUOTE;
 
     component Instruction                 = GenericArrayAdd(3,8);
-    Instruction.arrays                  <== [readStartBraceInstruction.out, readEndBraceInstruction.out, 
+    Instruction.arrays                  <== [readStartBraceInstruction.out, readEndBraceInstruction.out,
                                              readStartBracketInstruction.out, readEndBracketInstruction.out,
-                                             readColonInstruction.out, readCommaInstruction.out, 
+                                             readColonInstruction.out, readCommaInstruction.out,
                                              readNumberInstruction.out, readQuoteInstruction.out];
     //--------------------------------------------------------------------------------------------//
     // Apply state changing data
@@ -143,7 +145,7 @@ template StateUpdate(MAX_STACK_HEIGHT) {
     newStack.readEndBracket   <== readEndBracket.out;
     newStack.readColon        <== readColon.out;
     newStack.readComma        <== readComma.out;
-    // * set all the next state of the parser * 
+    // * set all the next state of the parser *
     next_stack                <== newStack.next_stack;
     next_parsing_string       <== parsing_string + mulMaskAndOut.out[1];
     next_parsing_number       <== parsing_number + mulMaskAndOut.out[2];
@@ -175,9 +177,9 @@ template StateToMask(n) {
     signal input parsing_string;
     signal input parsing_number;
     signal output out[3];
-    
 
-    // `read_write_value`can change: IF NOT `parsing_string` 
+
+    // `read_write_value`can change: IF NOT `parsing_string`
     out[0] <== (1 - parsing_string);
 
     // `parsing_string` can change:
@@ -192,12 +194,12 @@ template StateToMask(n) {
     Above is the binary value for each if is individually enabled
     This is a total of 2^4 states
     [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
-    [0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1,  0,  0,  0,  0,   0]; 
-    and the above is what we want to set `next_parsing_number` to given those 
+    [0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1,  0,  0,  0,  0,   0];
+    and the above is what we want to set `next_parsing_number` to given those
     possible.
     Below is an optimized version that could instead be done with a `Switch`
     */
-    signal parsingNumberReadDelimeter <== parsing_number * (readDelimeter); 
+    signal parsingNumberReadDelimeter <== parsing_number * (readDelimeter);
     signal readNumberNotParsingNumber <== (1 - parsing_number) * readNumber;
     signal notParsingStringAndParsingNumberReadDelimeterOrReadNumberNotParsingNumber <== (1 - parsing_string) * (parsingNumberReadDelimeter + readNumberNotParsingNumber);
     //                                                                                                           10 above ^^^^^^^^^^^^^^^^^   4 above ^^^^^^^^^^^^^^^^^^
@@ -219,7 +221,7 @@ This template is for getting the values at the top of the stack as well as the p
 
 # Outputs:
  - `value[2]`: the value at the top of the stack
- - `pointer` : the pointer for the top of stack index 
+ - `pointer` : the pointer for the top of stack index
 */
 template GetTopOfStack(n) {
     signal input stack[n][2];
@@ -259,7 +261,7 @@ This template is for updating the stack given the current stack and the byte we 
  - `readComma`        : a bool flag that indicates whether the byte value read was a comma `,`.
 
 # Outputs:
- - `next_stack[n][2]`: the next stack of the parser.  
+ - `next_stack[n][2]`: the next stack of the parser.
 */
 template RewriteStack(n) {
     assert(n < 2**8);
@@ -273,7 +275,7 @@ template RewriteStack(n) {
     signal input readComma;
 
     signal output next_stack[n][2];
-    
+
     //--------------------------------------------------------------------------------------------//
     // * scan value on top of stack *
     component topOfStack      = GetTopOfStack(n);
@@ -302,7 +304,7 @@ template RewriteStack(n) {
     isPush.in            <== [readStartBrace + readStartBracket, 1];
     component isPop        = IsEqual();
     isPop.in             <== [readEndBrace + readEndBracket, 1];
-    // * set an indicator array for where we are pushing to or popping from* 
+    // * set an indicator array for where we are pushing to or popping from*
     component indicator[n];
     for(var i = 0; i < n; i++) {
         // Points

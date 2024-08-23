@@ -1,5 +1,5 @@
 # SPARK
-> Succinct Parser Attestation for Reconciliation of Knowledge 
+> Succinct Parser Attestation for Reconciliation of Knowledge
 
 ## Repo Structure
 The repository is currently new and being organized as follows:
@@ -26,7 +26,7 @@ npm install -g snarkjs
 ```
 
 ### Circomkit
-You will need `yarn` on your system (brew, or apt-get or something). 
+You will need `yarn` on your system (brew, or apt-get or something).
 Then run: `npm install` to get everything else.
 
 #### Commands
@@ -41,7 +41,7 @@ For example, to compile the extractor, you can:
 ```
 npx circomkit compile extract
 ```
-Then you can do 
+Then you can do
 ```
 npx circomkit witness extract witness
 ```
@@ -69,6 +69,8 @@ To run specific tests, use the `-g` flag for `mocha`, e.g., to run any proof des
 npx mocha -g State
 ```
 
+> [!NOTE]
+> Currently [search](./circuits/search.circom) circuit isn't working with circomkit, so you might have to compile using circom: `circom circuits/main/search.circom --r1cs --wasm -l node_modules/ -o build/search/`
 
 ## (MOSTLY DEPRECATED DUE TO CIRCOMKIT) Running an example
 ```
