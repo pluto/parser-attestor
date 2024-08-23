@@ -43,7 +43,10 @@ describe("search", () => {
             );
         });
 
-        it("wrong random_num input, correct key position: 2", async () => {
+        /// highlights the importance of appropriate calculation of random number for linear matching.
+        /// `1` as used here leads to passing constraints because [1, 0] matches with [0, 1]
+        /// because both have equal linear combination sum.
+        it("(INVALID `r=1` value) random_num input passes for different position, correct key position: 2", async () => {
             const data = [0, 0, 1, 0, 0];
             const key = [1, 0];
 
@@ -59,7 +62,7 @@ describe("search", () => {
             );
         });
 
-        it("data = inputs.json:data, key = inputs.json:key, r = hash(data+key)", async () => {
+        it("data = witness.json:data, key = witness.json:key, r = hash(data+key)", async () => {
             const concatenatedInput = witness["key"].concat(witness["data"]);
             const hashResult = PoseidonModular(concatenatedInput);
 
@@ -89,7 +92,7 @@ describe("search", () => {
             console.log("#constraints:", await circuit.getConstraintCount());
         });
 
-        it("data = inputs.json:data, key = inputs.json:key, r = hash(data+key)", async () => {
+        it("data = witness.json:data, key = witness.json:key, r = hash(key+data)", async () => {
             await circuit.expectPass(
                 {
                     data: witness["data"],
@@ -100,7 +103,7 @@ describe("search", () => {
             );
         });
 
-        it("data = inputs.json:data, key = inputs.json:key, r = hash(data+key),  incorrect position", async () => {
+        it("data = witness.json:data, key = witness.json:key, r = hash(key+data),  incorrect position", async () => {
             await circuit.expectFail(
                 {
                     data: witness["data"],
@@ -124,16 +127,22 @@ describe("search", () => {
             console.log("#constraints:", await circuit.getConstraintCount());
         });
 
-        it("data = inputs.json:data, key = inputs.json:key", async () => {
+        it("data = witness.json:data, key = witness.json:key", async () => {
             await circuit.expectPass(
                 { data: witness["data"], key: witness["key"] },
                 { position: 6 },
             );
         });
 
-        it("data = inputs.json:data, key = wrong key", async () => {
+        it("data = witness.json:data, key = invalid key byte", async () => {
             await circuit.expectFail(
                 { data: witness["data"], key: witness["key"].concat(257) },
+            );
+        });
+
+        it("data = witness.json:data, key = wrong key", async () => {
+            await circuit.expectFail(
+                { data: witness["data"], key: witness["key"].concat(0) },
             );
         });
     });

@@ -3,14 +3,20 @@ pragma circom 2.1.9;
 include "circomlib/circuits/poseidon.circom";
 include "./array.circom";
 
-/// @title PoseidonModular
-/// @notice Circuit to calculate Poseidon hash of an arbitrary number of inputs
-/// @notice Splits input into chunks of 16 elements (or less for the last chunk) and hashes them separately
-/// @notice Then combines the chunk hashes using a binary tree structure
-/// @notice from: https://github.com/zkemail/zk-email-verify/blob/main/packages/circuits/utils/hash.circom#L49
-/// @param numElements Number of elements in the input array
-/// @input in: Array of numElements to be hashed
-/// @output out: Poseidon hash of the input array
+/// Circuit to calculate Poseidon hash of an arbitrary number of inputs.
+/// Splits input into chunks of 16 elements (or less for the last chunk) and hashes them separately
+/// Then combines the chunk hashes using a binary tree structure.
+///
+/// NOTE: from <https://github.com/zkemail/zk-email-verify/blob/main/packages/circuits/utils/hash.circom#L49>
+///
+/// # Parameters
+/// - `numElements`: Number of elements in the input array
+///
+/// # Inputs
+/// - `in`: Array of numElements to be hashed
+///
+/// # Output
+/// - `out`: Poseidon hash of the input array
 template PoseidonModular(numElements) {
     signal input in[numElements];
     signal output out;

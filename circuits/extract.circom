@@ -1,6 +1,6 @@
 pragma circom 2.1.9;
 
-include "utils.circom";
+include "./utils/bytes.circom";
 include "parser.circom";
 
 template Extract(DATA_BYTES, MAX_STACK_HEIGHT) {
