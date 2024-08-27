@@ -57,6 +57,24 @@ npx circomkit clean extract
 
 All of the above should be ran from repository root.
 
+## Rust Example Witness JSON Creation
+To generate example input JSON files for the Circom circuits, you can 
+```
+cargo install --path .
+```
+to install the `witness` binary. 
+To get the basic idea, run `witness --help`. 
+It can process and generate JSON files to be used for the circuits.
+For example, if we have a given JSON file we want to parse such as `examples/json/test/example.json` for the `extract` circuit (see `circuits.json`), then we can:
+```
+witness json --input-file examples/json/test/example.json --output-dir inputs/extract --output-filename input.json
+```
+
+For an HTTP request/response, you can generate a JSON input via:
+```
+witness http --input-file examples/http/get_request.http --output-dir inputs/get_request --output-filename input.json
+```
+
 ## Testing
 To test, you can just run
 ```

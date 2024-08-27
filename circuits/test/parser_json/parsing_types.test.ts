@@ -19,7 +19,7 @@ describe("StateUpdate", () => {
 
     before(async () => {
         circuit = await circomkit.WitnessTester(`StateUpdate`, {
-            file: "circuits/json_parser/machine",
+            file: "circuits/parser_json/machine",
             template: "StateUpdate",
             params: [4],
         });
