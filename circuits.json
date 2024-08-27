@@ -70,5 +70,10 @@
             787,
             10
         ]
+    },
+    "get_request": {
+        "file": "parser_http_request/parser",
+        "template": "Parser",
+        "params": [158]
     }
 }
