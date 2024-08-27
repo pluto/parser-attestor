@@ -17,17 +17,9 @@ describe("StateUpdate", () => {
         });
     }
 
-    function generateFailCase(input: any, desc: string) {
-        const description = generateDescription(input);
-
-        it(`(valid) witness: ${description}\n${desc}`, async () => {
-            await circuit.expectFail(input);
-        });
-    }
-
     before(async () => {
         circuit = await circomkit.WitnessTester(`StateUpdate`, {
-            file: "circuits/parser",
+            file: "circuits/json_parser/machine",
             template: "StateUpdate",
             params: [4],
         });

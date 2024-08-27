@@ -8,7 +8,7 @@ describe("StateUpdate :: Values", () => {
     >;
     before(async () => {
         circuit = await circomkit.WitnessTester(`GetTopOfStack`, {
-            file: "circuits/parser",
+            file: "circuits/json_parser/machine",
             template: "StateUpdate",
             params: [4],
         });
