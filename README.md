@@ -74,6 +74,7 @@ For an HTTP request/response, you can generate a JSON input via:
 ```
 witness http --input-file examples/http/get_request.http --output-dir inputs/get_request --output-filename input.json
 ```
+Afterwards, you can run `circomkit compile get_request` then `circomkit witness get_request input`.
 
 ## Testing
 To test, you can just run
