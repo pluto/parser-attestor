@@ -2,7 +2,7 @@ import { circomkit, WitnessTester, generateDescription } from "./common";
 import { readFileSync } from "fs";
 import { join } from "path";
 
-function readInputFile(filename: string, key: any[]): [number[], number[][], number[]] {
+export function readInputFile(filename: string, key: any[]): [number[], number[][], number[]] {
     const value_string_path = join(__dirname, "..", "..", "json_examples", "test", filename);
 
     let input: number[] = [];

@@ -30,7 +30,7 @@ struct Data {
 const PRAGMA: &str = "pragma circom 2.1.9;\n\n";
 
 fn extract_string(data: Data, cfb: &mut String) {
-    *cfb += "template ExtractValue2(DATA_BYTES, MAX_STACK_HEIGHT, ";
+    *cfb += "template ExtractStringValue(DATA_BYTES, MAX_STACK_HEIGHT, ";
     for (i, key) in data.keys.iter().enumerate() {
         match key {
             Key::String(_) => *cfb += &format!("keyLen{}, depth{}, ", i + 1, i + 1),
@@ -52,12 +52,33 @@ fn extract_string(data: Data, cfb: &mut String) {
     signal output value[maxValueLen];
 
     signal value_starting_index[DATA_BYTES];
+"#;
 
-    value_starting_index <== ExtractMultiDepthNestedObject(DATA_BYTES, MAX_STACK_HEIGHT, keyLen1, depth1, keyLen2, depth2, index3, depth3, index4, depth4, maxValueLen)(data, key1, key2);
+    // value_starting_index <== ExtractValue2(DATA_BYTES, MAX_STACK_HEIGHT, keyLen1, depth1, keyLen2, depth2, index3, depth3, index4, depth4, maxValueLen)(data, key1, key2);
+    {
+        *cfb += "    value_starting_index <== ExtractValue2(DATA_BYTES, MAX_STACK_HEIGHT, ";
+        for (i, key) in data.keys.iter().enumerate() {
+            match key {
+                Key::String(_) => *cfb += &format!("keyLen{}, depth{}, ", i + 1, i + 1),
+                Key::Num(_) => *cfb += &format!("index{}, depth{}, ", i + 1, i + 1),
+            }
+        }
+        *cfb += "maxValueLen)(data, ";
+        for (i, key) in data.keys.iter().enumerate() {
+            match key {
+                Key::String(_) => *cfb += &format!("key{}, ", i + 1),
+                _ => (),
+            }
+        }
+        cfb.pop();
+        cfb.pop();
+        *cfb += ");\n";
+    }
 
+    *cfb += r#"
     log("value_starting_index", value_starting_index[DATA_BYTES-2]);
     // TODO: why +1 not required here,when required on all other string implss?
-    value <== SelectSubArray(DATA_BYTES, maxValueLen)(data, value_starting_index[DATA_BYTES-2], maxValueLen);
+    value <== SelectSubArray(DATA_BYTES, maxValueLen)(data, value_starting_index[DATA_BYTES-2]+1, maxValueLen);
 
     for (var i=0 ; i<maxValueLen; i++) {
         log("value[",i,"]=", value[i]);
@@ -67,7 +88,7 @@ fn extract_string(data: Data, cfb: &mut String) {
 }
 
 fn extract_number(data: Data, cfb: &mut String) {
-    *cfb += "template ExtractValue2(DATA_BYTES, MAX_STACK_HEIGHT, ";
+    *cfb += "template ExtractNumValue(DATA_BYTES, MAX_STACK_HEIGHT, ";
     for (i, key) in data.keys.iter().enumerate() {
         match key {
             Key::String(_) => *cfb += &format!("keyLen{}, depth{}, ", i + 1, i + 1),
@@ -90,9 +111,30 @@ fn extract_number(data: Data, cfb: &mut String) {
     signal output value;
 
     signal value_starting_index[DATA_BYTES];
+"#;
 
-    value_starting_index <== ExtractMultiDepthNestedObject(DATA_BYTES, MAX_STACK_HEIGHT, keyLen1, depth1, keyLen2, depth2, index3, depth3, index4, depth4, maxValueLen)(data, key1, key2);
+    // value_starting_index <== ExtractValue2(DATA_BYTES, MAX_STACK_HEIGHT, keyLen1, depth1, keyLen2, depth2, index3, depth3, index4, depth4, maxValueLen)(data, key1, key2);
+    {
+        *cfb += "    value_starting_index <== ExtractValue2(DATA_BYTES, MAX_STACK_HEIGHT, ";
+        for (i, key) in data.keys.iter().enumerate() {
+            match key {
+                Key::String(_) => *cfb += &format!("keyLen{}, depth{}, ", i + 1, i + 1),
+                Key::Num(_) => *cfb += &format!("index{}, depth{}, ", i + 1, i + 1),
+            }
+        }
+        *cfb += "maxValueLen)(data, ";
+        for (i, key) in data.keys.iter().enumerate() {
+            match key {
+                Key::String(_) => *cfb += &format!("key{}, ", i + 1),
+                _ => (),
+            }
+        }
+        cfb.pop();
+        cfb.pop();
+        *cfb += ");\n";
+    }
 
+    *cfb += r#"
     log("value_starting_index", value_starting_index[DATA_BYTES-2]);
     // TODO: why +1 not required here,when required on all other string implss?
     value_string <== SelectSubArray(DATA_BYTES, maxValueLen)(data, value_starting_index[DATA_BYTES-2], maxValueLen);
@@ -132,9 +174,9 @@ fn parse_json_request() -> std::io::Result<()> {
 
     let mut cfb = String::new();
     cfb += PRAGMA;
-    cfb += "import ./fetcher.circom;\n\n";
+    cfb += "include \"./fetcher.circom\";\n\n";
 
-    cfb += "template ExtractValue2(DATA_BYTES, MAX_STACK_HEIGHT,";
+    cfb += "template ExtractValue2(DATA_BYTES, MAX_STACK_HEIGHT, ";
     for (i, key) in data.keys.iter().enumerate() {
         match key {
             Key::String(_) => cfb += &format!("keyLen{}, depth{}, ", i + 1, i + 1),
@@ -233,7 +275,7 @@ fn parse_json_request() -> std::io::Result<()> {
     }
 
     cfb += &format!(
-        "        parsing_value[data_idx-1] <== MultiAnd({})([",
+        "        parsing_value[data_idx-1] <== MultiAND({})([",
         data.keys.len()
     );
 
@@ -267,14 +309,14 @@ fn parse_json_request() -> std::io::Result<()> {
                 num_objects += 1;
                 cfb += &format!("        is_key{}_match[data_idx-1] <== KeyMatchAtDepth(DATA_BYTES, MAX_STACK_HEIGHT, keyLen{}, depth{})(data, key{}, 100, data_idx-1, parsing_key[data_idx-1], State[data_idx-1].stack);\n", i+1, i+1, i+1, i+1);
                 cfb += &format!("        is_next_pair_at_depth{}[data_idx-1] <== NextKVPairAtDepth(MAX_STACK_HEIGHT, depth{})(State[data_idx-1].stack, data[data_idx-1]);\n", i+1, i+1);
-                cfb += &format!("        is_key{}_match_for_value[data_idx] <== Mux1()([is_key{}_match_for_value[data_idx-1] * (1-is_next_pair_at_depth[data_idx-1]), is_key{}_match[data_idx-1] * (1-is_next_pair_at_depth{}[data_idx-1])], is_key{}_match[data_idx-1]);\n", i+1, i+1, i+1, i+1, i+1);
+                cfb += &format!("        is_key{}_match_for_value[data_idx] <== Mux1()([is_key{}_match_for_value[data_idx-1] * (1-is_next_pair_at_depth{}[data_idx-1]), is_key{}_match[data_idx-1] * (1-is_next_pair_at_depth{}[data_idx-1])], is_key{}_match[data_idx-1]);\n", i+1, i+1, i+1, i+1, i+1, i+1);
             }
             _ => (),
         }
     }
 
     cfb += &format!(
-        "        is_value_match[data_idx] <== MultiAnd({})([",
+        "        is_value_match[data_idx] <== MultiAND({})([",
         num_objects
     );
     for (i, key) in data.keys.iter().enumerate() {
