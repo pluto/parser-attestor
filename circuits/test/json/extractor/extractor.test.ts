@@ -1,12 +1,18 @@
 import { circomkit, WitnessTester, readInputFile } from "../../common";
-import { join } from "path";
+import { join, dirname } from "path";
 import { spawn } from "child_process";
 
 
 function executeCodegen(inputFilename: string, outputFilename: string) {
     return new Promise((resolve, reject) => {
-        const inputPath = join(__dirname, "..", "..", "..", "..", "examples", "json", "test", "codegen", inputFilename);
+        let rootDir = "";
+        const pwd = spawn("pwd");
+        pwd.stdout.on('data', (data) => {
+            console.log(`stdout: ${data}`);
+            rootDir = data;
+        });
 
+        const inputPath = join(rootDir, "examples", "json", "test", "codegen", inputFilename);
         const codegen = spawn("cargo", ["run", "--bin", "codegen", "--", "--json-file", inputPath, "--output-filename", outputFilename]);
 
         codegen.stdout.on('data', (data) => {
