@@ -20,21 +20,11 @@ describe("GetTopOfStack", () => {
         });
     }
 
-    let input = { stack: [[1, 0], [2, 0], [3, 1], [4, 2]] };
-    let output = { value: [4, 2], pointer: 3 };
-    generatePassCase(input, output);
+    generatePassCase({ stack: [[1, 0], [2, 0], [3, 1], [4, 2]] }, { value: [4, 2], pointer: 4 });
 
-    input.stack[2] = [0, 0];
-    input.stack[3] = [0, 0];
-    output.value = [2, 0]
-    output.pointer = 1;
-    generatePassCase(input, output);
+    generatePassCase({ stack: [[1, 0], [2, 1], [0, 0], [0, 0]] }, { value: [2, 1], pointer: 2 });
 
-    input.stack[0] = [0, 0];
-    input.stack[1] = [0, 0];
-    output.value = [0, 0]
-    output.pointer = 0;
-    generatePassCase(input, output);
+    generatePassCase({ stack: [[0, 0], [0, 0], [0, 0], [0, 0]] }, { value: [0, 0], pointer: 0 });
 });
 
 describe("StateUpdate :: RewriteStack", () => {
