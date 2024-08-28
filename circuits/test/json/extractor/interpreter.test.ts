@@ -1,6 +1,5 @@
-import { circomkit, WitnessTester, generateDescription } from "../common";
-import { PoseidonModular } from "../common/poseidon";
-import { readInputFile } from "./extractor.test";
+import { circomkit, WitnessTester, generateDescription, readInputFile } from "../../common";
+import { PoseidonModular } from "../../common/poseidon";
 
 describe("Interpreter", async () => {
     describe("InsideKey", async () => {
@@ -8,7 +7,7 @@ describe("Interpreter", async () => {
 
         before(async () => {
             circuit = await circomkit.WitnessTester(`InsideKey`, {
-                file: "circuits/interpreter",
+                file: "circuits/json/interpreter",
                 template: "InsideKey",
                 params: [4],
             });
@@ -47,7 +46,7 @@ describe("Interpreter", async () => {
 
         before(async () => {
             circuit = await circomkit.WitnessTester(`InsideValue`, {
-                file: "circuits/interpreter",
+                file: "circuits/json/interpreter",
                 template: "InsideValue",
                 params: [4],
             });
@@ -89,7 +88,7 @@ describe("Interpreter", async () => {
 
             it(`(valid) witness: ${description} ${desc}`, async () => {
                 circuit = await circomkit.WitnessTester(`InsideValueAtDepth`, {
-                    file: "circuits/interpreter",
+                    file: "circuits/json/interpreter",
                     template: "InsideValueAtDepth",
                     params: [4, depth],
                 });
@@ -126,7 +125,7 @@ describe("Interpreter", async () => {
 
             it(`(valid) witness: ${description} ${desc}`, async () => {
                 circuit = await circomkit.WitnessTester(`InsideArrayIndex`, {
-                    file: "circuits/interpreter",
+                    file: "circuits/json/interpreter",
                     template: "InsideArrayIndex",
                     params: [4, index],
                 });
@@ -166,7 +165,7 @@ describe("Interpreter", async () => {
 
             it(`(valid) witness: ${description} ${desc}`, async () => {
                 circuit = await circomkit.WitnessTester(`InsideArrayIndexAtDepth`, {
-                    file: "circuits/interpreter",
+                    file: "circuits/json/interpreter",
                     template: "InsideArrayIndexAtDepth",
                     params: [4, index, depth],
                 });
@@ -200,7 +199,7 @@ describe("Interpreter", async () => {
 
         before(async () => {
             circuit = await circomkit.WitnessTester(`NextKVPair`, {
-                file: "circuits/interpreter",
+                file: "circuits/json/interpreter",
                 template: "NextKVPair",
                 params: [4],
             });
@@ -240,7 +239,7 @@ describe("Interpreter", async () => {
 
             it(`(valid) witness: ${description} ${desc}`, async () => {
                 circuit = await circomkit.WitnessTester(`NextKVPairAtDepth`, {
-                    file: "circuits/interpreter",
+                    file: "circuits/json/interpreter",
                     template: "NextKVPairAtDepth",
                     params: [4, depth],
                 });
@@ -274,7 +273,7 @@ describe("Interpreter", async () => {
 
             it(`(valid) witness: ${description} ${desc}`, async () => {
                 circuit = await circomkit.WitnessTester(`KeyMatch`, {
-                    file: "circuits/interpreter",
+                    file: "circuits/json/interpreter",
                     template: "KeyMatch",
                     params: [input.data.length, input.key.length],
                 });
@@ -315,7 +314,7 @@ describe("Interpreter", async () => {
 
             it(`(valid) witness: ${description} ${desc}`, async () => {
                 circuit = await circomkit.WitnessTester(`KeyMatchAtDepth`, {
-                    file: "circuits/interpreter",
+                    file: "circuits/json/interpreter",
                     template: "KeyMatchAtDepth",
                     params: [input.data.length, 4, input.key.length, depth],
                 });

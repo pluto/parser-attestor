@@ -1,4 +1,4 @@
-import { circomkit, WitnessTester, generateDescription } from "../common";
+import { circomkit, WitnessTester, generateDescription } from "../../common";
 import { Delimiters, WhiteSpace, Numbers, Escape, INITIAL_IN, INITIAL_OUT } from '.';
 
 
@@ -19,7 +19,7 @@ describe("StateUpdate", () => {
 
     before(async () => {
         circuit = await circomkit.WitnessTester(`StateUpdate`, {
-            file: "circuits/parser_json/machine",
+            file: "circuits/json/parser/machine",
             template: "StateUpdate",
             params: [4],
         });
@@ -65,7 +65,7 @@ describe("StateUpdate", () => {
     // init: stack == [[1, 0], [0, 0], [0, 0], [0, 0]]
     // read: `"`
     // expect: parsing_string --> 0
-    //         
+    //
     let in_key_to_exit = { ...INITIAL_IN };
     in_key_to_exit.stack = [[1, 0], [0, 0], [0, 0], [0, 0]];
     in_key_to_exit.parsing_string = 1

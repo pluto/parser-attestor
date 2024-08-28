@@ -23,9 +23,9 @@ Tests for this module are located in the files: `circuits/test/parser/*.test.ts
 
 pragma circom 2.1.9;
 
-include "../utils/array.circom";
-include "../utils/bytes.circom";
-include "../utils/operators.circom";
+include "../../utils/array.circom";
+include "../../utils/bytes.circom";
+include "../../utils/operators.circom";
 include "language.circom";
 
 /*

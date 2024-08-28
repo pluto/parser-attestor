@@ -1,7 +1,7 @@
-import { circomkit, WitnessTester } from "./common";
+import { circomkit, WitnessTester } from "../common";
 
-import witness from "../../inputs/search/witness.json";
-import { PoseidonModular } from "./common/poseidon";
+import witness from "../../../inputs/search/witness.json";
+import { PoseidonModular } from "../common/poseidon";
 
 describe("search", () => {
     describe("SubstringSearch", () => {
@@ -14,7 +14,7 @@ describe("search", () => {
             const hashResult = PoseidonModular(concatenatedInput);
 
             circuit = await circomkit.WitnessTester(`SubstringSearch`, {
-                file: "circuits/search",
+                file: "circuits/utils/search",
                 template: "SubstringSearch",
                 params: [data.length, key.length],
             });
@@ -32,7 +32,7 @@ describe("search", () => {
             const hashResult = PoseidonModular(concatenatedInput);
 
             circuit = await circomkit.WitnessTester(`SubstringSearch`, {
-                file: "circuits/search",
+                file: "circuits/utils/search",
                 template: "SubstringSearch",
                 params: [data.length, key.length],
             });
@@ -51,7 +51,7 @@ describe("search", () => {
             const key = [1, 0];
 
             circuit = await circomkit.WitnessTester(`SubstringSearch`, {
-                file: "circuits/search",
+                file: "circuits/utils/search",
                 template: "SubstringSearch",
                 params: [data.length, key.length],
             });
@@ -67,7 +67,7 @@ describe("search", () => {
             const hashResult = PoseidonModular(concatenatedInput);
 
             circuit = await circomkit.WitnessTester(`SubstringSearch`, {
-                file: "circuits/search",
+                file: "circuits/utils/search",
                 template: "SubstringSearch",
                 params: [witness["data"].length, witness["key"].length],
             });
@@ -85,7 +85,7 @@ describe("search", () => {
 
         before(async () => {
             circuit = await circomkit.WitnessTester(`SubstringSearch`, {
-                file: "circuits/search",
+                file: "circuits/utils/search",
                 template: "SubstringMatchWithIndex",
                 params: [787, 10],
             });
@@ -122,7 +122,7 @@ describe("search", () => {
 
         before(async () => {
             circuit = await circomkit.WitnessTester(`SubstringSearch`, {
-                file: "circuits/search",
+                file: "circuits/utils/search",
                 template: "SubstringMatch",
                 params: [787, 10],
             });

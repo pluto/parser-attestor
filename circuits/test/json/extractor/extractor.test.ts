@@ -1,45 +1,13 @@
-import { circomkit, WitnessTester } from "../common";
-import { readFileSync } from "fs";
+import { circomkit, WitnessTester, readInputFile } from "../../common";
 import { join } from "path";
 import { spawn } from "child_process";
 
-export function readInputFile(filename: string, key: any[]): [number[], number[][], number[]] {
-    const value_string_path = join(__dirname, "..", "..", "..", "json_examples", "test", filename);
 
-    let input: number[] = [];
-    let output: number[] = [];
-
-    let data = readFileSync(value_string_path, 'utf-8');
-
-    let keyUnicode: number[][] = [];
-    for (let i = 0; i < key.length; i++) {
-        keyUnicode[i] = [];
-        let key_string = key[i].toString();
-        for (let j = 0; j < key_string.length; j++) {
-            keyUnicode[i].push(key_string.charCodeAt(j));
-        }
-    }
-
-    const byteArray = [];
-    for (let i = 0; i < data.length; i++) {
-        byteArray.push(data.charCodeAt(i));
-    }
-    input = byteArray;
-
-    let jsonFile = JSON.parse(data);
-    let value: string = key.reduce((acc, key) => acc && acc[key], jsonFile).toString();
-    for (let i = 0; i < value.length; i++) {
-        output.push(value.charCodeAt(i));
-    }
-
-    return [input, keyUnicode, output];
-}
-
-function executeCodegen(input_file_name: string, output_filename: string) {
+function executeCodegen(inputFilename: string, outputFilename: string) {
     return new Promise((resolve, reject) => {
-        const input_path = join(__dirname, "..", "..", "..", "json_examples", "codegen", input_file_name);
+        const inputPath = join(__dirname, "..", "..", "..", "..", "examples", "json", "test", "codegen", inputFilename);
 
-        const codegen = spawn("cargo", ["run", "--bin", "codegen", "--", "--json-file", input_path, "--output-filename", output_filename]);
+        const codegen = spawn("cargo", ["run", "--bin", "codegen", "--", "--json-file", inputPath, "--output-filename", outputFilename]);
 
         codegen.stdout.on('data', (data) => {
             console.log(`stdout: ${data}`);

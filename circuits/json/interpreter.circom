@@ -1,10 +1,9 @@
 pragma circom 2.1.9;
 
-include "extract.circom";
-include "parser.circom";
-include "language.circom";
-include "search.circom";
-include "./utils/array.circom";
+include "./parser/parser.circom";
+include "./parser/language.circom";
+include "../utils/search.circom";
+include "../utils/array.circom";
 include "circomlib/circuits/mux1.circom";
 include "circomlib/circuits/gates.circom";
 include "@zk-email/circuits/utils/functions.circom";
@@ -179,7 +178,9 @@ template NextKVPair(n) {
     signal currentVal[2] <== topOfStack.value;
 
     signal isNextPair <== IsEqualArray(2)([currentVal, [1, 0]]);
-    signal isComma <== IsEqual()([currByte, 44]); // `, -> 44`
+
+    component syntax = Syntax();
+    signal isComma <== IsEqual()([currByte, syntax.COMMA]); // `, -> 44`
 
     out <== isNextPair*isComma ;
 }
@@ -212,7 +213,8 @@ template NextKVPairAtDepth(n, depth) {
     signal isNextPair <== IsEqualArray(2)([currentVal, [1, 0]]);
 
     // `, -> 44`
-    signal isComma <== IsEqual()([currByte, 44]);
+    component syntax = Syntax();
+    signal isComma <== IsEqual()([currByte, syntax.COMMA]);
     // pointer <= depth
     signal atLessDepth <== LessEqThan(logMaxDepth)([pointer, depth]);
     // current depth is less than key depth
@@ -243,11 +245,13 @@ template KeyMatch(dataLen, keyLen) {
     signal input index;
     signal input parsing_key;
 
+    component syntax = Syntax();
+
     signal end_of_key <== IndexSelector(dataLen)(data, index + keyLen);
-    signal is_end_of_key_equal_to_quote <== IsEqual()([end_of_key, 34]);
+    signal is_end_of_key_equal_to_quote <== IsEqual()([end_of_key, syntax.QUOTE]);
 
     signal start_of_key <== IndexSelector(dataLen)(data, index - 1);
-    signal is_start_of_key_equal_to_quote <== IsEqual()([start_of_key, 34]);
+    signal is_start_of_key_equal_to_quote <== IsEqual()([start_of_key, syntax.QUOTE]);
 
     signal substring_match <== SubstringMatchWithIndex(dataLen, keyLen)(data, key, r, index);
 
@@ -287,13 +291,15 @@ template KeyMatchAtDepth(dataLen, n, keyLen, depth) {
     topOfStack.stack <== stack;
     signal pointer <== topOfStack.pointer;
 
+    component syntax = Syntax();
+
     // end of key equals `"`
     signal end_of_key <== IndexSelector(dataLen)(data, index + keyLen);
-    signal is_end_of_key_equal_to_quote <== IsEqual()([end_of_key, 34]);
+    signal is_end_of_key_equal_to_quote <== IsEqual()([end_of_key, syntax.QUOTE]);
 
     // start of key equals `"`
     signal start_of_key <== IndexSelector(dataLen)(data, index - 1);
-    signal is_start_of_key_equal_to_quote <== IsEqual()([start_of_key, 34]);
+    signal is_start_of_key_equal_to_quote <== IsEqual()([start_of_key, syntax.QUOTE]);
 
     // key matches
     signal substring_match <== SubstringMatchWithIndex(dataLen, keyLen)(data, key, r, index);

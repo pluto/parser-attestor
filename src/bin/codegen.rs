@@ -1,8 +1,6 @@
 use clap::Parser;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use std::fs;
-use std::iter::Map;
 use std::path::PathBuf;
 use std::str::FromStr;
 
@@ -24,10 +22,6 @@ enum ValueType {
     String,
     #[serde(rename = "number")]
     Number,
-    #[serde(skip_deserializing)]
-    Array,
-    #[serde(skip_deserializing)]
-    ArrayElement,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -93,7 +87,6 @@ fn extract_string(data: Data, cfb: &mut String) {
 
     *cfb += r#"
     log("value_starting_index", value_starting_index[DATA_BYTES-2]);
-    // TODO: why +1 not required here,when required on all other string implss?
     value <== SelectSubArray(DATA_BYTES, maxValueLen)(data, value_starting_index[DATA_BYTES-2]+1, maxValueLen);
 
     for (var i=0 ; i<maxValueLen; i++) {
@@ -152,7 +145,6 @@ fn extract_number(data: Data, cfb: &mut String) {
 
     *cfb += r#"
     log("value_starting_index", value_starting_index[DATA_BYTES-2]);
-    // TODO: why +1 not required here,when required on all other string implss?
     value_string <== SelectSubArray(DATA_BYTES, maxValueLen)(data, value_starting_index[DATA_BYTES-2], maxValueLen);
 
     for (var i=0 ; i<maxValueLen; i++) {
@@ -174,37 +166,38 @@ fn parse_json_request(
     data: Data,
     output_filename: String,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let mut num_string_keys = 0;
-    let mut string_key_index_map = HashMap::new();
-    for (i, key) in data.keys.iter().enumerate() {
-        match key {
-            Key::String(_) => {
-                string_key_index_map.insert(num_string_keys, i + 1);
-                num_string_keys += 1;
-            }
-            Key::Num(_) => (),
-        }
-    }
-
     let mut cfb = String::new();
     cfb += PRAGMA;
-    cfb += "include \"../interpreter.circom\";\n\n";
+    cfb += "include \"../json/interpreter.circom\";\n\n";
 
-    cfb += "template ExtractValue2(DATA_BYTES, MAX_STACK_HEIGHT, ";
-    for (i, key) in data.keys.iter().enumerate() {
-        match key {
-            Key::String(_) => cfb += &format!("keyLen{}, depth{}, ", i + 1, i + 1),
-            Key::Num(_) => cfb += &format!("index{}, depth{}, ", i + 1, i + 1),
+    // template ExtractValue2(DATA_BYTES, MAX_STACK_HEIGHT, keyLen1, depth1, index2, depth2, keyLen3, depth3, index4, depth4, maxValueLen) {
+    {
+        cfb += "template ExtractValue2(DATA_BYTES, MAX_STACK_HEIGHT, ";
+        for (i, key) in data.keys.iter().enumerate() {
+            match key {
+                Key::String(_) => cfb += &format!("keyLen{}, depth{}, ", i + 1, i + 1),
+                Key::Num(_) => cfb += &format!("index{}, depth{}, ", i + 1, i + 1),
+            }
         }
+        cfb += "maxValueLen) {\n";
     }
-    cfb += "maxValueLen) {\n";
 
-    cfb += "    signal input data[DATA_BYTES];\n\n";
+    /*
+    signal input data[DATA_BYTES];
 
-    for (i, key) in data.keys.iter().enumerate() {
-        match key {
-            Key::String(_) => cfb += &format!("    signal input key{}[keyLen{}];\n", i + 1, i + 1),
-            Key::Num(_) => (),
+    signal input key1[keyLen1];
+    signal input key3[keyLen3];
+     */
+    {
+        cfb += "    signal input data[DATA_BYTES];\n\n";
+
+        for (i, key) in data.keys.iter().enumerate() {
+            match key {
+                Key::String(_) => {
+                    cfb += &format!("    signal input key{}[keyLen{}];\n", i + 1, i + 1)
+                }
+                Key::Num(_) => (),
+            }
         }
     }
 
@@ -221,29 +214,31 @@ fn parse_json_request(
     }
     signal r <== rHasher.out;
      */
-    cfb += "\n    // r must be secret, so either has to be derived from hash in the circuit or off the circuit\n    component rHasher = PoseidonModular(DATA_BYTES + ";
-    for (i, key) in data.keys.iter().enumerate() {
-        match key {
-            Key::String(_) => cfb += &format!(" keyLen{} +", i + 1),
-            Key::Num(_) => (),
-        }
-    }
-    cfb.pop();
-    cfb.pop();
-    cfb += ");\n";
-
-    let mut key_len_counter_str = String::from_str("i")?;
-    for (i, key) in data.keys.iter().enumerate() {
-        match key {
-            Key::String(_) => {
-                cfb += &format!("    for (var i = 0 ; i < keyLen{} ; i++) {{\n        rHasher.in[{}] <== key{}[i];\n    }}\n", i+1, key_len_counter_str, i+1);
-                key_len_counter_str += &format!(" + keyLen{}", i + 1);
+    {
+        cfb += "\n    // r must be secret, so either has to be derived from hash in the circuit or off the circuit\n    component rHasher = PoseidonModular(DATA_BYTES + ";
+        for (i, key) in data.keys.iter().enumerate() {
+            match key {
+                Key::String(_) => cfb += &format!(" keyLen{} +", i + 1),
+                Key::Num(_) => (),
             }
-            Key::Num(_) => (),
         }
-    }
+        cfb.pop();
+        cfb.pop();
+        cfb += ");\n";
 
-    cfb += &format!("    for (var i = 0 ; i < DATA_BYTES ; i++) {{\n        rHasher.in[{}] <== data[i];\n    }}\n", key_len_counter_str);
+        let mut key_len_counter_str = String::from_str("i")?;
+        for (i, key) in data.keys.iter().enumerate() {
+            match key {
+                Key::String(_) => {
+                    cfb += &format!("    for (var i = 0 ; i < keyLen{} ; i++) {{\n        rHasher.in[{}] <== key{}[i];\n    }}\n", i+1, key_len_counter_str, i+1);
+                    key_len_counter_str += &format!(" + keyLen{}", i + 1);
+                }
+                Key::Num(_) => (),
+            }
+        }
+
+        cfb += &format!("    for (var i = 0 ; i < DATA_BYTES ; i++) {{\n        rHasher.in[{}] <== data[i];\n    }}\n", key_len_counter_str);
+    }
 
     cfb += r#"    signal r <== rHasher.out;
 
@@ -267,22 +262,35 @@ fn parse_json_request(
     signal parsing_value[DATA_BYTES];
 "#;
 
-    for (i, key) in data.keys.iter().enumerate() {
-        match key {
-            Key::String(_) => {
-                cfb += &format!("    signal parsing_object{}_value[DATA_BYTES];\n", i + 1)
+    /* // signals for parsing string key and array index
+    signal parsing_key[DATA_BYTES];
+    signal parsing_value[DATA_BYTES];
+    signal parsing_object1_value[DATA_BYTES];
+    signal parsing_array2[DATA_BYTES];
+    signal is_key1_match[DATA_BYTES];
+    signal is_key1_match_for_value[DATA_BYTES];
+    is_key1_match_for_value[0] <== 0;
+    signal is_next_pair_at_depth1[DATA_BYTES];
+     */
+    {
+        for (i, key) in data.keys.iter().enumerate() {
+            match key {
+                Key::String(_) => {
+                    cfb += &format!("    signal parsing_object{}_value[DATA_BYTES];\n", i + 1)
+                }
+                Key::Num(_) => cfb += &format!("    signal parsing_array{}[DATA_BYTES];\n", i + 1),
             }
-            Key::Num(_) => cfb += &format!("    signal parsing_array{}[DATA_BYTES];\n", i + 1),
         }
-    }
 
-    for (i, key) in data.keys.iter().enumerate() {
-        match key {
+        for (i, key) in data.keys.iter().enumerate() {
+            match key {
             Key::String(_) => cfb += &format!("    signal is_key{}_match[DATA_BYTES];\n    signal is_key{}_match_for_value[DATA_BYTES];\n    is_key{}_match_for_value[0] <== 0;\n    signal is_next_pair_at_depth{}[DATA_BYTES];\n", i+1, i+1, i+1, i+1),
             Key::Num(_) => (),
         }
+        }
     }
 
+    // debugging
     cfb += r#"
     signal is_value_match[DATA_BYTES];
     is_value_match[0] <== 0;
@@ -310,81 +318,116 @@ fn parse_json_request(
         // - value_mask
         // - mask
 
+        // check if inside key or not
         parsing_key[data_idx-1] <== InsideKey(MAX_STACK_HEIGHT)(State[data_idx].stack, State[data_idx].parsing_string, State[data_idx].parsing_number);
         // log("parsing key:", parsing_key[data_idx]);
 
 "#;
 
-    for (i, key) in data.keys.iter().enumerate() {
-        match key {
-            Key::String(_) => {
-                cfb += &format!("        parsing_object{}_value[data_idx-1] <== InsideValueAtDepth(MAX_STACK_HEIGHT, depth{})(State[data_idx].stack, State[data_idx].parsing_string, State[data_idx].parsing_number);\n", i+1, i+1);
-            }
-            Key::Num(_) => {
-                cfb += &format!("        parsing_array{}[data_idx-1] <== InsideArrayIndexAtDepth(MAX_STACK_HEIGHT, index{}, depth{})(State[data_idx].stack, State[data_idx].parsing_string, State[data_idx].parsing_number);\n", i+1, i+1, i+1);
+    /* Determining wheter parsing correct value and array index
+    parsing_object1_value[data_idx-1] <== InsideValueAtDepth(MAX_STACK_HEIGHT, depth1)(State[data_idx].stack, State[data_idx].parsing_string, State[data_idx].parsing_number);
+    parsing_array2[data_idx-1] <== InsideArrayIndexAtDepth(MAX_STACK_HEIGHT, index2, depth2)(State[data_idx].stack, State[data_idx].parsing_string, State[data_idx].parsing_number);
+     */
+    {
+        for (i, key) in data.keys.iter().enumerate() {
+            match key {
+                Key::String(_) => {
+                    cfb += &format!("        parsing_object{}_value[data_idx-1] <== InsideValueAtDepth(MAX_STACK_HEIGHT, depth{})(State[data_idx].stack, State[data_idx].parsing_string, State[data_idx].parsing_number);\n", i+1, i+1);
+                }
+                Key::Num(_) => {
+                    cfb += &format!("        parsing_array{}[data_idx-1] <== InsideArrayIndexAtDepth(MAX_STACK_HEIGHT, index{}, depth{})(State[data_idx].stack, State[data_idx].parsing_string, State[data_idx].parsing_number);\n", i+1, i+1, i+1);
+                }
             }
         }
     }
 
-    cfb += &format!(
-        "        parsing_value[data_idx-1] <== MultiAND({})([",
+    // parsing correct value = AND(all individual stack values)
+    //     parsing_value[data_idx-1] <== MultiAND(4)([parsing_object1_value[data_idx-1], parsing_array2[data_idx-1], parsing_object3_value[data_idx-1], parsing_array4[data_idx-1]]);
+    {
+        cfb += &format!(
+        "        // parsing correct value = AND(all individual stack values)\n        parsing_value[data_idx-1] <== MultiAND({})([",
         data.keys.len()
     );
 
-    for (i, key) in data.keys.iter().take(data.keys.len() - 1).enumerate() {
-        match key {
-            Key::String(_) => cfb += &format!("parsing_object{}_value[data_idx-1], ", i + 1),
-            Key::Num(_) => cfb += &format!("parsing_array{}[data_idx-1], ", i + 1),
+        for (i, key) in data.keys.iter().take(data.keys.len() - 1).enumerate() {
+            match key {
+                Key::String(_) => cfb += &format!("parsing_object{}_value[data_idx-1], ", i + 1),
+                Key::Num(_) => cfb += &format!("parsing_array{}[data_idx-1], ", i + 1),
+            }
         }
-    }
-    match data.keys[data.keys.len() - 1] {
-        Key::String(_) => {
-            cfb += &format!("parsing_object{}_value[data_idx-1]]);\n", data.keys.len())
+        match data.keys[data.keys.len() - 1] {
+            Key::String(_) => {
+                cfb += &format!("parsing_object{}_value[data_idx-1]]);\n", data.keys.len())
+            }
+            Key::Num(_) => cfb += &format!("parsing_array{}[data_idx-1]]);\n", data.keys.len()),
         }
-        Key::Num(_) => cfb += &format!("parsing_array{}[data_idx-1]]);\n", data.keys.len()),
-    }
 
-    // optional debug logs
-    cfb += "        // log(\"parsing value:\", ";
-    for (i, key) in data.keys.iter().enumerate() {
-        match key {
-            Key::String(_) => cfb += &format!("parsing_object{}_value[data_idx-1], ", i + 1),
-            Key::Num(_) => cfb += &format!("parsing_array{}[data_idx-1], ", i + 1),
+        // optional debug logs
+        cfb += "        // log(\"parsing value:\", ";
+        for (i, key) in data.keys.iter().enumerate() {
+            match key {
+                Key::String(_) => cfb += &format!("parsing_object{}_value[data_idx-1], ", i + 1),
+                Key::Num(_) => cfb += &format!("parsing_array{}[data_idx-1], ", i + 1),
+            }
         }
+        cfb += "parsing_value[data_idx-1]);\n\n";
     }
-    cfb += "parsing_value[data_idx-1]);\n\n";
 
     let mut num_objects = 0;
-    for (i, key) in data.keys.iter().enumerate() {
-        match key {
-            Key::String(_) => {
-                num_objects += 1;
-                cfb += &format!("        is_key{}_match[data_idx-1] <== KeyMatchAtDepth(DATA_BYTES, MAX_STACK_HEIGHT, keyLen{}, depth{})(data, key{}, r, data_idx-1, parsing_key[data_idx-1], State[data_idx].stack);\n", i+1, i+1, i+1, i+1);
-                cfb += &format!("        is_next_pair_at_depth{}[data_idx-1] <== NextKVPairAtDepth(MAX_STACK_HEIGHT, depth{})(State[data_idx].stack, data[data_idx-1]);\n", i+1, i+1);
-                cfb += &format!("        is_key{}_match_for_value[data_idx] <== Mux1()([is_key{}_match_for_value[data_idx-1] * (1-is_next_pair_at_depth{}[data_idx-1]), is_key{}_match[data_idx-1] * (1-is_next_pair_at_depth{}[data_idx-1])], is_key{}_match[data_idx-1]);\n", i+1, i+1, i+1, i+1, i+1, i+1);
-                cfb += &format!("        // log(\"is_key{}_match_for_value\", is_key{}_match_for_value[data_idx]);\n\n", i + 1, i + 1);
+
+    /*
+    to get correct value, check:
+    - key matches at current index and depth of key is as specified
+    - whether next KV pair starts
+    - whether key matched for a value (propogate key match until new KV pair of lower depth starts)
+    is_key1_match[data_idx-1] <== KeyMatchAtDepth(DATA_BYTES, MAX_STACK_HEIGHT, keyLen1, depth1)(data, key1, r, data_idx-1, parsing_key[data_idx-1], State[data_idx].stack);
+    is_next_pair_at_depth1[data_idx-1] <== NextKVPairAtDepth(MAX_STACK_HEIGHT, depth1)(State[data_idx].stack, data[data_idx-1]);
+    is_key1_match_for_value[data_idx] <== Mux1()([is_key1_match_for_value[data_idx-1] * (1-is_next_pair_at_depth1[data_idx-1]), is_key1_match[data_idx-1] * (1-is_next_pair_at_depth1[data_idx-1])], is_key1_match[data_idx-1]);
+    */
+    {
+        cfb += r#"
+        // to get correct value, check:
+        // - key matches at current index and depth of key is as specified
+        // - whether next KV pair starts
+        // - whether key matched for a value (propogate key match until new KV pair of lower depth starts)
+"#;
+
+        for (i, key) in data.keys.iter().enumerate() {
+            match key {
+                Key::String(_) => {
+                    num_objects += 1;
+                    cfb += &format!("        is_key{}_match[data_idx-1] <== KeyMatchAtDepth(DATA_BYTES, MAX_STACK_HEIGHT, keyLen{}, depth{})(data, key{}, r, data_idx-1, parsing_key[data_idx-1], State[data_idx].stack);\n", i+1, i+1, i+1, i+1);
+                    cfb += &format!("        is_next_pair_at_depth{}[data_idx-1] <== NextKVPairAtDepth(MAX_STACK_HEIGHT, depth{})(State[data_idx].stack, data[data_idx-1]);\n", i+1, i+1);
+                    cfb += &format!("        is_key{}_match_for_value[data_idx] <== Mux1()([is_key{}_match_for_value[data_idx-1] * (1-is_next_pair_at_depth{}[data_idx-1]), is_key{}_match[data_idx-1] * (1-is_next_pair_at_depth{}[data_idx-1])], is_key{}_match[data_idx-1]);\n", i+1, i+1, i+1, i+1, i+1, i+1);
+                    cfb += &format!("        // log(\"is_key{}_match_for_value\", is_key{}_match_for_value[data_idx]);\n\n", i + 1, i + 1);
+                }
+                Key::Num(_) => (),
             }
-            Key::Num(_) => (),
         }
     }
 
-    cfb += &format!(
-        "        is_value_match[data_idx] <== MultiAND({})([",
-        num_objects
-    );
-    for (i, key) in data.keys.iter().enumerate() {
-        match key {
-            Key::String(_) => cfb += &format!("is_key{}_match_for_value[data_idx], ", i + 1),
-            Key::Num(_) => (),
+    // is_value_match[data_idx] <== MultiAND(2)([is_key1_match_for_value[data_idx], is_key3_match_for_value[data_idx]]);
+    {
+        cfb += &format!(
+            "        is_value_match[data_idx] <== MultiAND({})([",
+            num_objects
+        );
+        for (i, key) in data.keys.iter().enumerate() {
+            match key {
+                Key::String(_) => cfb += &format!("is_key{}_match_for_value[data_idx], ", i + 1),
+                Key::Num(_) => (),
+            }
         }
+
+        // remove last 2 chars `, ` from string buffer
+        cfb.pop();
+        cfb.pop();
+        cfb += "]);\n";
     }
 
-    // remove last 2 chars `, ` from string buffer
-    cfb.pop();
-    cfb.pop();
-    cfb += "]);\n";
-
-    cfb += r#"        // log("is_value_match", is_value_match[data_idx]);
+    // debugging and output bytes
+    {
+        cfb += r#"        // log("is_value_match", is_value_match[data_idx]);
 
         // mask[i] = data[i] * parsing_value[i] * is_key_match_for_value[i]
         value_mask[data_idx-1] <== data[data_idx-1] * parsing_value[data_idx-1];
@@ -413,13 +456,13 @@ fn parse_json_request(
     }
 "#;
 
-    // template ends
-    cfb += "}\n";
+        // template ends
+        cfb += "}\n";
+    }
 
     match data.value_type {
         ValueType::String => extract_string(data, &mut cfb),
         ValueType::Number => extract_number(data, &mut cfb),
-        _ => unimplemented!(),
     }
 
     // write circuits to file

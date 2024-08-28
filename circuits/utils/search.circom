@@ -1,9 +1,9 @@
 pragma circom 2.1.9;
 
 include "circomlib/circuits/mux1.circom";
-include "./utils/hash.circom";
-include "./utils/operators.circom";
-include "./utils/array.circom";
+include "./hash.circom";
+include "./operators.circom";
+include "./array.circom";
 
 /*
 SubstringSearch

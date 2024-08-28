@@ -1,6 +1,6 @@
 pragma circom 2.1.9;
 
-include "../utils/bytes.circom";
+include "../../utils/bytes.circom";
 include "machine.circom";
 
 template Parser(DATA_BYTES, MAX_STACK_HEIGHT) {

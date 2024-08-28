@@ -1,4 +1,4 @@
-import { circomkit, WitnessTester, generateDescription } from "../common";
+import { circomkit, WitnessTester, generateDescription } from "../../common";
 import { Delimiters, WhiteSpace, Numbers, Escape, INITIAL_IN, INITIAL_OUT } from '.';
 
 describe("StateUpdate :: Values", () => {
@@ -8,7 +8,7 @@ describe("StateUpdate :: Values", () => {
     >;
     before(async () => {
         circuit = await circomkit.WitnessTester(`GetTopOfStack`, {
-            file: "circuits/parser_json/machine",
+            file: "circuits/json/parser/machine",
             template: "StateUpdate",
             params: [4],
         });
