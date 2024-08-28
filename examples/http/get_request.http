@@ -1,0 +1,5 @@
+GET /objectserver/restapi/alerts/status HTTP/1.1
+Accept: application/json
+Authorization: Basic dGVzdHVzZXIwMTpuZXRjb29s
+Host: localhost
+Connection: keep-alive

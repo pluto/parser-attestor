@@ -1,63 +1,63 @@
 {
     "extract": {
-        "file": "extract",
-        "template": "Extract",
+        "file": "parser_json/parser",
+        "template": "Parser",
         "params": [
             157,
             13
         ]
     },
     "value_string": {
-        "file": "extract",
-        "template": "Extract",
+        "file": "parser_json/parser",
+        "template": "Parser",
         "params": [
             12,
             1
         ]
     },
     "value_number": {
-        "file": "extract",
-        "template": "Extract",
+        "file": "parser_json/parser",
+        "template": "Parser",
         "params": [
             12,
             2
         ]
     },
     "value_array": {
-        "file": "extract",
-        "template": "Extract",
+        "file": "parser_json/parser",
+        "template": "Parser",
         "params": [
             18,
             2
         ]
     },
     "value_array_nested": {
-        "file": "extract",
-        "template": "Extract",
+        "file": "parser_json/parser",
+        "template": "Parser",
         "params": [
             24,
             4
         ]
     },
     "value_array_object": {
-        "file": "extract",
-        "template": "Extract",
+        "file": "parser_json/parser",
+        "template": "Parser",
         "params": [
             25,
             4
         ]
     },
     "value_array_object_array": {
-        "file": "extract",
-        "template": "Extract",
+        "file": "parser_json/parser",
+        "template": "Parser",
         "params": [
             31,
             5
         ]
     },
     "value_object": {
-        "file": "extract",
-        "template": "Extract",
+        "file": "parser_json/parser",
+        "template": "Parser",
         "params": [
             21,
             3
@@ -70,5 +70,10 @@
             787,
             10
         ]
+    },
+    "get_request": {
+        "file": "parser_http_request/parser",
+        "template": "Parser",
+        "params": [158]
     }
 }
