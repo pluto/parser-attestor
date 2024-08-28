@@ -1,7 +1,10 @@
 use clap::Parser;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::fs;
+use std::iter::Map;
 use std::path::PathBuf;
+use std::str::FromStr;
 
 #[derive(Parser, Debug)]
 #[command(name = "codegen")]
@@ -57,7 +60,7 @@ fn extract_string(data: Data, cfb: &mut String) {
     for (i, key) in data.keys.iter().enumerate() {
         match key {
             Key::String(_) => *cfb += &format!("    signal input key{}[keyLen{}];\n", i + 1, i + 1),
-            _ => (),
+            Key::Num(_) => (),
         }
     }
 
@@ -80,7 +83,7 @@ fn extract_string(data: Data, cfb: &mut String) {
         for (i, key) in data.keys.iter().enumerate() {
             match key {
                 Key::String(_) => *cfb += &format!("key{}, ", i + 1),
-                _ => (),
+                Key::Num(_) => (),
             }
         }
         cfb.pop();
@@ -115,7 +118,7 @@ fn extract_number(data: Data, cfb: &mut String) {
     for (i, key) in data.keys.iter().enumerate() {
         match key {
             Key::String(_) => *cfb += &format!("    signal input key{}[keyLen{}];\n", i + 1, i + 1),
-            _ => (),
+            Key::Num(_) => (),
         }
     }
 
@@ -139,7 +142,7 @@ fn extract_number(data: Data, cfb: &mut String) {
         for (i, key) in data.keys.iter().enumerate() {
             match key {
                 Key::String(_) => *cfb += &format!("key{}, ", i + 1),
-                _ => (),
+                Key::Num(_) => (),
             }
         }
         cfb.pop();
@@ -171,6 +174,18 @@ fn parse_json_request(
     data: Data,
     output_filename: String,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    let mut num_string_keys = 0;
+    let mut string_key_index_map = HashMap::new();
+    for (i, key) in data.keys.iter().enumerate() {
+        match key {
+            Key::String(_) => {
+                string_key_index_map.insert(num_string_keys, i + 1);
+                num_string_keys += 1;
+            }
+            Key::Num(_) => (),
+        }
+    }
+
     let mut cfb = String::new();
     cfb += PRAGMA;
     cfb += "include \"../interpreter.circom\";\n\n";
@@ -189,11 +204,49 @@ fn parse_json_request(
     for (i, key) in data.keys.iter().enumerate() {
         match key {
             Key::String(_) => cfb += &format!("    signal input key{}[keyLen{}];\n", i + 1, i + 1),
-            _ => (),
+            Key::Num(_) => (),
         }
     }
 
-    cfb += r#"
+    /*
+    component rHasher = PoseidonModular(dataLen + keyLen1 + keyLen3);
+    for (var i = 0; i < keyLen1; i++) {
+        rHasher.in[i] <== key1[i];
+    }
+    for (var i = 0; i < keyLen3; i++) {
+        rHasher.in[keyLen1 + i] <== key3[i];
+    }
+    for (var i = 0; i < dataLen; i++) {
+        rHasher.in[i + keyLen1 + keyLen3] <== data[i];
+    }
+    signal r <== rHasher.out;
+     */
+    cfb += "\n    // r must be secret, so either has to be derived from hash in the circuit or off the circuit\n    component rHasher = PoseidonModular(DATA_BYTES + ";
+    for (i, key) in data.keys.iter().enumerate() {
+        match key {
+            Key::String(_) => cfb += &format!(" keyLen{} +", i + 1),
+            Key::Num(_) => (),
+        }
+    }
+    cfb.pop();
+    cfb.pop();
+    cfb += ");\n";
+
+    let mut key_len_counter_str = String::from_str("i")?;
+    for (i, key) in data.keys.iter().enumerate() {
+        match key {
+            Key::String(_) => {
+                cfb += &format!("    for (var i = 0 ; i < keyLen{} ; i++) {{\n        rHasher.in[{}] <== key{}[i];\n    }}\n", i+1, key_len_counter_str, i+1);
+                key_len_counter_str += &format!(" + keyLen{}", i + 1);
+            }
+            Key::Num(_) => (),
+        }
+    }
+
+    cfb += &format!("    for (var i = 0 ; i < DATA_BYTES ; i++) {{\n        rHasher.in[{}] <== data[i];\n    }}\n", key_len_counter_str);
+
+    cfb += r#"    signal r <== rHasher.out;
+
     signal output value_starting_index[DATA_BYTES];
 
     signal mask[DATA_BYTES];
@@ -226,7 +279,7 @@ fn parse_json_request(
     for (i, key) in data.keys.iter().enumerate() {
         match key {
             Key::String(_) => cfb += &format!("    signal is_key{}_match[DATA_BYTES];\n    signal is_key{}_match_for_value[DATA_BYTES];\n    is_key{}_match_for_value[0] <== 0;\n    signal is_next_pair_at_depth{}[DATA_BYTES];\n", i+1, i+1, i+1, i+1),
-            _ => (),
+            Key::Num(_) => (),
         }
     }
 
@@ -306,12 +359,12 @@ fn parse_json_request(
         match key {
             Key::String(_) => {
                 num_objects += 1;
-                cfb += &format!("        is_key{}_match[data_idx-1] <== KeyMatchAtDepth(DATA_BYTES, MAX_STACK_HEIGHT, keyLen{}, depth{})(data, key{}, 100, data_idx-1, parsing_key[data_idx-1], State[data_idx].stack);\n", i+1, i+1, i+1, i+1);
+                cfb += &format!("        is_key{}_match[data_idx-1] <== KeyMatchAtDepth(DATA_BYTES, MAX_STACK_HEIGHT, keyLen{}, depth{})(data, key{}, r, data_idx-1, parsing_key[data_idx-1], State[data_idx].stack);\n", i+1, i+1, i+1, i+1);
                 cfb += &format!("        is_next_pair_at_depth{}[data_idx-1] <== NextKVPairAtDepth(MAX_STACK_HEIGHT, depth{})(State[data_idx].stack, data[data_idx-1]);\n", i+1, i+1);
                 cfb += &format!("        is_key{}_match_for_value[data_idx] <== Mux1()([is_key{}_match_for_value[data_idx-1] * (1-is_next_pair_at_depth{}[data_idx-1]), is_key{}_match[data_idx-1] * (1-is_next_pair_at_depth{}[data_idx-1])], is_key{}_match[data_idx-1]);\n", i+1, i+1, i+1, i+1, i+1, i+1);
                 cfb += &format!("        // log(\"is_key{}_match_for_value\", is_key{}_match_for_value[data_idx]);\n\n", i + 1, i + 1);
             }
-            _ => (),
+            Key::Num(_) => (),
         }
     }
 
