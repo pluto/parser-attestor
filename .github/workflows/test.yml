@@ -32,4 +32,4 @@ jobs:
         circom --version
 
     - name: Run tests
-      run: npm run par-test
+      run: npm run test
