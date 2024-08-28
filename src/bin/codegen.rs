@@ -1,6 +1,15 @@
-use std::fs;
-
+use clap::Parser;
 use serde::{Deserialize, Serialize};
+use std::fs;
+use std::path::PathBuf;
+
+#[derive(Parser, Debug)]
+#[command(name = "codegen")]
+struct Args {
+    /// Path to the JSON file
+    #[arg(short, long)]
+    json_file: PathBuf,
+}
 
 #[derive(Debug, Deserialize)]
 enum ValueType {
@@ -153,25 +162,7 @@ fn extract_number(data: Data, cfb: &mut String) {
 "#;
 }
 
-fn parse_json_request() -> std::io::Result<()> {
-    let request = r#"
-    {
-        "keys": ["a"],
-        "value_type": "string"
-    }
-    "#;
-
-    let data: Data = serde_json::from_str(request)?;
-    // let key_bytes = data
-    //     .keys
-    //     .iter()
-    //     .map(|k| match k {
-    //         Key::String(key) => key.as_bytes().to_owned(),
-    //         Key::Num(num) => num.to_string().as_bytes().to_owned(),
-    //     })
-    //     .collect::<Vec<Vec<u8>>>();
-    println!("{:?}", data);
-
+fn parse_json_request(data: Data) -> Result<(), Box<dyn std::error::Error>> {
     let mut cfb = String::new();
     cfb += PRAGMA;
     cfb += "include \"./fetcher.circom\";\n\n";
@@ -379,7 +370,10 @@ fn parse_json_request() -> std::io::Result<()> {
     Ok(())
 }
 
-pub fn main() -> std::io::Result<()> {
-    parse_json_request()?;
+pub fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let args = Args::parse();
+    let data = std::fs::read(&args.json_file)?;
+    let json_data: Data = serde_json::from_slice(&data)?;
+    parse_json_request(json_data)?;
     Ok(())
 }
