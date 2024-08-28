@@ -1,7 +1,5 @@
 HTTP/1.1 200 OK
-Cache-Control: no-cache
-Server: libnhttpd
-Date: Wed Jul 4 15:32:03 2012
-Connection: Keep-Alive:
-Content-Type: application/rdf+xml
-Content-Length: 24860
+Content-Type: application/json
+Content-Length: 19
+
+{"success":"true"}
