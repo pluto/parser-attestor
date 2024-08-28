@@ -159,13 +159,14 @@ fn extract_number(data: Data, cfb: &mut String) {
     }
 
     value <== number_value[maxValueLen-1];
+}
 "#;
 }
 
 fn parse_json_request(data: Data) -> Result<(), Box<dyn std::error::Error>> {
     let mut cfb = String::new();
     cfb += PRAGMA;
-    cfb += "include \"./fetcher.circom\";\n\n";
+    cfb += "include \"./interpreter.circom\";\n\n";
 
     cfb += "template ExtractValue2(DATA_BYTES, MAX_STACK_HEIGHT, ";
     for (i, key) in data.keys.iter().enumerate() {
@@ -280,7 +281,7 @@ fn parse_json_request(data: Data) -> Result<(), Box<dyn std::error::Error>> {
         Key::String(_) => {
             cfb += &format!("parsing_object{}_value[data_idx-1]]);\n", data.keys.len())
         }
-        Key::Num(_) => cfb += &format!("parsing_array{}[data_idx-1]]);\n)", data.keys.len()),
+        Key::Num(_) => cfb += &format!("parsing_array{}[data_idx-1]]);\n", data.keys.len()),
     }
 
     // optional debug logs
@@ -298,9 +299,10 @@ fn parse_json_request(data: Data) -> Result<(), Box<dyn std::error::Error>> {
         match key {
             Key::String(_) => {
                 num_objects += 1;
-                cfb += &format!("        is_key{}_match[data_idx-1] <== KeyMatchAtDepth(DATA_BYTES, MAX_STACK_HEIGHT, keyLen{}, depth{})(data, key{}, 100, data_idx-1, parsing_key[data_idx-1], State[data_idx-1].stack);\n", i+1, i+1, i+1, i+1);
-                cfb += &format!("        is_next_pair_at_depth{}[data_idx-1] <== NextKVPairAtDepth(MAX_STACK_HEIGHT, depth{})(State[data_idx-1].stack, data[data_idx-1]);\n", i+1, i+1);
+                cfb += &format!("        is_key{}_match[data_idx-1] <== KeyMatchAtDepth(DATA_BYTES, MAX_STACK_HEIGHT, keyLen{}, depth{})(data, key{}, 100, data_idx-1, parsing_key[data_idx-1], State[data_idx].stack);\n", i+1, i+1, i+1, i+1);
+                cfb += &format!("        is_next_pair_at_depth{}[data_idx-1] <== NextKVPairAtDepth(MAX_STACK_HEIGHT, depth{})(State[data_idx].stack, data[data_idx-1]);\n", i+1, i+1);
                 cfb += &format!("        is_key{}_match_for_value[data_idx] <== Mux1()([is_key{}_match_for_value[data_idx-1] * (1-is_next_pair_at_depth{}[data_idx-1]), is_key{}_match[data_idx-1] * (1-is_next_pair_at_depth{}[data_idx-1])], is_key{}_match[data_idx-1]);\n", i+1, i+1, i+1, i+1, i+1, i+1);
+                cfb += &format!("        log(\"is_key{}_match_for_value\", is_key{}_match_for_value[data_idx]);\n\n", i + 1, i + 1);
             }
             _ => (),
         }
