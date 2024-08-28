@@ -3,7 +3,8 @@
   "version": "0.1.0",
   "license": "Apache-2.0",
   "scripts": {
-    "test": "npx mocha"
+    "test": "npx mocha",
+    "par-test": "npx mocha --parallel"
   },
   "dependencies": {
     "@zk-email/circuits": "^6.1.1",

@@ -25,11 +25,11 @@ jobs:
 
     - name: Download and install Circom
       run: |
-        CIRCOM_VERSION=2.1.9  
+        CIRCOM_VERSION=2.1.9
         curl -L https://github.com/iden3/circom/releases/download/v$CIRCOM_VERSION/circom-linux-amd64 -o circom
         chmod +x circom
         sudo mv circom /usr/local/bin/
-        circom --version 
+        circom --version
 
     - name: Run tests
-      run: npx mocha
+      run: npm run par-test
