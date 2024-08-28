@@ -186,7 +186,10 @@ template NextKVPair(n) {
 }
 
 /// Returns whether next key-value pair starts.
-/// Checks current byte is at depth greater than specified `depth`.
+/// Applies following checks:
+/// - get top of stack value and check whether parsing key: `[1, 0]`
+/// - current byte = `,`
+/// - current stack height is less than the key to be matched (it means that new key has started)
 ///
 /// # Arguments
 /// - `n`: maximum stack depth

@@ -39,26 +39,28 @@ struct Data {
 
 const PRAGMA: &str = "pragma circom 2.1.9;\n\n";
 
-fn extract_string(data: Data, cfb: &mut String) {
-    *cfb += "template ExtractStringValue(DATA_BYTES, MAX_STACK_HEIGHT, ";
+fn extract_string(data: Data, circuit_buffer: &mut String) {
+    *circuit_buffer += "template ExtractStringValue(DATA_BYTES, MAX_STACK_HEIGHT, ";
     for (i, key) in data.keys.iter().enumerate() {
         match key {
-            Key::String(_) => *cfb += &format!("keyLen{}, depth{}, ", i + 1, i + 1),
-            Key::Num(_) => *cfb += &format!("index{}, depth{}, ", i + 1, i + 1),
+            Key::String(_) => *circuit_buffer += &format!("keyLen{}, depth{}, ", i + 1, i + 1),
+            Key::Num(_) => *circuit_buffer += &format!("index{}, depth{}, ", i + 1, i + 1),
         }
     }
-    *cfb += "maxValueLen) {\n";
+    *circuit_buffer += "maxValueLen) {\n";
 
-    *cfb += "    signal input data[DATA_BYTES];\n\n";
+    *circuit_buffer += "    signal input data[DATA_BYTES];\n\n";
 
     for (i, key) in data.keys.iter().enumerate() {
         match key {
-            Key::String(_) => *cfb += &format!("    signal input key{}[keyLen{}];\n", i + 1, i + 1),
+            Key::String(_) => {
+                *circuit_buffer += &format!("    signal input key{}[keyLen{}];\n", i + 1, i + 1)
+            }
             Key::Num(_) => (),
         }
     }
 
-    *cfb += r#"
+    *circuit_buffer += r#"
     signal output value[maxValueLen];
 
     signal value_starting_index[DATA_BYTES];
@@ -66,26 +68,27 @@ fn extract_string(data: Data, cfb: &mut String) {
 
     // value_starting_index <== ExtractValue2(DATA_BYTES, MAX_STACK_HEIGHT, keyLen1, depth1, keyLen2, depth2, index3, depth3, index4, depth4, maxValueLen)(data, key1, key2);
     {
-        *cfb += "    value_starting_index <== ExtractValue2(DATA_BYTES, MAX_STACK_HEIGHT, ";
+        *circuit_buffer +=
+            "    value_starting_index <== ExtractValue2(DATA_BYTES, MAX_STACK_HEIGHT, ";
         for (i, key) in data.keys.iter().enumerate() {
             match key {
-                Key::String(_) => *cfb += &format!("keyLen{}, depth{}, ", i + 1, i + 1),
-                Key::Num(_) => *cfb += &format!("index{}, depth{}, ", i + 1, i + 1),
+                Key::String(_) => *circuit_buffer += &format!("keyLen{}, depth{}, ", i + 1, i + 1),
+                Key::Num(_) => *circuit_buffer += &format!("index{}, depth{}, ", i + 1, i + 1),
             }
         }
-        *cfb += "maxValueLen)(data, ";
+        *circuit_buffer += "maxValueLen)(data, ";
         for (i, key) in data.keys.iter().enumerate() {
             match key {
-                Key::String(_) => *cfb += &format!("key{}, ", i + 1),
+                Key::String(_) => *circuit_buffer += &format!("key{}, ", i + 1),
                 Key::Num(_) => (),
             }
         }
-        cfb.pop();
-        cfb.pop();
-        *cfb += ");\n";
+        circuit_buffer.pop();
+        circuit_buffer.pop();
+        *circuit_buffer += ");\n";
     }
 
-    *cfb += r#"
+    *circuit_buffer += r#"
     log("value_starting_index", value_starting_index[DATA_BYTES-2]);
     value <== SelectSubArray(DATA_BYTES, maxValueLen)(data, value_starting_index[DATA_BYTES-2]+1, maxValueLen);
 
@@ -96,26 +99,28 @@ fn extract_string(data: Data, cfb: &mut String) {
 "#;
 }
 
-fn extract_number(data: Data, cfb: &mut String) {
-    *cfb += "template ExtractNumValue(DATA_BYTES, MAX_STACK_HEIGHT, ";
+fn extract_number(data: Data, circuit_buffer: &mut String) {
+    *circuit_buffer += "template ExtractNumValue(DATA_BYTES, MAX_STACK_HEIGHT, ";
     for (i, key) in data.keys.iter().enumerate() {
         match key {
-            Key::String(_) => *cfb += &format!("keyLen{}, depth{}, ", i + 1, i + 1),
-            Key::Num(_) => *cfb += &format!("index{}, depth{}, ", i + 1, i + 1),
+            Key::String(_) => *circuit_buffer += &format!("keyLen{}, depth{}, ", i + 1, i + 1),
+            Key::Num(_) => *circuit_buffer += &format!("index{}, depth{}, ", i + 1, i + 1),
         }
     }
-    *cfb += "maxValueLen) {\n";
+    *circuit_buffer += "maxValueLen) {\n";
 
-    *cfb += "    signal input data[DATA_BYTES];\n\n";
+    *circuit_buffer += "    signal input data[DATA_BYTES];\n\n";
 
     for (i, key) in data.keys.iter().enumerate() {
         match key {
-            Key::String(_) => *cfb += &format!("    signal input key{}[keyLen{}];\n", i + 1, i + 1),
+            Key::String(_) => {
+                *circuit_buffer += &format!("    signal input key{}[keyLen{}];\n", i + 1, i + 1)
+            }
             Key::Num(_) => (),
         }
     }
 
-    *cfb += r#"
+    *circuit_buffer += r#"
     signal value_string[maxValueLen];
     signal output value;
 
@@ -124,26 +129,27 @@ fn extract_number(data: Data, cfb: &mut String) {
 
     // value_starting_index <== ExtractValue2(DATA_BYTES, MAX_STACK_HEIGHT, keyLen1, depth1, keyLen2, depth2, index3, depth3, index4, depth4, maxValueLen)(data, key1, key2);
     {
-        *cfb += "    value_starting_index <== ExtractValue2(DATA_BYTES, MAX_STACK_HEIGHT, ";
+        *circuit_buffer +=
+            "    value_starting_index <== ExtractValue2(DATA_BYTES, MAX_STACK_HEIGHT, ";
         for (i, key) in data.keys.iter().enumerate() {
             match key {
-                Key::String(_) => *cfb += &format!("keyLen{}, depth{}, ", i + 1, i + 1),
-                Key::Num(_) => *cfb += &format!("index{}, depth{}, ", i + 1, i + 1),
+                Key::String(_) => *circuit_buffer += &format!("keyLen{}, depth{}, ", i + 1, i + 1),
+                Key::Num(_) => *circuit_buffer += &format!("index{}, depth{}, ", i + 1, i + 1),
             }
         }
-        *cfb += "maxValueLen)(data, ";
+        *circuit_buffer += "maxValueLen)(data, ";
         for (i, key) in data.keys.iter().enumerate() {
             match key {
-                Key::String(_) => *cfb += &format!("key{}, ", i + 1),
+                Key::String(_) => *circuit_buffer += &format!("key{}, ", i + 1),
                 Key::Num(_) => (),
             }
         }
-        cfb.pop();
-        cfb.pop();
-        *cfb += ");\n";
+        circuit_buffer.pop();
+        circuit_buffer.pop();
+        *circuit_buffer += ");\n";
     }
 
-    *cfb += r#"
+    *circuit_buffer += r#"
     log("value_starting_index", value_starting_index[DATA_BYTES-2]);
     value_string <== SelectSubArray(DATA_BYTES, maxValueLen)(data, value_starting_index[DATA_BYTES-2], maxValueLen);
 
@@ -166,20 +172,20 @@ fn parse_json_request(
     data: Data,
     output_filename: String,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let mut cfb = String::new();
-    cfb += PRAGMA;
-    cfb += "include \"../json/interpreter.circom\";\n\n";
+    let mut circuit_buffer = String::new();
+    circuit_buffer += PRAGMA;
+    circuit_buffer += "include \"../json/interpreter.circom\";\n\n";
 
     // template ExtractValue2(DATA_BYTES, MAX_STACK_HEIGHT, keyLen1, depth1, index2, depth2, keyLen3, depth3, index4, depth4, maxValueLen) {
     {
-        cfb += "template ExtractValue2(DATA_BYTES, MAX_STACK_HEIGHT, ";
+        circuit_buffer += "template ExtractValue2(DATA_BYTES, MAX_STACK_HEIGHT, ";
         for (i, key) in data.keys.iter().enumerate() {
             match key {
-                Key::String(_) => cfb += &format!("keyLen{}, depth{}, ", i + 1, i + 1),
-                Key::Num(_) => cfb += &format!("index{}, depth{}, ", i + 1, i + 1),
+                Key::String(_) => circuit_buffer += &format!("keyLen{}, depth{}, ", i + 1, i + 1),
+                Key::Num(_) => circuit_buffer += &format!("index{}, depth{}, ", i + 1, i + 1),
             }
         }
-        cfb += "maxValueLen) {\n";
+        circuit_buffer += "maxValueLen) {\n";
     }
 
     /*
@@ -189,12 +195,12 @@ fn parse_json_request(
     signal input key3[keyLen3];
      */
     {
-        cfb += "    signal input data[DATA_BYTES];\n\n";
+        circuit_buffer += "    signal input data[DATA_BYTES];\n\n";
 
         for (i, key) in data.keys.iter().enumerate() {
             match key {
                 Key::String(_) => {
-                    cfb += &format!("    signal input key{}[keyLen{}];\n", i + 1, i + 1)
+                    circuit_buffer += &format!("    signal input key{}[keyLen{}];\n", i + 1, i + 1)
                 }
                 Key::Num(_) => (),
             }
@@ -215,32 +221,32 @@ fn parse_json_request(
     signal r <== rHasher.out;
      */
     {
-        cfb += "\n    // r must be secret, so either has to be derived from hash in the circuit or off the circuit\n    component rHasher = PoseidonModular(DATA_BYTES + ";
+        circuit_buffer += "\n    // r must be secret, so either has to be derived from hash in the circuit or off the circuit\n    component rHasher = PoseidonModular(DATA_BYTES + ";
         for (i, key) in data.keys.iter().enumerate() {
             match key {
-                Key::String(_) => cfb += &format!(" keyLen{} +", i + 1),
+                Key::String(_) => circuit_buffer += &format!(" keyLen{} +", i + 1),
                 Key::Num(_) => (),
             }
         }
-        cfb.pop();
-        cfb.pop();
-        cfb += ");\n";
+        circuit_buffer.pop();
+        circuit_buffer.pop();
+        circuit_buffer += ");\n";
 
         let mut key_len_counter_str = String::from_str("i")?;
         for (i, key) in data.keys.iter().enumerate() {
             match key {
                 Key::String(_) => {
-                    cfb += &format!("    for (var i = 0 ; i < keyLen{} ; i++) {{\n        rHasher.in[{}] <== key{}[i];\n    }}\n", i+1, key_len_counter_str, i+1);
+                    circuit_buffer += &format!("    for (var i = 0 ; i < keyLen{} ; i++) {{\n        rHasher.in[{}] <== key{}[i];\n    }}\n", i+1, key_len_counter_str, i+1);
                     key_len_counter_str += &format!(" + keyLen{}", i + 1);
                 }
                 Key::Num(_) => (),
             }
         }
 
-        cfb += &format!("    for (var i = 0 ; i < DATA_BYTES ; i++) {{\n        rHasher.in[{}] <== data[i];\n    }}\n", key_len_counter_str);
+        circuit_buffer += &format!("    for (var i = 0 ; i < DATA_BYTES ; i++) {{\n        rHasher.in[{}] <== data[i];\n    }}\n", key_len_counter_str);
     }
 
-    cfb += r#"    signal r <== rHasher.out;
+    circuit_buffer += r#"    signal r <== rHasher.out;
 
     signal output value_starting_index[DATA_BYTES];
 
@@ -276,22 +282,25 @@ fn parse_json_request(
         for (i, key) in data.keys.iter().enumerate() {
             match key {
                 Key::String(_) => {
-                    cfb += &format!("    signal parsing_object{}_value[DATA_BYTES];\n", i + 1)
+                    circuit_buffer +=
+                        &format!("    signal parsing_object{}_value[DATA_BYTES];\n", i + 1)
                 }
-                Key::Num(_) => cfb += &format!("    signal parsing_array{}[DATA_BYTES];\n", i + 1),
+                Key::Num(_) => {
+                    circuit_buffer += &format!("    signal parsing_array{}[DATA_BYTES];\n", i + 1)
+                }
             }
         }
 
         for (i, key) in data.keys.iter().enumerate() {
             match key {
-            Key::String(_) => cfb += &format!("    signal is_key{}_match[DATA_BYTES];\n    signal is_key{}_match_for_value[DATA_BYTES];\n    is_key{}_match_for_value[0] <== 0;\n    signal is_next_pair_at_depth{}[DATA_BYTES];\n", i+1, i+1, i+1, i+1),
+            Key::String(_) => circuit_buffer += &format!("    signal is_key{}_match[DATA_BYTES];\n    signal is_key{}_match_for_value[DATA_BYTES];\n    is_key{}_match_for_value[0] <== 0;\n    signal is_next_pair_at_depth{}[DATA_BYTES];\n", i+1, i+1, i+1, i+1),
             Key::Num(_) => (),
         }
         }
     }
 
     // debugging
-    cfb += r#"
+    circuit_buffer += r#"
     signal is_value_match[DATA_BYTES];
     is_value_match[0] <== 0;
     signal value_mask[DATA_BYTES];
@@ -332,10 +341,10 @@ fn parse_json_request(
         for (i, key) in data.keys.iter().enumerate() {
             match key {
                 Key::String(_) => {
-                    cfb += &format!("        parsing_object{}_value[data_idx-1] <== InsideValueAtDepth(MAX_STACK_HEIGHT, depth{})(State[data_idx].stack, State[data_idx].parsing_string, State[data_idx].parsing_number);\n", i+1, i+1);
+                    circuit_buffer += &format!("        parsing_object{}_value[data_idx-1] <== InsideValueAtDepth(MAX_STACK_HEIGHT, depth{})(State[data_idx].stack, State[data_idx].parsing_string, State[data_idx].parsing_number);\n", i+1, i+1);
                 }
                 Key::Num(_) => {
-                    cfb += &format!("        parsing_array{}[data_idx-1] <== InsideArrayIndexAtDepth(MAX_STACK_HEIGHT, index{}, depth{})(State[data_idx].stack, State[data_idx].parsing_string, State[data_idx].parsing_number);\n", i+1, i+1, i+1);
+                    circuit_buffer += &format!("        parsing_array{}[data_idx-1] <== InsideArrayIndexAtDepth(MAX_STACK_HEIGHT, index{}, depth{})(State[data_idx].stack, State[data_idx].parsing_string, State[data_idx].parsing_number);\n", i+1, i+1, i+1);
                 }
             }
         }
@@ -344,33 +353,40 @@ fn parse_json_request(
     // parsing correct value = AND(all individual stack values)
     //     parsing_value[data_idx-1] <== MultiAND(4)([parsing_object1_value[data_idx-1], parsing_array2[data_idx-1], parsing_object3_value[data_idx-1], parsing_array4[data_idx-1]]);
     {
-        cfb += &format!(
+        circuit_buffer += &format!(
         "        // parsing correct value = AND(all individual stack values)\n        parsing_value[data_idx-1] <== MultiAND({})([",
         data.keys.len()
     );
 
         for (i, key) in data.keys.iter().take(data.keys.len() - 1).enumerate() {
             match key {
-                Key::String(_) => cfb += &format!("parsing_object{}_value[data_idx-1], ", i + 1),
-                Key::Num(_) => cfb += &format!("parsing_array{}[data_idx-1], ", i + 1),
+                Key::String(_) => {
+                    circuit_buffer += &format!("parsing_object{}_value[data_idx-1], ", i + 1)
+                }
+                Key::Num(_) => circuit_buffer += &format!("parsing_array{}[data_idx-1], ", i + 1),
             }
         }
         match data.keys[data.keys.len() - 1] {
             Key::String(_) => {
-                cfb += &format!("parsing_object{}_value[data_idx-1]]);\n", data.keys.len())
+                circuit_buffer +=
+                    &format!("parsing_object{}_value[data_idx-1]]);\n", data.keys.len())
             }
-            Key::Num(_) => cfb += &format!("parsing_array{}[data_idx-1]]);\n", data.keys.len()),
+            Key::Num(_) => {
+                circuit_buffer += &format!("parsing_array{}[data_idx-1]]);\n", data.keys.len())
+            }
         }
 
         // optional debug logs
-        cfb += "        // log(\"parsing value:\", ";
+        circuit_buffer += "        // log(\"parsing value:\", ";
         for (i, key) in data.keys.iter().enumerate() {
             match key {
-                Key::String(_) => cfb += &format!("parsing_object{}_value[data_idx-1], ", i + 1),
-                Key::Num(_) => cfb += &format!("parsing_array{}[data_idx-1], ", i + 1),
+                Key::String(_) => {
+                    circuit_buffer += &format!("parsing_object{}_value[data_idx-1], ", i + 1)
+                }
+                Key::Num(_) => circuit_buffer += &format!("parsing_array{}[data_idx-1], ", i + 1),
             }
         }
-        cfb += "parsing_value[data_idx-1]);\n\n";
+        circuit_buffer += "parsing_value[data_idx-1]);\n\n";
     }
 
     let mut num_objects = 0;
@@ -385,7 +401,7 @@ fn parse_json_request(
     is_key1_match_for_value[data_idx] <== Mux1()([is_key1_match_for_value[data_idx-1] * (1-is_next_pair_at_depth1[data_idx-1]), is_key1_match[data_idx-1] * (1-is_next_pair_at_depth1[data_idx-1])], is_key1_match[data_idx-1]);
     */
     {
-        cfb += r#"
+        circuit_buffer += r#"
         // to get correct value, check:
         // - key matches at current index and depth of key is as specified
         // - whether next KV pair starts
@@ -396,10 +412,10 @@ fn parse_json_request(
             match key {
                 Key::String(_) => {
                     num_objects += 1;
-                    cfb += &format!("        is_key{}_match[data_idx-1] <== KeyMatchAtDepth(DATA_BYTES, MAX_STACK_HEIGHT, keyLen{}, depth{})(data, key{}, r, data_idx-1, parsing_key[data_idx-1], State[data_idx].stack);\n", i+1, i+1, i+1, i+1);
-                    cfb += &format!("        is_next_pair_at_depth{}[data_idx-1] <== NextKVPairAtDepth(MAX_STACK_HEIGHT, depth{})(State[data_idx].stack, data[data_idx-1]);\n", i+1, i+1);
-                    cfb += &format!("        is_key{}_match_for_value[data_idx] <== Mux1()([is_key{}_match_for_value[data_idx-1] * (1-is_next_pair_at_depth{}[data_idx-1]), is_key{}_match[data_idx-1] * (1-is_next_pair_at_depth{}[data_idx-1])], is_key{}_match[data_idx-1]);\n", i+1, i+1, i+1, i+1, i+1, i+1);
-                    cfb += &format!("        // log(\"is_key{}_match_for_value\", is_key{}_match_for_value[data_idx]);\n\n", i + 1, i + 1);
+                    circuit_buffer += &format!("        is_key{}_match[data_idx-1] <== KeyMatchAtDepth(DATA_BYTES, MAX_STACK_HEIGHT, keyLen{}, depth{})(data, key{}, r, data_idx-1, parsing_key[data_idx-1], State[data_idx].stack);\n", i+1, i+1, i+1, i+1);
+                    circuit_buffer += &format!("        is_next_pair_at_depth{}[data_idx-1] <== NextKVPairAtDepth(MAX_STACK_HEIGHT, depth{})(State[data_idx].stack, data[data_idx-1]);\n", i+1, i+1);
+                    circuit_buffer += &format!("        is_key{}_match_for_value[data_idx] <== Mux1()([is_key{}_match_for_value[data_idx-1] * (1-is_next_pair_at_depth{}[data_idx-1]), is_key{}_match[data_idx-1] * (1-is_next_pair_at_depth{}[data_idx-1])], is_key{}_match[data_idx-1]);\n", i+1, i+1, i+1, i+1, i+1, i+1);
+                    circuit_buffer += &format!("        // log(\"is_key{}_match_for_value\", is_key{}_match_for_value[data_idx]);\n\n", i + 1, i + 1);
                 }
                 Key::Num(_) => (),
             }
@@ -408,26 +424,28 @@ fn parse_json_request(
 
     // is_value_match[data_idx] <== MultiAND(2)([is_key1_match_for_value[data_idx], is_key3_match_for_value[data_idx]]);
     {
-        cfb += &format!(
+        circuit_buffer += &format!(
             "        is_value_match[data_idx] <== MultiAND({})([",
             num_objects
         );
         for (i, key) in data.keys.iter().enumerate() {
             match key {
-                Key::String(_) => cfb += &format!("is_key{}_match_for_value[data_idx], ", i + 1),
+                Key::String(_) => {
+                    circuit_buffer += &format!("is_key{}_match_for_value[data_idx], ", i + 1)
+                }
                 Key::Num(_) => (),
             }
         }
 
         // remove last 2 chars `, ` from string buffer
-        cfb.pop();
-        cfb.pop();
-        cfb += "]);\n";
+        circuit_buffer.pop();
+        circuit_buffer.pop();
+        circuit_buffer += "]);\n";
     }
 
     // debugging and output bytes
     {
-        cfb += r#"        // log("is_value_match", is_value_match[data_idx]);
+        circuit_buffer += r#"        // log("is_value_match", is_value_match[data_idx]);
 
         // mask[i] = data[i] * parsing_value[i] * is_key_match_for_value[i]
         value_mask[data_idx-1] <== data[data_idx-1] * parsing_value[data_idx-1];
@@ -457,12 +475,12 @@ fn parse_json_request(
 "#;
 
         // template ends
-        cfb += "}\n";
+        circuit_buffer += "}\n";
     }
 
     match data.value_type {
-        ValueType::String => extract_string(data, &mut cfb),
-        ValueType::Number => extract_number(data, &mut cfb),
+        ValueType::String => extract_string(data, &mut circuit_buffer),
+        ValueType::Number => extract_number(data, &mut circuit_buffer),
     }
 
     // write circuits to file
@@ -471,7 +489,7 @@ fn parse_json_request(
     file_path.push("main");
     file_path.push(format!("{}.circom", output_filename));
 
-    fs::write(&file_path, cfb)?;
+    fs::write(&file_path, circuit_buffer)?;
 
     println!("Code generated at: {}", file_path.display());
 
