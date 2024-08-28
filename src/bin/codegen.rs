@@ -9,6 +9,10 @@ struct Args {
     /// Path to the JSON file
     #[arg(short, long)]
     json_file: PathBuf,
+
+    /// Output circuit file name
+    #[arg(short, long, default_value = "extractor")]
+    output_filename: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -163,10 +167,13 @@ fn extract_number(data: Data, cfb: &mut String) {
 "#;
 }
 
-fn parse_json_request(data: Data) -> Result<(), Box<dyn std::error::Error>> {
+fn parse_json_request(
+    data: Data,
+    output_filename: String,
+) -> Result<(), Box<dyn std::error::Error>> {
     let mut cfb = String::new();
     cfb += PRAGMA;
-    cfb += "include \"./interpreter.circom\";\n\n";
+    cfb += "include \"../interpreter.circom\";\n\n";
 
     cfb += "template ExtractValue2(DATA_BYTES, MAX_STACK_HEIGHT, ";
     for (i, key) in data.keys.iter().enumerate() {
@@ -365,17 +372,23 @@ fn parse_json_request(data: Data) -> Result<(), Box<dyn std::error::Error>> {
     // write circuits to file
     let mut file_path = std::env::current_dir()?;
     file_path.push("circuits");
-    file_path.push("extractor.circom");
+    file_path.push("main");
+    file_path.push(format!("{}.circom", output_filename));
 
-    println!("file_path: {:?}", file_path);
-    fs::write(file_path, cfb)?;
+    fs::write(&file_path, cfb)?;
+
+    println!("Code generated at: {}", file_path.display());
+
     Ok(())
 }
 
 pub fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
+
     let data = std::fs::read(&args.json_file)?;
     let json_data: Data = serde_json::from_slice(&data)?;
-    parse_json_request(json_data)?;
+
+    parse_json_request(json_data, args.output_filename)?;
+
     Ok(())
 }
