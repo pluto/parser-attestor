@@ -14,7 +14,7 @@ template Syntax() {
     signal output QUOTE     <== 34;
     //-White_space--------------------------------------------------------------------------------//
     // - ASCII pair: `\r\n`
-    signal output CLRF   <== [13, 10]; // https://www.rfc-editor.org/rfc/rfc2616#section-2.2
+    signal output CLRF[2]   <== [13, 10]; // https://www.rfc-editor.org/rfc/rfc2616#section-2.2
                                        // https://www.rfc-editor.org/rfc/rfc7230#section-3.5
     // - ASCII char: ` `
     signal output SPACE     <== 32;

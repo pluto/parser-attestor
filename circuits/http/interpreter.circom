@@ -6,8 +6,9 @@ include "../utils/array.circom";
 /* TODO: 
 Notes --
 - This is a pretty efficient way to simply check what the method used in a request is by checking
-the first `DATA_LENGTH` number of bytes. 
-- Certainly this could be more modular.
+  the first `DATA_LENGTH` number of bytes. 
+- Could probably change this to a template that checks if it is one of the given methods
+  so we don't check them all in one
 */
 template YieldMethod(DATA_LENGTH) {
     signal input bytes[DATA_LENGTH];
