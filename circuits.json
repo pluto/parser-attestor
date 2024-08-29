@@ -75,5 +75,10 @@
         "file": "http/parser/parser",
         "template": "Parser",
         "params": [60]
+    },
+    "get_response": {
+        "file": "http/parser/parser",
+        "template": "Parser",
+        "params": [89]
     }
 }
