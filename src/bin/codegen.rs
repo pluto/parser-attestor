@@ -1,6 +1,6 @@
 use clap::Parser;
 use serde::{Deserialize, Serialize};
-use std::fs;
+use std::fs::{self, create_dir_all};
 use std::path::PathBuf;
 use std::str::FromStr;
 
@@ -487,6 +487,10 @@ fn parse_json_request(
     let mut file_path = std::env::current_dir()?;
     file_path.push("circuits");
     file_path.push("main");
+
+    // create dir if doesn't exist
+    create_dir_all(&file_path)?;
+
     file_path.push(format!("{}.circom", output_filename));
 
     fs::write(&file_path, circuit_buffer)?;
