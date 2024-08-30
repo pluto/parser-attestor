@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::{error::Error, path::PathBuf};
 
 pub mod extractor;
+pub mod http_lock;
 pub mod witness;
 
 #[derive(Parser, Debug)]
@@ -16,6 +17,7 @@ pub struct Args {
 pub enum Command {
     Witness(WitnessArgs),
     Extractor(ExtractorArgs),
+    HttpLock(HttpLockArgs),
 }
 
 #[derive(Parser, Debug)]
@@ -53,30 +55,21 @@ pub struct ExtractorArgs {
     output_filename: String,
 }
 
-#[derive(Debug, Deserialize)]
-enum ValueType {
-    #[serde(rename = "string")]
-    String,
-    #[serde(rename = "number")]
-    Number,
-}
+#[derive(Parser, Debug)]
+pub struct HttpLockArgs {
+    /// Path to the JSON file
+    #[arg(long)]
+    lockfile: PathBuf,
 
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(untagged)]
-enum Key {
-    String(String),
-    Num(i64),
-}
-
-#[derive(Debug, Deserialize)]
-struct Data {
-    keys: Vec<Key>,
-    value_type: ValueType,
+    /// Output circuit file name
+    #[arg(long, default_value = "extractor")]
+    output_filename: String,
 }
 
 pub fn main() -> Result<(), Box<dyn Error>> {
     match Args::parse().command {
         Command::Extractor(args) => extractor::extractor(args),
         Command::Witness(args) => witness::witness(args),
+        Command::HttpLock(args) => http_lock::http_lock(args),
     }
 }

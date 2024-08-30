@@ -7,6 +7,27 @@ use super::*;
 
 const PRAGMA: &str = "pragma circom 2.1.9;\n\n";
 
+#[derive(Debug, Deserialize)]
+pub enum ValueType {
+    #[serde(rename = "string")]
+    String,
+    #[serde(rename = "number")]
+    Number,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum Key {
+    String(String),
+    Num(i64),
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Data {
+    keys: Vec<Key>,
+    value_type: ValueType,
+}
+
 fn extract_string(data: Data, circuit_buffer: &mut String) {
     *circuit_buffer += "template ExtractStringValue(DATA_BYTES, MAX_STACK_HEIGHT, ";
     for (i, key) in data.keys.iter().enumerate() {
