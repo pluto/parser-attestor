@@ -1,6 +1,6 @@
 {
     "extract": {
-        "file": "parser_json/parser",
+        "file": "json/parser/parser",
         "template": "Parser",
         "params": [
             157,
@@ -8,7 +8,7 @@
         ]
     },
     "value_string": {
-        "file": "parser_json/parser",
+        "file": "json/parser/parser",
         "template": "Parser",
         "params": [
             12,
@@ -16,7 +16,7 @@
         ]
     },
     "value_number": {
-        "file": "parser_json/parser",
+        "file": "json/parser/parser",
         "template": "Parser",
         "params": [
             12,
@@ -24,7 +24,7 @@
         ]
     },
     "value_array": {
-        "file": "parser_json/parser",
+        "file": "json/parser/parser",
         "template": "Parser",
         "params": [
             18,
@@ -32,7 +32,7 @@
         ]
     },
     "value_array_nested": {
-        "file": "parser_json/parser",
+        "file": "json/parser/parser",
         "template": "Parser",
         "params": [
             24,
@@ -40,7 +40,7 @@
         ]
     },
     "value_array_object": {
-        "file": "parser_json/parser",
+        "file": "json/parser/parser",
         "template": "Parser",
         "params": [
             25,
@@ -48,7 +48,7 @@
         ]
     },
     "value_array_object_array": {
-        "file": "parser_json/parser",
+        "file": "json/parser/parser",
         "template": "Parser",
         "params": [
             31,
@@ -56,7 +56,7 @@
         ]
     },
     "value_object": {
-        "file": "parser_json/parser",
+        "file": "json/parser/parser",
         "template": "Parser",
         "params": [
             21,
@@ -71,9 +71,22 @@
             10
         ]
     },
-    "get_request": {
-        "file": "parser_http_request/parser",
+    "http_get_request": {
+        "file": "http/http_request/parser",
         "template": "Parser",
-        "params": [158]
+        "params": [
+            158
+        ]
+    },
+    "json_extract_value_string": {
+        "file": "main/value_string",
+        "template": "ExtractStringValue",
+        "params": [
+            12,
+            1,
+            1,
+            0,
+            1
+        ]
     }
 }
