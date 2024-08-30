@@ -18,39 +18,34 @@ template StateUpdate() {
     component Syntax = Syntax();
 
     //---------------------------------------------------------------------------------// 
-    // Check if what we just read is a CL / RF
-    component readCL = IsEqual();
-    readCL.in      <== [byte, Syntax.CL];
-    component readRF = IsEqual();
-    readRF.in      <== [byte, Syntax.RF];
+    // Check if what we just read is a CR / LF
+    component readCR = IsEqual();
+    readCR.in      <== [byte, Syntax.CR];
+    component readLF = IsEqual();
+    readLF.in      <== [byte, Syntax.LF];
 
-        signal notCLAndRF <== (1 - readCL.out) * (1 - readRF.out);
+        signal notCRAndLF <== (1 - readCR.out) * (1 - readLF.out);
     //---------------------------------------------------------------------------------//
 
     //---------------------------------------------------------------------------------//
-    // Check if we had read previously CL / RF or multiple
-    component prevReadCL     = IsEqual();
-    prevReadCL.in          <== [line_status, 1];
-    log("prevReadCL: ", prevReadCL.out);
-    component prevReadCLRF   = IsEqual();
-    prevReadCLRF.in        <== [line_status, 2];
-    log("prevReadCLRF: ", prevReadCLRF.out);
-    component prevReadCLRFCL = IsEqual();
-    prevReadCLRFCL.in      <== [line_status, 3];
-    log("prevReadCLRFCL: ", prevReadCLRFCL.out);
+    // Check if we had read previously CR / LF or multiple
+    component prevReadCR     = IsEqual();
+    prevReadCR.in          <== [line_status, 1];
+    component prevReadCRLF   = IsEqual();
+    prevReadCRLF.in        <== [line_status, 2];
+    component prevReadCRLFCR = IsEqual();
+    prevReadCRLFCR.in      <== [line_status, 3];
 
-    signal readCLRF     <== prevReadCL.out * readRF.out;
-    log("readCLRF: ", readCLRF);
-    signal readCLRFCLRF <== prevReadCLRFCL.out * readRF.out;
-    log("readCLRFCLRF: ", readCLRFCLRF);
+    signal readCRLF     <== prevReadCR.out * readLF.out;
+    signal readCRLFCRLF <== prevReadCRLFCR.out * readLF.out;
     //---------------------------------------------------------------------------------//
 
     //---------------------------------------------------------------------------------//
-    // Take current state and CLRF info to update state
+    // Take current state and CRLF info to update state
     signal state[3] <== [parsing_start, parsing_header, parsing_body];
     component stateChange    = StateChange();
-    stateChange.readCLRF <== readCLRF;
-    stateChange.readCLRFCLRF <== readCLRFCLRF;
+    stateChange.readCRLF <== readCRLF;
+    stateChange.readCRLFCRLF <== readCRLFCRLF;
     stateChange.state   <== state;
 
     component nextState   = ArrayAdd(3);
@@ -61,18 +56,18 @@ template StateUpdate() {
     next_parsing_start  <== nextState.out[0];
     next_parsing_header <== nextState.out[1];
     next_parsing_body   <== nextState.out[2]; 
-    next_line_status    <== line_status + readCL.out + readCLRF + readCLRFCLRF - line_status * notCLAndRF;
+    next_line_status    <== line_status + readCR.out + readCRLF + readCRLFCRLF - line_status * notCRAndLF;
 
 }
 
 template StateChange() {
-    signal input readCLRF;
-    signal input readCLRFCLRF;
+    signal input readCRLF;
+    signal input readCRLFCRLF;
     signal input state[3];
     signal output out[3];
 
-    signal disableParsingStart <== readCLRF * state[0];
-    signal disableParsingHeader <== readCLRFCLRF * state[1];
+    signal disableParsingStart <== readCRLF * state[0];
+    signal disableParsingHeader <== readCRLFCRLF * state[1];
 
     out <== [-disableParsingStart, disableParsingStart - disableParsingHeader, disableParsingHeader];
 }
