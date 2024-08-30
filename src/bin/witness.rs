@@ -10,11 +10,11 @@ struct Args {
     command: Command,
 
     /// Output directory (will be created if it doesn't exist)
-    #[arg(global = true, short, long, default_value = ".")]
+    #[arg(global = true, long, default_value = ".")]
     output_dir: PathBuf,
 
     /// Output filename (will be created if it doesn't exist)
-    #[arg(global = true, short, long, default_value = "output.json")]
+    #[arg(global = true, long, default_value = "output.json")]
     output_filename: String,
 }
 
@@ -64,7 +64,16 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
             (data, keys_map)
         }
         Command::Http { input_file } => {
-            let data = std::fs::read(input_file)?;
+            let mut data = std::fs::read(input_file)?;
+            let mut i = 0;
+            while i < data.len() {
+                if data[i] == 10 && (i == 0 || data[i - 1] != 13) {
+                    data.insert(i, 13);
+                    i += 2;
+                } else {
+                    i += 1;
+                }
+            }
             let keys_map = serde_json::Map::new();
             (data, keys_map)
         }

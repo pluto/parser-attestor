@@ -13,9 +13,12 @@ template Syntax() {
     // - ASCII char `"`
     signal output QUOTE     <== 34;
     //-White_space--------------------------------------------------------------------------------//
-    // - ASCII pair: `\r\n`
-    signal output CLRF   <== [13, 10]; // https://www.rfc-editor.org/rfc/rfc2616#section-2.2
-                                       // https://www.rfc-editor.org/rfc/rfc7230#section-3.5
+    // https://www.rfc-editor.org/rfc/rfc2616#section-2.2
+    // https://www.rfc-editor.org/rfc/rfc7230#section-3.5
+    // - ASCII char `\r` (carriage return)
+    signal output CR        <== 13; 
+    // - ASCII char `\n` (line feed)
+    signal output LF        <== 10;                 
     // - ASCII char: ` `
     signal output SPACE     <== 32;
     //-Escape-------------------------------------------------------------------------------------//

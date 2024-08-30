@@ -1,10 +1,17 @@
 pragma circom 2.1.9;
 
-include "language.circom";
+include "parser/language.circom";
 include "../utils/array.circom";
 
-template ParseMethod() {
-    signal input bytes[7];
+/* TODO: 
+Notes --
+- This is a pretty efficient way to simply check what the method used in a request is by checking
+  the first `DATA_LENGTH` number of bytes. 
+- Could probably change this to a template that checks if it is one of the given methods
+  so we don't check them all in one
+*/
+template YieldMethod(DATA_LENGTH) {
+    signal input bytes[DATA_LENGTH];
     signal output MethodTag;
 
     component RequestMethod = RequestMethod();
