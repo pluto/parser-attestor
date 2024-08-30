@@ -25,7 +25,7 @@ export function generateDescription(input: any): string {
         .join(", ");
 }
 
-export function readInputFile(filename: string, key: any[]): [number[], number[][], number[]] {
+export function readJSONInputFile(filename: string, key: any[]): [number[], number[][], number[]] {
     const valueStringPath = join(__dirname, "..", "..", "..", "examples", "json", "test", filename);
 
     let input: number[] = [];

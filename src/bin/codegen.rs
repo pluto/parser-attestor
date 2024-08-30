@@ -66,10 +66,10 @@ fn extract_string(data: Data, circuit_buffer: &mut String) {
     signal value_starting_index[DATA_BYTES];
 "#;
 
-    // value_starting_index <== ExtractValue2(DATA_BYTES, MAX_STACK_HEIGHT, keyLen1, depth1, keyLen2, depth2, index3, depth3, index4, depth4, maxValueLen)(data, key1, key2);
+    // value_starting_index <== ExtractValue(DATA_BYTES, MAX_STACK_HEIGHT, keyLen1, depth1, keyLen2, depth2, index3, depth3, index4, depth4, maxValueLen)(data, key1, key2);
     {
         *circuit_buffer +=
-            "    value_starting_index <== ExtractValue2(DATA_BYTES, MAX_STACK_HEIGHT, ";
+            "    value_starting_index <== ExtractValue(DATA_BYTES, MAX_STACK_HEIGHT, ";
         for (i, key) in data.keys.iter().enumerate() {
             match key {
                 Key::String(_) => *circuit_buffer += &format!("keyLen{}, depth{}, ", i + 1, i + 1),
@@ -127,10 +127,10 @@ fn extract_number(data: Data, circuit_buffer: &mut String) {
     signal value_starting_index[DATA_BYTES];
 "#;
 
-    // value_starting_index <== ExtractValue2(DATA_BYTES, MAX_STACK_HEIGHT, keyLen1, depth1, keyLen2, depth2, index3, depth3, index4, depth4, maxValueLen)(data, key1, key2);
+    // value_starting_index <== ExtractValue(DATA_BYTES, MAX_STACK_HEIGHT, keyLen1, depth1, keyLen2, depth2, index3, depth3, index4, depth4, maxValueLen)(data, key1, key2);
     {
         *circuit_buffer +=
-            "    value_starting_index <== ExtractValue2(DATA_BYTES, MAX_STACK_HEIGHT, ";
+            "    value_starting_index <== ExtractValue(DATA_BYTES, MAX_STACK_HEIGHT, ";
         for (i, key) in data.keys.iter().enumerate() {
             match key {
                 Key::String(_) => *circuit_buffer += &format!("keyLen{}, depth{}, ", i + 1, i + 1),
@@ -176,9 +176,9 @@ fn parse_json_request(
     circuit_buffer += PRAGMA;
     circuit_buffer += "include \"../json/interpreter.circom\";\n\n";
 
-    // template ExtractValue2(DATA_BYTES, MAX_STACK_HEIGHT, keyLen1, depth1, index2, depth2, keyLen3, depth3, index4, depth4, maxValueLen) {
+    // template ExtractValue(DATA_BYTES, MAX_STACK_HEIGHT, keyLen1, depth1, index2, depth2, keyLen3, depth3, index4, depth4, maxValueLen) {
     {
-        circuit_buffer += "template ExtractValue2(DATA_BYTES, MAX_STACK_HEIGHT, ";
+        circuit_buffer += "template ExtractValue(DATA_BYTES, MAX_STACK_HEIGHT, ";
         for (i, key) in data.keys.iter().enumerate() {
             match key {
                 Key::String(_) => circuit_buffer += &format!("keyLen{}, depth{}, ", i + 1, i + 1),
