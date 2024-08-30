@@ -1,4 +1,4 @@
-import { circomkit, WitnessTester, generateDescription, readInputFile } from "../../common";
+import { circomkit, WitnessTester, generateDescription, readJSONInputFile } from "../../common";
 import { PoseidonModular } from "../../common/poseidon";
 
 describe("Interpreter", async () => {
@@ -283,7 +283,7 @@ describe("Interpreter", async () => {
             });
         }
 
-        let input = readInputFile("value_array_object.json", ["a"]);
+        let input = readJSONInputFile("value_array_object.json", ["a"]);
         const concatenatedInput = input[1][0].concat(input[0]);
         const hashResult = PoseidonModular(concatenatedInput);
 
@@ -324,7 +324,7 @@ describe("Interpreter", async () => {
             });
         }
 
-        let input = readInputFile("value_array_object.json", ["a", 0, "b", 0]);
+        let input = readJSONInputFile("value_array_object.json", ["a", 0, "b", 0]);
         const concatenatedInput = input[1][0].concat(input[0]);
         const hashResult = PoseidonModular(concatenatedInput);
 

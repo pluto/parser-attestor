@@ -1,4 +1,4 @@
-import { circomkit, WitnessTester, readInputFile } from "../../common";
+import { circomkit, WitnessTester, readJSONInputFile } from "../../common";
 import { join } from "path";
 import { spawn } from "child_process";
 
@@ -32,8 +32,12 @@ describe("ExtractValue", async () => {
 
     it("value_string: {\"a\": \"b\"}", async () => {
         let filename = "value_string";
+
+        // generate extractor circuit using codegen
         await executeCodegen(`${filename}.json`, filename);
-        let [input, keyUnicode, output] = readInputFile(`${filename}.json`, ["k"]);
+
+        // read JSON input file into bytes
+        let [input, keyUnicode, output] = readJSONInputFile(`${filename}.json`, ["k"]);
 
         circuit = await circomkit.WitnessTester(`Extract`, {
             file: `circuits/main/${filename}`,
@@ -42,6 +46,7 @@ describe("ExtractValue", async () => {
         });
         console.log("#constraints:", await circuit.getConstraintCount());
 
+        // match circuit output to original JSON value
         await circuit.expectPass({
             data: input, key1: keyUnicode,
         }, {
@@ -52,7 +57,7 @@ describe("ExtractValue", async () => {
     it("two_keys: {\"key1\": \"abc\", \"key2\": \"def\" }", async () => {
         let filename = "two_keys"
         await executeCodegen(`${filename}.json`, filename);
-        let [input, keyUnicode, output] = readInputFile(`${filename}.json`, ["key2"]);
+        let [input, keyUnicode, output] = readJSONInputFile(`${filename}.json`, ["key2"]);
 
         circuit = await circomkit.WitnessTester(`Extract`, {
             file: `circuits/main/${filename}`,
@@ -67,7 +72,7 @@ describe("ExtractValue", async () => {
     it("value_number: {\"k\": 69 }", async () => {
         let filename = "value_number";
         await executeCodegen(`${filename}.json`, filename);
-        let [input, keyUnicode, output] = readInputFile(`${filename}.json`, ["k"]);
+        let [input, keyUnicode, output] = readJSONInputFile(`${filename}.json`, ["k"]);
 
         circuit = await circomkit.WitnessTester(`Extract`, {
             file: `circuits/main/${filename}`,
@@ -86,7 +91,7 @@ describe("ExtractValue", async () => {
         await executeCodegen(`${filename}.json`, filename);
 
         for (let i = 0; i < 4; i++) {
-            let [input, keyUnicode, output] = readInputFile("value_array.json", ["b", i]);
+            let [input, keyUnicode, output] = readJSONInputFile("value_array.json", ["b", i]);
 
             circuit = await circomkit.WitnessTester(`Extract`, {
                 file: `circuits/main/${filename}`,
@@ -104,7 +109,7 @@ describe("ExtractValue", async () => {
         await executeCodegen(`${filename}.json`, filename);
 
         for (let i = 0; i < 4; i++) {
-            let [input, keyUnicode, output] = readInputFile("value_array.json", ["k", i]);
+            let [input, keyUnicode, output] = readJSONInputFile("value_array.json", ["k", i]);
 
             circuit = await circomkit.WitnessTester(`Extract`, {
                 file: `circuits/main/${filename}`,
@@ -123,7 +128,7 @@ describe("ExtractValue", async () => {
         await executeCodegen(`${filename}.json`, filename);
         let index_0 = 1;
         let index_1 = 0;
-        let [input, keyUnicode, output] = readInputFile(`${filename}.json`, ["a", index_0, index_1]);
+        let [input, keyUnicode, output] = readJSONInputFile(`${filename}.json`, ["a", index_0, index_1]);
 
         circuit = await circomkit.WitnessTester(`Extract`, {
             file: `circuits/main/${filename}`,
@@ -147,7 +152,7 @@ describe("ExtractValueMultiDepth", () => {
 
         await executeCodegen(`${filename}.json`, filename);
 
-        let [input, keyUnicode, output] = readInputFile(`${filename}.json`, ["e", "e"]);
+        let [input, keyUnicode, output] = readJSONInputFile(`${filename}.json`, ["e", "e"]);
 
         circuit = await circomkit.WitnessTester(`Extract`, {
             file: `circuits/main/${filename}`,
@@ -158,7 +163,7 @@ describe("ExtractValueMultiDepth", () => {
 
         await circuit.expectPass({ data: input, key1: keyUnicode[0], key2: keyUnicode[1] }, { value: output });
 
-        let [input1, keyUnicode1, output1] = readInputFile("value_object.json", ["e", "f"]);
+        let [input1, keyUnicode1, output1] = readJSONInputFile("value_object.json", ["e", "f"]);
         await circuit.expectPass({ data: input1, key1: keyUnicode1[0], key2: keyUnicode1[1] }, { value: output1 });
     });
 
@@ -175,7 +180,7 @@ describe("ExtractValueArrayObject", () => {
 
         let index_0 = 0;
         let index_1 = 0;
-        let [input, keyUnicode, output] = readInputFile(`${filename}.json`, ["a", index_0, "b", index_1]);
+        let [input, keyUnicode, output] = readJSONInputFile(`${filename}.json`, ["a", index_0, "b", index_1]);
 
         circuit = await circomkit.WitnessTester(`Extract`, {
             file: `circuits/main/${filename}`,
