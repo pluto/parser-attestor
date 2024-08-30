@@ -3,11 +3,15 @@
 
 ## Repo Structure
 The repository is currently new and being organized as follows:
- - `src/`
-    - Example Rust code to test against circom circuits.
-    - Used for doing witness generation
- - `circuits/`
-    - Has current implementation of circuits
+- `src/bin`: binaries
+  - `witness`: Used for doing witness generation
+  - `codegen`: Used for generating extractor circuits based on input
+- `circuits/`: Has current implementation of circuits
+  - `http`: HTTP parser and extractor
+  - `json`: JSON parser and extractor
+  - `utils`: utility circuits
+  - `test`: circuit tests
+- `examples`: reference examples for JSON and HTTP parsers
 
 ## Instructions
 
@@ -57,24 +61,93 @@ npx circomkit clean extract
 
 All of the above should be ran from repository root.
 
-## Rust Example Witness JSON Creation
-To generate example input JSON files for the Circom circuits, you can 
-```
+## Binaries
+
+### Rust Example Witness JSON Creation
+To generate example input JSON files for the Circom circuits, run:
+
+```bash
 cargo install --path .
 ```
-to install the `witness` binary. 
-To get the basic idea, run `witness --help`. 
-It can process and generate JSON files to be used for the circuits.
+
+to install the `witness` binary.
+
+To get the basic idea, run `witness --help`. It can process and generate JSON files to be used for the circuits.
 For example, if we have a given JSON file we want to parse such as `examples/json/test/example.json` for the `extract` circuit (see `circuits.json`), then we can:
-```
+
+```bash
 witness json --input-file examples/json/test/example.json --output-dir inputs/extract --output-filename input.json
 ```
 
 For an HTTP request/response, you can generate a JSON input via:
-```
+```bash
 witness http --input-file examples/http/get_request.http --output-dir inputs/get_request --output-filename input.json
 ```
+
 Afterwards, you can run `circomkit compile get_request` then `circomkit witness get_request input`.
+
+### Codegen
+
+JSON extractor circuit is generated using rust to handle arbitrary keys and array indices.
+
+Run:
+```bash
+cargo run --bin codegen -- --help
+```
+to get options:
+```
+Usage: codegen [OPTIONS] --json-file <JSON_FILE>
+
+Options:
+  -j, --json-file <JSON_FILE>              Path to the JSON file
+  -o, --output-filename <OUTPUT_FILENAME>  Output circuit file name [default: extractor]
+```
+Takes input 2 arguments:
+- `json-file`: input json file. Examples are located in [codegen](./examples/json/test/codegen/)
+- `output-filename`: circuit filename to save. Located in [circuits/main](./circuits/main/). If not given, defaults to `extractor.circom`.
+
+To test an end-to-end JSON extraction proof:
+- Run codegen to generate circuits. Replace `value_string` with input filename.
+   ```bash
+   cargo run --bin codegen -- --json-file ./examples/json/test/codegen/value_string.json --output-filename value_string
+   ```
+
+- Compile circom circuit using
+   ```
+   circom ./circuits/main/value_string.circom --r1cs --wasm
+   ```
+
+- To use circomkit: add circuit config to [circuits.json](./circuits.json). and input file to [inputs](./inputs/)
+
+- Generate witness:
+   ```bash
+   node build/json_extract_value_string/json_extract_value_string_js/generate_witness inputs/json_extract_value_string/value_string.json build/json_extract_value_string/witness/
+   ```
+   or generate using circomkit:
+   ```bash
+   npx circomkit witness json_extract_value_string value_string
+   ```
+
+- create trusted setup:
+   ```bash
+   npx circomkit setup json_extract_value_string
+   # OR
+   snarkjs groth16 setup build/json_extract_value_string/json_extract_value_string.r1cs ptau/powersOfTau28_hez_final_14.ptau build/json_extract_value_string/groth16_pkey.zkey
+   ```
+
+- create proof:
+   ```bash
+   npx circomkit prove json_extract_value_string value_string
+   # OR
+   snarkjs groth16 prove build/json_extract_value_string/groth16_pkey.zkey build/json_extract_value_string/value_string/witness.wtns build/json_extract_value_string/value_string/groth16_proof.json inputs/json_extract_value_string/value_string.json
+   ```
+
+- verify proof:
+   ```bash
+   npx circomkit verify json_extract_value_string value_string
+   # OR
+   snarkjs groth16 verify build/json_extract_value_string/groth16_vkey.json inputs/json_extract_value_string/value_string.json build/json_extract_value_string/value_string/groth16_proof.json
+   ```
 
 ## Testing
 To test, you can just run
