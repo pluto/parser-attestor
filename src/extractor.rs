@@ -1,41 +1,9 @@
-use clap::Parser;
-use serde::{Deserialize, Serialize};
-use std::fs::{self, create_dir_all};
-use std::path::PathBuf;
-use std::str::FromStr;
+use std::{
+    fs::{self, create_dir_all},
+    str::FromStr,
+};
 
-#[derive(Parser, Debug)]
-#[command(name = "codegen")]
-struct Args {
-    /// Path to the JSON file
-    #[arg(short, long)]
-    json_file: PathBuf,
-
-    /// Output circuit file name
-    #[arg(short, long, default_value = "extractor")]
-    output_filename: String,
-}
-
-#[derive(Debug, Deserialize)]
-enum ValueType {
-    #[serde(rename = "string")]
-    String,
-    #[serde(rename = "number")]
-    Number,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(untagged)]
-enum Key {
-    String(String),
-    Num(i64),
-}
-
-#[derive(Debug, Deserialize)]
-struct Data {
-    keys: Vec<Key>,
-    value_type: ValueType,
-}
+use super::*;
 
 const PRAGMA: &str = "pragma circom 2.1.9;\n\n";
 
@@ -500,10 +468,8 @@ fn parse_json_request(
     Ok(())
 }
 
-pub fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let args = Args::parse();
-
-    let data = std::fs::read(&args.json_file)?;
+pub fn extractor(args: ExtractorArgs) -> Result<(), Box<dyn std::error::Error>> {
+    let data = std::fs::read(&args.template)?;
     let json_data: Data = serde_json::from_slice(&data)?;
 
     parse_json_request(json_data, args.output_filename)?;
