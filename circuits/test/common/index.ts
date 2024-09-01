@@ -56,3 +56,55 @@ export function readJSONInputFile(filename: string, key: any[]): [number[], numb
 
     return [input, keyUnicode, output];
 }
+
+function toByte(data: string): number[] {
+    const byteArray = [];
+    for (let i = 0; i < data.length; i++) {
+        byteArray.push(data.charCodeAt(i));
+    }
+    return byteArray
+}
+
+export function readHTTPInputFile(filename: string) {
+    const filePath = join(__dirname, "..", "..", "..", "examples", "http", filename);
+    let input: number[] = [];
+
+    let data = readFileSync(filePath, 'utf-8');
+
+    input = toByte(data);
+
+    // Split headers and body
+    const [headerSection, bodySection] = data.split('\r\n\r\n');
+
+    // Function to parse headers into a dictionary
+    function parseHeaders(headerLines: string[]) {
+        const headers: { [id: string]: string } = {};
+
+        headerLines.forEach(line => {
+            const [key, value] = line.split(/:\s(.+)/);
+            headers[key] = value ? value : '';
+        });
+
+        return headers;
+    }
+
+    // Parse the headers
+    const headerLines = headerSection.split('\r\n');
+    const initialLine = headerLines[0].split(' ');
+    const headers = parseHeaders(headerLines.slice(1));
+
+    // Parse the body, if JSON response
+    let responseBody = {};
+    if (headers["Content-Type"] == "application/json") {
+        responseBody = JSON.parse(bodySection);
+    }
+
+    // Combine headers and body into an object
+    return {
+        input: input,
+        initialLine: initialLine,
+        headers: headers,
+        body: responseBody,
+        bodyBytes: toByte(bodySection),
+    };
+}
