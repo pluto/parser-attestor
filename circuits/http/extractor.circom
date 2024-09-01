@@ -5,11 +5,9 @@ include "parser/machine.circom";
 include "@zk-email/circuits/utils/array.circom";
 
 // TODO:
-// - what if no contentLength is provided? can we assume something?
-// - update parser to add parsing_header_key, parsing_header_value field
 // - handle CRLF in response data
-// -
-template ExtractResponseData(DATA_BYTES, maxContentLength) {
+
+template ExtractResponse(DATA_BYTES, maxContentLength) {
     signal input data[DATA_BYTES];
     signal output response[maxContentLength];
 
