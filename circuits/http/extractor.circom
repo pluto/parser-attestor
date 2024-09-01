@@ -69,7 +69,5 @@ template ExtractResponseData(DATA_BYTES, maxContentLength) {
         valueStartingIndex[i] <== valueStartingIndex[i-1] + i * (1-isZeroMask[i]) * isPrevStartingIndex[i];
     }
 
-    log(valueStartingIndex[DATA_BYTES-1]);
-
     response <== SelectSubArray(DATA_BYTES, maxContentLength)(dataMask, valueStartingIndex[DATA_BYTES-1]+1, DATA_BYTES - valueStartingIndex[DATA_BYTES-1]);
 }
