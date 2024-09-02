@@ -4,9 +4,9 @@ include "language.circom";
 include "../../utils/array.circom";
 
 template StateUpdate() {
-    signal input parsing_start; // Bool flag for if we are in the start line 
+    signal input parsing_start; // flag that counts up to 3 for if we are in the start line
     signal input parsing_header; // Flag + Counter for what header line we are in
-    signal input parsing_body;
+    signal input parsing_body; // Flag when we are inside body
     signal input line_status; // Flag that counts up to 4 to read a double CLRF
     signal input byte;
 
@@ -17,14 +17,20 @@ template StateUpdate() {
 
     component Syntax = Syntax();
 
-    //---------------------------------------------------------------------------------// 
+    //---------------------------------------------------------------------------------//
+    // check if we read space or colon
+    component readSP = IsEqual();
+    readSP.in <== [byte, Syntax.SPACE];
+    component readColon = IsEqual();
+    readColon.in <== [byte, Syntax.COLON];
+
     // Check if what we just read is a CR / LF
     component readCR = IsEqual();
     readCR.in      <== [byte, Syntax.CR];
     component readLF = IsEqual();
     readLF.in      <== [byte, Syntax.LF];
 
-        signal notCRAndLF <== (1 - readCR.out) * (1 - readLF.out);
+    signal notCRAndLF <== (1 - readCR.out) * (1 - readLF.out);
     //---------------------------------------------------------------------------------//
 
     //---------------------------------------------------------------------------------//
@@ -46,6 +52,8 @@ template StateUpdate() {
     component stateChange    = StateChange();
     stateChange.readCRLF <== readCRLF;
     stateChange.readCRLFCRLF <== readCRLFCRLF;
+    stateChange.readSP <== readSP.out;
+    stateChange.readColon <== readColon.out;
     stateChange.state   <== state;
 
     component nextState   = ArrayAdd(3);
@@ -55,19 +63,32 @@ template StateUpdate() {
 
     next_parsing_start  <== nextState.out[0];
     next_parsing_header <== nextState.out[1];
-    next_parsing_body   <== nextState.out[2]; 
+    next_parsing_body   <== nextState.out[2];
     next_line_status    <== line_status + readCR.out + readCRLF + readCRLFCRLF - line_status * notCRAndLF;
-
 }
 
+// TODO:
+// - handle incrementParsingHeader being incremented for header -> body CRLF
+// - add header name + value parsing
 template StateChange() {
     signal input readCRLF;
     signal input readCRLFCRLF;
+    signal input readSP;
+    signal input readColon;
     signal input state[3];
     signal output out[3];
 
+    // start line can have at most 3 values for request or response
+    signal isParsingStart <== GreaterEqThan(2)([state[0], 1]);
+    signal incrementParsingStart <== readSP * isParsingStart;
     signal disableParsingStart <== readCRLF * state[0];
+
+    signal enableParsingHeader <== readCRLF * isParsingStart;
+    signal isParsingHeader <== GreaterEqThan(10)([state[1], 1]);
+    signal incrementParsingHeader <== readCRLF * isParsingHeader;
     signal disableParsingHeader <== readCRLFCRLF * state[1];
 
-    out <== [-disableParsingStart, disableParsingStart - disableParsingHeader, disableParsingHeader];
+    signal enableParsingBody <== readCRLFCRLF * isParsingHeader;
+
+    out <== [incrementParsingStart - disableParsingStart, enableParsingHeader + incrementParsingHeader - disableParsingHeader, enableParsingBody];
 }
