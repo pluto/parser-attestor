@@ -1,0 +1,27 @@
+{
+    "request": {
+        "method": "GET",
+        "target": "/api",
+        "version": "HTTP/1.1",
+        "headers": [
+            [
+                "Host",
+                "localhost"
+            ],
+            [
+                "Accept",
+                "application/json"
+            ]
+        ]
+    },
+    "response": {
+        "version": "HTTP/1.1",
+        "status": "200",
+        "headers": [
+            [
+                "Content-Type",
+                "application/json"
+            ]
+        ]
+    }
+}

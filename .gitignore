@@ -10,3 +10,4 @@ circuits/main/*
 
 # Rust generated
 inputs/**/*.json
+!inputs/search/witness.json
