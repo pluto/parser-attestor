@@ -11,28 +11,15 @@ Notes --
 - Could probably change this to a template that checks if it is one of the given methods
   so we don't check them all in one
 */
-template YieldMethod(DATA_LENGTH) {
-    signal input bytes[DATA_LENGTH];
-    signal output MethodTag;
+template MethodMatch(dataLen, methodLen) {
+    signal input data[dataLen];
+    signal input method[methodLen];
 
-    component RequestMethod = RequestMethod();
-    component RequestMethodTag = RequestMethodTag();
+    signal input r;
+    signal input index;
 
-    component IsGet = IsEqualArray(3);
-    for(var byte_idx = 0; byte_idx < 3; byte_idx++) {
-        IsGet.in[0][byte_idx] <== bytes[byte_idx];
-        IsGet.in[1][byte_idx] <== RequestMethod.GET[byte_idx];
-    }
-    signal TagGet <== IsGet.out * RequestMethodTag.GET;
-
-    component IsPost = IsEqualArray(4);
-    for(var byte_idx = 0; byte_idx < 4; byte_idx++) {
-        IsPost.in[0][byte_idx] <== bytes[byte_idx];
-        IsPost.in[1][byte_idx] <== RequestMethod.POST[byte_idx];
-    }
-    signal TagPost <== IsPost.out * RequestMethodTag.POST;
-
-    MethodTag <== TagGet + TagPost;
+    signal isMatch <== SubstringMatchWithIndex(dataLen, methodLen)(data, method, r, index);
+    isMatch === 1;
 }
 
 // https://www.rfc-editor.org/rfc/rfc9112.html#name-field-syntax

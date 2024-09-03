@@ -1,7 +1,7 @@
 {
     "request": {
         "method": "GET",
-        "target": "/api",
+        "path": "/api",
         "version": "HTTP/1.1",
         "headers": [
             [

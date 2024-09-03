@@ -67,14 +67,14 @@ export function toByte(data: string): number[] {
 
 export function readHTTPInputFile(filename: string) {
     const filePath = join(__dirname, "..", "..", "..", "examples", "http", filename);
-    let input: number[] = [];
-
     let data = readFileSync(filePath, 'utf-8');
 
-    input = toByte(data);
+    let input = toByte(data);
 
-    // Split headers and body
-    const [headerSection, bodySection] = data.split('\r\n\r\n');
+    // Split headers and body, accounting for possible lack of body
+    const parts = data.split('\r\n\r\n');
+    const headerSection = parts[0];
+    const bodySection = parts.length > 1 ? parts[1] : '';
 
     // Function to parse headers into a dictionary
     function parseHeaders(headerLines: string[]) {
@@ -82,7 +82,7 @@ export function readHTTPInputFile(filename: string) {
 
         headerLines.forEach(line => {
             const [key, value] = line.split(/:\s(.+)/);
-            headers[key] = value ? value : '';
+            if (key) headers[key] = value ? value : '';
         });
 
         return headers;
@@ -95,8 +95,12 @@ export function readHTTPInputFile(filename: string) {
 
     // Parse the body, if JSON response
     let responseBody = {};
-    if (headers["Content-Type"] == "application/json") {
-        responseBody = JSON.parse(bodySection);
+    if (headers["Content-Type"] == "application/json" && bodySection) {
+        try {
+            responseBody = JSON.parse(bodySection);
+        } catch (e) {
+            console.error("Failed to parse JSON body:", e);
+        }
     }
 
     // Combine headers and body into an object
@@ -105,6 +109,6 @@ export function readHTTPInputFile(filename: string) {
         initialLine: initialLine,
         headers: headers,
         body: responseBody,
-        bodyBytes: toByte(bodySection),
+        bodyBytes: toByte(bodySection || ''),
     };
 }
