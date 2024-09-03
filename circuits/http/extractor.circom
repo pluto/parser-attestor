@@ -162,7 +162,5 @@ template ExtractHeaderValue(DATA_BYTES, headerNameLength, maxValueLength) {
         valueStartingIndex[i] <== valueStartingIndex[i-1] + i * (1-isZeroMask[i]) * isPrevStartingIndex[i];
     }
 
-    log("valueStartingIndex", valueStartingIndex[DATA_BYTES-1]);
-
     value <== SelectSubArray(DATA_BYTES, maxValueLength)(valueMask, valueStartingIndex[DATA_BYTES-1]+1, maxValueLength);
 }

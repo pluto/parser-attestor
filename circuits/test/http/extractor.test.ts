@@ -58,7 +58,6 @@ describe("HTTP :: header Extractor", async () => {
     function generatePassCase(input: number[], headerName: number[], headerValue: number[], desc: string) {
         const description = generateDescription(input);
 
-        console.log("name:", headerName, "value:", headerValue)
         it(`(valid) witness: ${description} ${desc}`, async () => {
             circuit = await circomkit.WitnessTester(`ExtractHeaderValue`, {
                 file: "circuits/http/extractor",

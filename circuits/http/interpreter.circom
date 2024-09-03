@@ -1,6 +1,7 @@
 pragma circom 2.1.9;
 
 include "parser/language.circom";
+include "../utils/search.circom";
 include "../utils/array.circom";
 
 /* TODO:
