@@ -74,12 +74,17 @@
     "get_request": {
         "file": "http/parser/parser",
         "template": "Parser",
-        "params": [60]
+        "params": [
+            60
+        ]
     },
     "get_response": {
         "file": "http/parser/parser",
         "template": "Parser",
-        "params": [89]
+        "params": [
+            89
+        ]
+    },
     "json_extract_value_string": {
         "file": "main/value_string",
         "template": "ExtractStringValue",
