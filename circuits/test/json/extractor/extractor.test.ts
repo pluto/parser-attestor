@@ -5,9 +5,9 @@ import { spawn } from "child_process";
 
 function executeCodegen(inputFilename: string, outputFilename: string) {
     return new Promise((resolve, reject) => {
-        const inputPath = join(__dirname, "..", "..", "..", "..", "examples", "json", "test", "codegen", inputFilename);
+        const inputPath = join(__dirname, "..", "..", "..", "..", "examples", "extractor", inputFilename);
 
-        const codegen = spawn("cargo", ["run", "--bin", "codegen", "--", "--json-file", inputPath, "--output-filename", outputFilename]);
+        const codegen = spawn("cargo", ["run", "extractor", "--template", inputPath, "--output-filename", outputFilename]);
 
         codegen.stdout.on('data', (data) => {
             console.log(`stdout: ${data}`);
