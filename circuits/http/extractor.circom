@@ -4,7 +4,6 @@ include "interpreter.circom";
 include "parser/machine.circom";
 include "../utils/bytes.circom";
 include "../utils/search.circom";
-include "circomlib/circuits/mux1.circom";
 include "circomlib/circuits/gates.circom";
 include "@zk-email/circuits/utils/array.circom";
 
