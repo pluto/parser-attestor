@@ -57,7 +57,7 @@ export function readJSONInputFile(filename: string, key: any[]): [number[], numb
     return [input, keyUnicode, output];
 }
 
-function toByte(data: string): number[] {
+export function toByte(data: string): number[] {
     const byteArray = [];
     for (let i = 0; i < data.length; i++) {
         byteArray.push(data.charCodeAt(i));
