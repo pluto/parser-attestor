@@ -1,6 +1,6 @@
-import { circomkit, WitnessTester, generateDescription, readHTTPInputFile } from "../common";
+import { circomkit, WitnessTester, generateDescription, readHTTPInputFile, toByte } from "../common";
 
-describe("HTTP :: Extractor", async () => {
+describe("HTTP :: body Extractor", async () => {
     let circuit: WitnessTester<["data"], ["response"]>;
 
 
@@ -49,5 +49,40 @@ describe("HTTP :: Extractor", async () => {
         output3.pop();
         output3.pop();
         generatePassCase(parsedHttp.input, output3, "output length less than actual length");
+    });
+});
+
+describe("HTTP :: header Extractor", async () => {
+    let circuit: WitnessTester<["data", "header"], ["value"]>;
+
+    function generatePassCase(input: number[], headerName: number[], headerValue: number[], desc: string) {
+        const description = generateDescription(input);
+
+        it(`(valid) witness: ${description} ${desc}`, async () => {
+            circuit = await circomkit.WitnessTester(`ExtractHeaderValue`, {
+                file: "circuits/http/extractor",
+                template: "ExtractHeaderValue",
+                params: [input.length, headerName.length, headerValue.length],
+            });
+            console.log("#constraints:", await circuit.getConstraintCount());
+
+            await circuit.expectPass({ data: input, header: headerName }, { value: headerValue });
+        });
+    }
+
+    describe("response", async () => {
+
+        let parsedHttp = readHTTPInputFile("get_response.http");
+
+        generatePassCase(parsedHttp.input, toByte("Content-Length"), toByte(parsedHttp.headers["Content-Length"]), "");
+
+        // let output2 = parsedHttp.bodyBytes.slice(0);
+        // output2.push(0, 0, 0, 0);
+        // generatePassCase(parsedHttp.input, output2, "output length more than actual length");
+
+        // let output3 = parsedHttp.bodyBytes.slice(0);
+        // output3.pop();
+        // // output3.pop(); // TODO: fails due to shift subarray bug
+        // generatePassCase(parsedHttp.input, output3, "output length less than actual length");
     });
 });
