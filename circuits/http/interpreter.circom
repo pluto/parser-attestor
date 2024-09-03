@@ -4,13 +4,15 @@ include "parser/language.circom";
 include "../utils/search.circom";
 include "../utils/array.circom";
 
-/* TODO:
-Notes --
-- This is a pretty efficient way to simply check what the method used in a request is by checking
-  the first `DATA_LENGTH` number of bytes.
-- Could probably change this to a template that checks if it is one of the given methods
-  so we don't check them all in one
-*/
+
+template inMethod() {
+    signal input parsing_start;
+    signal output out;
+    
+    out <== IsEqual()([parsing_start, 1]);
+}
+
+// TODO: This likely isn't really an "Intepreter" thing
 template MethodMatch(dataLen, methodLen) {
     signal input data[dataLen];
     signal input method[methodLen];

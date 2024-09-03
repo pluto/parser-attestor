@@ -7,11 +7,11 @@ include "../utils/search.circom";
 include "circomlib/circuits/gates.circom";
 include "@zk-email/circuits/utils/array.circom";
 
-template LockRequestLineData(DATA_BYTES, methodLength, targetLength, versionLength) {
+template LockRequestLineData(DATA_BYTES, methodLen, targetLen, versionLen) {
     signal input data[DATA_BYTES];
-    signal input method[methodLength];
-    signal input target[targetLength];
-    signal input version[versionLength];
+    signal input method[methodLen];
+    signal input target[targetLen];
+    signal input version[versionLen];
 
     //--------------------------------------------------------------------------------------------//
     //-CONSTRAINTS--------------------------------------------------------------------------------//
@@ -31,9 +31,9 @@ template LockRequestLineData(DATA_BYTES, methodLength, targetLength, versionLeng
     State[0].parsing_body   <== 0;
     State[0].line_status    <== 0;
 
-    signal methodLock;
-    signal targetLock;
-    signal versionLock;
+    signal methodIsEqual[methodLen];
+    methodIsEqual[0] <== IsEqual()([data[0],method[0]]);
+    methodIsEqual[0] === 1;
 
     for(var data_idx = 1; data_idx < DATA_BYTES; data_idx++) {
         State[data_idx]                  = StateUpdate();
@@ -44,6 +44,11 @@ template LockRequestLineData(DATA_BYTES, methodLength, targetLength, versionLeng
         State[data_idx].parsing_field_value <== State[data_idx-1].next_parsing_field_value;
         State[data_idx].parsing_body   <== State[data_idx - 1].next_parsing_body;
         State[data_idx].line_status    <== State[data_idx - 1].next_line_status;
+        
+        if(data_idx < methodLen) {
+            methodIsEqual[data_idx] <== IsEqual()([data[data_idx], method[data_idx]]);
+            methodIsEqual[data_idx] === 1;
+        }
 
         // Debugging
         log("State[", data_idx, "].parsing_start      ", "= ", State[data_idx].parsing_start);

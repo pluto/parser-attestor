@@ -22,7 +22,7 @@ describe("HTTP :: Interpreter", async () => {
         function generateFailCase(input: number[], method: number[], index: number, desc: string) {
             const description = generateDescription(input);
 
-            it(`(valid) witness: ${description} ${desc}`, async () => {
+            it(`(invalid) witness: ${description} ${desc}`, async () => {
                 circuit = await circomkit.WitnessTester(`LockRequestLineData`, {
                     file: "circuits/http/interpreter",
                     template: "MethodMatch",
