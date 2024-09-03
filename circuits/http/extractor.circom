@@ -24,6 +24,8 @@ template ExtractResponse(DATA_BYTES, maxContentLength) {
     State[0].byte           <== data[0];
     State[0].parsing_start  <== 1;
     State[0].parsing_header <== 0;
+    State[0].parsing_field_name <== 0;
+    State[0].parsing_field_value <== 0;
     State[0].parsing_body   <== 0;
     State[0].line_status    <== 0;
 
@@ -35,6 +37,8 @@ template ExtractResponse(DATA_BYTES, maxContentLength) {
         State[data_idx].byte           <== data[data_idx];
         State[data_idx].parsing_start  <== State[data_idx - 1].next_parsing_start;
         State[data_idx].parsing_header <== State[data_idx - 1].next_parsing_header;
+        State[data_idx].parsing_field_name <== State[data_idx-1].next_parsing_field_name;
+        State[data_idx].parsing_field_value <== State[data_idx-1].next_parsing_field_value;
         State[data_idx].parsing_body   <== State[data_idx - 1].next_parsing_body;
         State[data_idx].line_status    <== State[data_idx - 1].next_line_status;
 
@@ -42,18 +46,22 @@ template ExtractResponse(DATA_BYTES, maxContentLength) {
         dataMask[data_idx] <== data[data_idx] * State[data_idx].next_parsing_body;
 
         // Debugging
-        log("State[", data_idx, "].parsing_start ", "= ", State[data_idx].parsing_start);
-        log("State[", data_idx, "].parsing_header", "= ", State[data_idx].parsing_header);
-        log("State[", data_idx, "].parsing_body  ", "= ", State[data_idx].parsing_body);
-        log("State[", data_idx, "].line_status   ", "= ", State[data_idx].line_status);
+        log("State[", data_idx, "].parsing_start      ", "= ", State[data_idx].parsing_start);
+        log("State[", data_idx, "].parsing_header     ", "= ", State[data_idx].parsing_header);
+        log("State[", data_idx, "].parsing_field_name ", "= ", State[data_idx].parsing_field_name);
+        log("State[", data_idx, "].parsing_field_value", "= ", State[data_idx].parsing_field_value);
+        log("State[", data_idx, "].parsing_body       ", "= ", State[data_idx].parsing_body);
+        log("State[", data_idx, "].line_status        ", "= ", State[data_idx].line_status);
         log("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
     }
 
     // Debugging
-    log("State[", DATA_BYTES, "].parsing_start ", "= ", State[DATA_BYTES-1].next_parsing_start);
-    log("State[", DATA_BYTES, "].parsing_header", "= ", State[DATA_BYTES-1].next_parsing_header);
-    log("State[", DATA_BYTES, "].parsing_body  ", "= ", State[DATA_BYTES-1].next_parsing_body);
-    log("State[", DATA_BYTES, "].line_status   ", "= ", State[DATA_BYTES-1].next_line_status);
+    log("State[", DATA_BYTES, "].parsing_start      ", "= ", State[DATA_BYTES-1].next_parsing_start);
+    log("State[", DATA_BYTES, "].parsing_header     ", "= ", State[DATA_BYTES-1].next_parsing_header);
+    log("State[", DATA_BYTES, "].parsing_field_name ", "= ", State[DATA_BYTES-1].parsing_field_name);
+    log("State[", DATA_BYTES, "].parsing_field_value", "= ", State[DATA_BYTES-1].parsing_field_value);
+    log("State[", DATA_BYTES, "].parsing_body       ", "= ", State[DATA_BYTES-1].next_parsing_body);
+    log("State[", DATA_BYTES, "].line_status        ", "= ", State[DATA_BYTES-1].next_line_status);
     log("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
 
     signal valueStartingIndex[DATA_BYTES];
