@@ -5,15 +5,14 @@
         "version": "HTTP/1.1",
         "headers": [
             [
-                "Accept",
-                "application/json"
-            ],
-            [
                 "Host",
                 "localhost"
+            ],
+            [
+                "Accept",
+                "application/json"
             ]
-        ],
-        "Host": "localhost"
+        ]
     },
     "response": {
         "version": "HTTP/1.1",
@@ -22,10 +21,6 @@
             [
                 "Content-Type",
                 "application/json"
-            ],
-            [
-                "Content-Length",
-                19
             ]
         ]
     }
