@@ -58,7 +58,7 @@ template HeaderFieldNameValueMatch(dataLen, nameLen, valueLen) {
 
     component syntax = Syntax();
 
-    signal output value[valueLen];
+    // signal output value[valueLen];
 
     // is name matches
     signal headerNameMatch <== SubstringMatchWithIndex(dataLen, nameLen)(data, headerName, r, index);

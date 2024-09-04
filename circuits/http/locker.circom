@@ -137,10 +137,9 @@ template LockHeader(DATA_BYTES, headerNameLen, headerValueLen) {
     State[0].parsing_body   <== 0;
     State[0].line_status    <== 0;
 
-    signal headerMatch[DATA_BYTES];
-    headerMatch[0] <== 0;
-    var headerMatchIdx =  1;
-    var foundHeaderMatch = 0;
+    signal headerNameValueMatch[DATA_BYTES];
+    headerNameValueMatch[0] <== 0;
+    var hasMatched = 0;
 
     for(var data_idx = 1; data_idx < DATA_BYTES; data_idx++) {
         State[data_idx]                  = StateUpdate();
@@ -152,11 +151,9 @@ template LockHeader(DATA_BYTES, headerNameLen, headerValueLen) {
         State[data_idx].parsing_body   <== State[data_idx - 1].next_parsing_body;
         State[data_idx].line_status    <== State[data_idx - 1].next_line_status;
 
-        // apply value mask to data
         // TODO: change r
-        headerMatch[data_idx] <== HeaderFieldNameMatch(DATA_BYTES, headerNameLen)(data, header, 100, data_idx);
-        foundHeaderMatch = foundHeaderMatch + headerMatch[data_idx];
-        headerMatchIdx += (1 - headerMatch[data_idx]) * (1 - foundHeaderMatch);
+        headerNameValueMatch[data_idx] <== HeaderFieldNameValueMatch(DATA_BYTES, headerNameLen, headerValueLen)(data, header, value, 100, data_idx);
+        hasMatched += headerNameValueMatch[data_idx];
 
         // Debugging
         log("State[", data_idx, "].parsing_start      ", "= ", State[data_idx].parsing_start);
@@ -165,9 +162,6 @@ template LockHeader(DATA_BYTES, headerNameLen, headerValueLen) {
         log("State[", data_idx, "].parsing_field_value", "= ", State[data_idx].parsing_field_value);
         log("State[", data_idx, "].parsing_body       ", "= ", State[data_idx].parsing_body);
         log("State[", data_idx, "].line_status        ", "= ", State[data_idx].line_status);
-        log("------------------------------------------------");
-        log("headerMatch[", data_idx, "]               =",headerMatch[data_idx] );
-        log("headerMatchIdx                  =", headerMatchIdx );
         log("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
     }
 
@@ -179,5 +173,7 @@ template LockHeader(DATA_BYTES, headerNameLen, headerValueLen) {
     log("State[", DATA_BYTES, "].parsing_body       ", "= ", State[DATA_BYTES-1].next_parsing_body);
     log("State[", DATA_BYTES, "].line_status        ", "= ", State[DATA_BYTES-1].next_line_status);
     log("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
+
+    hasMatched === 1;
 
 }
