@@ -4,12 +4,29 @@ include "parser/language.circom";
 include "../utils/search.circom";
 include "../utils/array.circom";
 
+template inStartLine() {
+    signal input parsing_start;
+    signal output out;
 
-template inMethod() {
+    signal isMethod <== IsEqual()([parsing_start, 1]);
+    signal isTarget <== IsEqual()([parsing_start, 2]);
+    signal isVersion <== IsEqual()([parsing_start, 3]);
+
+    out <== isMethod + isTarget + isVersion;
+}
+
+template inTarget() {
     signal input parsing_start;
     signal output out;
     
-    out <== IsEqual()([parsing_start, 1]);
+    out <== IsEqual()([parsing_start, 2]);
+}
+
+template inVersion() {
+    signal input parsing_start;
+    signal output out;
+
+    out <== IsEqual()([parsing_start, 3]);
 }
 
 // TODO: This likely isn't really an "Intepreter" thing
