@@ -19,7 +19,7 @@ struct Response {
     version: String,
     status: String,
     message: String,
-    headers: Vec<(String, serde_json::Value)>,
+    headers: Vec<(String, String)>,
 }
 
 use std::fs::{self, create_dir_all};
@@ -41,10 +41,11 @@ fn request_locker_circuit(
 
     // template LockHTTP(DATA_BYTES, beginningLen, middleLen, finalLen, headerNameLen1, headerValueLen1, ...) {
     {
-        circuit_buffer += "template LockHTTP(DATA_BYTES, beginningLen, middleLen, finalLen,";
+        circuit_buffer += "template LockHTTP(DATA_BYTES, beginningLen, middleLen, finalLen ";
         for (i, _header) in data.request.headers.iter().enumerate() {
-            circuit_buffer += &format!("keyLen{}, depth{}, ", i + 1, i + 1);
+            circuit_buffer += &format!(", headerNameLen{}, headerValueLen{}", i + 1, i + 1);
         }
+        circuit_buffer += ") {";
     }
 
     /*
@@ -54,7 +55,16 @@ fn request_locker_circuit(
     signal input key3[keyLen3];
      */
     {
-        circuit_buffer += "    signal input data[DATA_BYTES];\n\n";
+        circuit_buffer += r#"
+    signal input data[DATA_BYTES];
+
+    // Start line signals
+    signal input beginning[beginningLen];
+    signal input middle[middleLen];
+    signal input final[finalLen];
+
+    // Header signals
+"#;
 
         for (i, _header) in data.request.headers.iter().enumerate() {
             circuit_buffer += &format!(
@@ -106,11 +116,10 @@ fn request_locker_circuit(
     {
         for (i, _header) in data.request.headers.iter().enumerate() {
             circuit_buffer += &format!("    signal headerNameValueMatch{}[DATA_BYTES];\n", i + 1);
-            circuit_buffer += &format!("    headerNameValueMatch{}[DATA_BYTES] <== 0;\n", i + 1);
-            circuit_buffer += &format!("    var hasMatchedHeaderValue{} = 0", i + 1);
+            circuit_buffer += &format!("    headerNameValueMatch{}[0] <== 0;\n", i + 1);
+            circuit_buffer += &format!("    var hasMatchedHeaderValue{} = 0;\n\n", i + 1);
         }
     }
-    circuit_buffer += "\n";
 
     circuit_buffer += r#"
     for(var data_idx = 1; data_idx < DATA_BYTES; data_idx++) {
@@ -200,8 +209,7 @@ fn request_locker_circuit(
     signal finalMatch <== SubstringMatchWithIndex(DATA_BYTES, finalLen)(data, final, 100, middle_end_counter);
     finalMatch === 1;
     // -2 here for the CRLF
-    finalLen === final_end_counter - middle_end_counter - 2;
-        
+    finalLen === final_end_counter - middle_end_counter - 2;  
 "#;
     }
 
@@ -211,6 +219,8 @@ fn request_locker_circuit(
             circuit_buffer += &format!("    hasMatchedHeaderValue{} === 1;\n", i + 1);
         }
     }
+    // End file
+    circuit_buffer += "\n}";
 
     // write circuits to file
     let mut file_path = std::env::current_dir()?;
