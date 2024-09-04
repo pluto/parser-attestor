@@ -12,14 +12,13 @@ struct Request {
     target: String,
     version: String,
     headers: Vec<(String, String)>,
-    #[serde(rename = "Host")]
-    host: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 struct Response {
     version: String,
     status: String,
+    message: String,
     headers: Vec<(String, serde_json::Value)>,
 }
 

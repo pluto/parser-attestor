@@ -101,13 +101,83 @@ template LockStartLine(DATA_BYTES, beginningLen, middleLen, finalLen) {
     beginningLen === middle_start_counter - 1;
 
     // Check middle is correct by substring match and length check
+    // TODO: change r
     signal middleMatch <== SubstringMatchWithIndex(DATA_BYTES, middleLen)(data, middle, 100, middle_start_counter);
     middleMatch === 1;
     middleLen === middle_end_counter - middle_start_counter - 1;
     
     // Check final is correct by substring match and length check
+    // TODO: change r
     signal finalMatch <== SubstringMatchWithIndex(DATA_BYTES, finalLen)(data, final, 100, middle_end_counter);
     finalMatch === 1;
     // -2 here for the CRLF
     finalLen === final_end_counter - middle_end_counter - 2;
+}
+
+template LockHeader(DATA_BYTES, headerNameLen, headerValueLen) {
+    signal input data[DATA_BYTES];
+    signal input header[headerNameLen];
+    signal input value[headerValueLen];
+
+    //--------------------------------------------------------------------------------------------//
+    //-CONSTRAINTS--------------------------------------------------------------------------------//
+    //--------------------------------------------------------------------------------------------//
+    component dataASCII = ASCII(DATA_BYTES);
+    dataASCII.in <== data;
+    //--------------------------------------------------------------------------------------------//
+
+    // Initialze the parser
+    component State[DATA_BYTES];
+    State[0] = StateUpdate();
+    State[0].byte           <== data[0];
+    State[0].parsing_start  <== 1;
+    State[0].parsing_header <== 0;
+    State[0].parsing_field_name <== 0;
+    State[0].parsing_field_value <== 0;
+    State[0].parsing_body   <== 0;
+    State[0].line_status    <== 0;
+
+    signal headerMatch[DATA_BYTES];
+    headerMatch[0] <== 0;
+    var headerMatchIdx =  1;
+    var foundHeaderMatch = 0;
+
+    for(var data_idx = 1; data_idx < DATA_BYTES; data_idx++) {
+        State[data_idx]                  = StateUpdate();
+        State[data_idx].byte           <== data[data_idx];
+        State[data_idx].parsing_start  <== State[data_idx - 1].next_parsing_start;
+        State[data_idx].parsing_header <== State[data_idx - 1].next_parsing_header;
+        State[data_idx].parsing_field_name <== State[data_idx-1].next_parsing_field_name;
+        State[data_idx].parsing_field_value <== State[data_idx-1].next_parsing_field_value;
+        State[data_idx].parsing_body   <== State[data_idx - 1].next_parsing_body;
+        State[data_idx].line_status    <== State[data_idx - 1].next_line_status;
+
+        // apply value mask to data
+        // TODO: change r
+        headerMatch[data_idx] <== HeaderFieldNameMatch(DATA_BYTES, headerNameLen)(data, header, 100, data_idx);
+        foundHeaderMatch = foundHeaderMatch + headerMatch[data_idx];
+        headerMatchIdx += (1 - headerMatch[data_idx]) * (1 - foundHeaderMatch);
+
+        // Debugging
+        log("State[", data_idx, "].parsing_start      ", "= ", State[data_idx].parsing_start);
+        log("State[", data_idx, "].parsing_header     ", "= ", State[data_idx].parsing_header);
+        log("State[", data_idx, "].parsing_field_name ", "= ", State[data_idx].parsing_field_name);
+        log("State[", data_idx, "].parsing_field_value", "= ", State[data_idx].parsing_field_value);
+        log("State[", data_idx, "].parsing_body       ", "= ", State[data_idx].parsing_body);
+        log("State[", data_idx, "].line_status        ", "= ", State[data_idx].line_status);
+        log("------------------------------------------------");
+        log("headerMatch[", data_idx, "]               =",headerMatch[data_idx] );
+        log("headerMatchIdx                  =", headerMatchIdx );
+        log("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
+    }
+
+    // Debugging
+    log("State[", DATA_BYTES, "].parsing_start      ", "= ", State[DATA_BYTES-1].next_parsing_start);
+    log("State[", DATA_BYTES, "].parsing_header     ", "= ", State[DATA_BYTES-1].next_parsing_header);
+    log("State[", DATA_BYTES, "].parsing_field_name ", "= ", State[DATA_BYTES-1].parsing_field_name);
+    log("State[", DATA_BYTES, "].parsing_field_value", "= ", State[DATA_BYTES-1].parsing_field_value);
+    log("State[", DATA_BYTES, "].parsing_body       ", "= ", State[DATA_BYTES-1].next_parsing_body);
+    log("State[", DATA_BYTES, "].line_status        ", "= ", State[DATA_BYTES-1].next_line_status);
+    log("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
+
 }
