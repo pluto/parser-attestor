@@ -71,7 +71,6 @@ template LockRequestLineData(DATA_BYTES, methodLen, targetLen, versionLen) {
         versionMask[data_idx] <== inVersion()(State[data_idx].parsing_start);
         target_start_counter += startLineMask[data_idx] - targetMask[data_idx] - versionMask[data_idx];
         // The end of target is the start of the version 
-        // TODO: perhaps aside from whitespace, so we should be a bit more careful perhaps
         target_end_counter += startLineMask[data_idx] - versionMask[data_idx];
         version_end_counter += startLineMask[data_idx];
 

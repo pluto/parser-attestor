@@ -38,6 +38,14 @@ describe("HTTP :: Locker :: RequestLine", async () => {
         generatePassCase(parsedHttp.input, toByte("GET"), toByte("/api"), toByte("HTTP/1.1"), "");
         generateFailCase(parsedHttp.input.slice(0), toByte("POST"), toByte("/api"), toByte("HTTP/1.1"), "");
         generateFailCase(parsedHttp.input.slice(0), toByte("GET"), toByte("/"), toByte("HTTP/1.1"), "");
-        generateFailCase(parsedHttp.input.slice(0), toByte("GET"), toByte("/"), toByte("HTTP"), "");
+        generateFailCase(parsedHttp.input.slice(0), toByte("GET"), toByte("/api"), toByte("HTTP"), "");
+    });
+
+    describe("POST", async () => {
+        let parsedHttp = readHTTPInputFile("post_request.http");
+        generatePassCase(parsedHttp.input, toByte("POST"), toByte("/contact_form.php"), toByte("HTTP/1.1"), "");
+        generateFailCase(parsedHttp.input.slice(0), toByte("GET"), toByte("/contact_form.php"), toByte("HTTP/1.1"), "");
+        generateFailCase(parsedHttp.input.slice(0), toByte("POST"), toByte("/"), toByte("HTTP/1.1"), "");
+        generateFailCase(parsedHttp.input.slice(0), toByte("POST"), toByte("/contact_form.php"), toByte("HTTP"), "");
     });
 });
