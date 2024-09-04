@@ -22,14 +22,14 @@ template inStartLine() {
     out <== isMethod + isTarget + isVersion;
 }
 
-template inTarget() {
+template inStartMiddle() {
     signal input parsing_start;
     signal output out;
     
     out <== IsEqual()([parsing_start, 2]);
 }
 
-template inVersion() {
+template inStartEnd() {
     signal input parsing_start;
     signal output out;
 

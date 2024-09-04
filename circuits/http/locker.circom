@@ -7,11 +7,11 @@ include "../utils/search.circom";
 include "circomlib/circuits/gates.circom";
 include "@zk-email/circuits/utils/array.circom";
 
-template LockRequestLineData(DATA_BYTES, methodLen, targetLen, versionLen) {
+template LockStartLine(DATA_BYTES, beginningLen, middleLen, finalLen) {
     signal input data[DATA_BYTES];
-    signal input method[methodLen];
-    signal input target[targetLen];
-    signal input version[versionLen];
+    signal input beginning[beginningLen];
+    signal input middle[middleLen];
+    signal input final[finalLen];
 
     //--------------------------------------------------------------------------------------------//
     //-CONSTRAINTS--------------------------------------------------------------------------------//
@@ -32,23 +32,23 @@ template LockRequestLineData(DATA_BYTES, methodLen, targetLen, versionLen) {
     State[0].line_status    <== 0;
 
     /* 
-    Note, because we know a method is the very first thing in a request
-    we can make this more efficient by just comparing the first `methodLen` bytes
-    of the data ASCII against the method ASCII itself.
+    Note, because we know a beginning is the very first thing in a request
+    we can make this more efficient by just comparing the first `beginningLen` bytes
+    of the data ASCII against the beginning ASCII itself.
     */
-    // Check first method byte
-    signal methodIsEqual[methodLen];
-    methodIsEqual[0] <== IsEqual()([data[0],method[0]]);
-    methodIsEqual[0] === 1;
+    // Check first beginning byte
+    signal beginningIsEqual[beginningLen];
+    beginningIsEqual[0] <== IsEqual()([data[0],beginning[0]]);
+    beginningIsEqual[0] === 1;
 
-    // Setup to check target bytes
+    // Setup to check middle bytes
     signal startLineMask[DATA_BYTES];
-    signal targetMask[DATA_BYTES];
-    signal versionMask[DATA_BYTES];
+    signal middleMask[DATA_BYTES];
+    signal finalMask[DATA_BYTES];
 
-    var target_start_counter = 1;
-    var target_end_counter = 1;
-    var version_end_counter = 1;
+    var middle_start_counter = 1;
+    var middle_end_counter = 1;
+    var final_end_counter = 1;
     for(var data_idx = 1; data_idx < DATA_BYTES; data_idx++) {
         State[data_idx]                  = StateUpdate();
         State[data_idx].byte           <== data[data_idx];
@@ -59,20 +59,20 @@ template LockRequestLineData(DATA_BYTES, methodLen, targetLen, versionLen) {
         State[data_idx].parsing_body   <== State[data_idx - 1].next_parsing_body;
         State[data_idx].line_status    <== State[data_idx - 1].next_line_status;
         
-        // Check remaining method bytes
-        if(data_idx < methodLen) {
-            methodIsEqual[data_idx] <== IsEqual()([data[data_idx], method[data_idx]]);
-            methodIsEqual[data_idx] === 1;
+        // Check remaining beginning bytes
+        if(data_idx < beginningLen) {
+            beginningIsEqual[data_idx] <== IsEqual()([data[data_idx], beginning[data_idx]]);
+            beginningIsEqual[data_idx] === 1;
         }
 
-        // Target
+        // Middle
         startLineMask[data_idx] <== inStartLine()(State[data_idx].parsing_start);
-        targetMask[data_idx] <==  inTarget()(State[data_idx].parsing_start);
-        versionMask[data_idx] <== inVersion()(State[data_idx].parsing_start);
-        target_start_counter += startLineMask[data_idx] - targetMask[data_idx] - versionMask[data_idx];
-        // The end of target is the start of the version 
-        target_end_counter += startLineMask[data_idx] - versionMask[data_idx];
-        version_end_counter += startLineMask[data_idx];
+        middleMask[data_idx] <==  inStartMiddle()(State[data_idx].parsing_start);
+        finalMask[data_idx] <== inStartEnd()(State[data_idx].parsing_start);
+        middle_start_counter += startLineMask[data_idx] - middleMask[data_idx] - finalMask[data_idx];
+        // The end of middle is the start of the final 
+        middle_end_counter += startLineMask[data_idx] - finalMask[data_idx];
+        final_end_counter += startLineMask[data_idx];
 
         // Debugging
         log("State[", data_idx, "].parsing_start       = ", State[data_idx].parsing_start);
@@ -82,9 +82,9 @@ template LockRequestLineData(DATA_BYTES, methodLen, targetLen, versionLen) {
         log("State[", data_idx, "].parsing_body        = ", State[data_idx].parsing_body);
         log("State[", data_idx, "].line_status         = ", State[data_idx].line_status);
         log("------------------------------------------------");
-        log("target_start_counter                      = ", target_start_counter);
-        log("target_end_counter                        = ", target_end_counter);
-        log("version_end_counter                       = ", version_end_counter);
+        log("middle_start_counter                      = ", middle_start_counter);
+        log("middle_end_counter                        = ", middle_end_counter);
+        log("final_end_counter                       = ", final_end_counter);
         log("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
     } 
 
@@ -97,16 +97,17 @@ template LockRequestLineData(DATA_BYTES, methodLen, targetLen, versionLen) {
     log("State[", DATA_BYTES, "].line_status        ", "= ", State[DATA_BYTES-1].next_line_status);
     log("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
 
-    // Check target is correct by substring match and length check
-    signal targetMatch <== SubstringMatchWithIndex(DATA_BYTES, targetLen)(data, target, 100, target_start_counter);
-    targetMatch === 1;
-    signal targetIsCorrectLength <== IsEqual()([targetLen, target_end_counter - target_start_counter - 1]);
-    targetIsCorrectLength === 1;
+    // Additionally verify beginning had correct length
+    beginningLen === middle_start_counter - 1;
+
+    // Check middle is correct by substring match and length check
+    signal middleMatch <== SubstringMatchWithIndex(DATA_BYTES, middleLen)(data, middle, 100, middle_start_counter);
+    middleMatch === 1;
+    middleLen === middle_end_counter - middle_start_counter - 1;
     
-    // Check version is correct by substring match and length check
-    signal versionMatch <== SubstringMatchWithIndex(DATA_BYTES, versionLen)(data, version, 100, target_end_counter);
-    versionMatch === 1;
+    // Check final is correct by substring match and length check
+    signal finalMatch <== SubstringMatchWithIndex(DATA_BYTES, finalLen)(data, final, 100, middle_end_counter);
+    finalMatch === 1;
     // -2 here for the CRLF
-    signal versionIsCorrectLength <== IsEqual()([versionLen, version_end_counter - target_end_counter - 2]);
-    versionIsCorrectLength === 1;
+    finalLen === final_end_counter - middle_end_counter - 2;
 }
