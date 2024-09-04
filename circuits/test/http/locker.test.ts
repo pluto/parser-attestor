@@ -33,11 +33,11 @@ describe("HTTP :: Locker :: RequestLine", async () => {
         });
     }
 
-    describe("request", async () => {
-
+    describe("GET", async () => {
         let parsedHttp = readHTTPInputFile("get_request.http");
         generatePassCase(parsedHttp.input, toByte("GET"), toByte("/api"), toByte("HTTP/1.1"), "");
         generateFailCase(parsedHttp.input.slice(0), toByte("POST"), toByte("/api"), toByte("HTTP/1.1"), "");
         generateFailCase(parsedHttp.input.slice(0), toByte("GET"), toByte("/"), toByte("HTTP/1.1"), "");
+        generateFailCase(parsedHttp.input.slice(0), toByte("GET"), toByte("/"), toByte("HTTP"), "");
     });
 });

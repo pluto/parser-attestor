@@ -4,6 +4,13 @@ include "parser/language.circom";
 include "../utils/search.circom";
 include "../utils/array.circom";
 
+// template notInStartLine() {
+//     signal input parsing_start;
+//     signal output out;
+
+//     out <== IsZero()(parsing_start);
+// }
+
 template inStartLine() {
     signal input parsing_start;
     signal output out;

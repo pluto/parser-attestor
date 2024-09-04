@@ -31,6 +31,11 @@ template LockRequestLineData(DATA_BYTES, methodLen, targetLen, versionLen) {
     State[0].parsing_body   <== 0;
     State[0].line_status    <== 0;
 
+    /* 
+    Note, because we know a method is the very first thing in a request
+    we can make this more efficient by just comparing the first `methodLen` bytes
+    of the data ASCII against the method ASCII itself.
+    */
     // Check first method byte
     signal methodIsEqual[methodLen];
     methodIsEqual[0] <== IsEqual()([data[0],method[0]]);
@@ -43,6 +48,7 @@ template LockRequestLineData(DATA_BYTES, methodLen, targetLen, versionLen) {
 
     var target_start_counter = 1;
     var target_end_counter = 1;
+    var version_end_counter = 1;
     for(var data_idx = 1; data_idx < DATA_BYTES; data_idx++) {
         State[data_idx]                  = StateUpdate();
         State[data_idx].byte           <== data[data_idx];
@@ -64,7 +70,10 @@ template LockRequestLineData(DATA_BYTES, methodLen, targetLen, versionLen) {
         targetMask[data_idx] <==  inTarget()(State[data_idx].parsing_start);
         versionMask[data_idx] <== inVersion()(State[data_idx].parsing_start);
         target_start_counter += startLineMask[data_idx] - targetMask[data_idx] - versionMask[data_idx];
+        // The end of target is the start of the version 
+        // TODO: perhaps aside from whitespace, so we should be a bit more careful perhaps
         target_end_counter += startLineMask[data_idx] - versionMask[data_idx];
+        version_end_counter += startLineMask[data_idx];
 
         // Debugging
         log("State[", data_idx, "].parsing_start       = ", State[data_idx].parsing_start);
@@ -76,6 +85,7 @@ template LockRequestLineData(DATA_BYTES, methodLen, targetLen, versionLen) {
         log("------------------------------------------------");
         log("target_start_counter                      = ", target_start_counter);
         log("target_end_counter                        = ", target_end_counter);
+        log("version_end_counter                       = ", version_end_counter);
         log("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
     } 
 
@@ -93,4 +103,11 @@ template LockRequestLineData(DATA_BYTES, methodLen, targetLen, versionLen) {
     targetMatch === 1;
     signal targetIsCorrectLength <== IsEqual()([targetLen, target_end_counter - target_start_counter - 1]);
     targetIsCorrectLength === 1;
+    
+    // Check version is correct by substring match and length check
+    signal versionMatch <== SubstringMatchWithIndex(DATA_BYTES, versionLen)(data, version, 100, target_end_counter);
+    versionMatch === 1;
+    // -2 here for the CRLF
+    signal versionIsCorrectLength <== IsEqual()([versionLen, version_end_counter - target_end_counter - 2]);
+    versionIsCorrectLength === 1;
 }
