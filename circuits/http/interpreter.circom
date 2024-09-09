@@ -4,35 +4,41 @@ include "parser/language.circom";
 include "../utils/search.circom";
 include "../utils/array.circom";
 
-/* TODO:
-Notes --
-- This is a pretty efficient way to simply check what the method used in a request is by checking
-  the first `DATA_LENGTH` number of bytes.
-- Could probably change this to a template that checks if it is one of the given methods
-  so we don't check them all in one
-*/
-template YieldMethod(DATA_LENGTH) {
-    signal input bytes[DATA_LENGTH];
-    signal output MethodTag;
+template inStartLine() {
+    signal input parsing_start;
+    signal output out;
 
-    component RequestMethod = RequestMethod();
-    component RequestMethodTag = RequestMethodTag();
+    signal isBeginning <== IsEqual()([parsing_start, 1]);
+    signal isMiddle <== IsEqual()([parsing_start, 2]);
+    signal isEnd <== IsEqual()([parsing_start, 3]);
 
-    component IsGet = IsEqualArray(3);
-    for(var byte_idx = 0; byte_idx < 3; byte_idx++) {
-        IsGet.in[0][byte_idx] <== bytes[byte_idx];
-        IsGet.in[1][byte_idx] <== RequestMethod.GET[byte_idx];
-    }
-    signal TagGet <== IsGet.out * RequestMethodTag.GET;
+    out <== isBeginning + isMiddle + isEnd;
+}
 
-    component IsPost = IsEqualArray(4);
-    for(var byte_idx = 0; byte_idx < 4; byte_idx++) {
-        IsPost.in[0][byte_idx] <== bytes[byte_idx];
-        IsPost.in[1][byte_idx] <== RequestMethod.POST[byte_idx];
-    }
-    signal TagPost <== IsPost.out * RequestMethodTag.POST;
+template inStartMiddle() {
+    signal input parsing_start;
+    signal output out;
+    
+    out <== IsEqual()([parsing_start, 2]);
+}
 
-    MethodTag <== TagGet + TagPost;
+template inStartEnd() {
+    signal input parsing_start;
+    signal output out;
+
+    out <== IsEqual()([parsing_start, 3]);
+}
+
+// TODO: This likely isn't really an "Intepreter" thing
+template MethodMatch(dataLen, methodLen) {
+    signal input data[dataLen];
+    signal input method[methodLen];
+
+    signal input r;
+    signal input index;
+
+    signal isMatch <== SubstringMatchWithIndex(dataLen, methodLen)(data, method, r, index);
+    isMatch === 1;
 }
 
 // https://www.rfc-editor.org/rfc/rfc9112.html#name-field-syntax
@@ -45,7 +51,7 @@ template HeaderFieldNameValueMatch(dataLen, nameLen, valueLen) {
 
     component syntax = Syntax();
 
-    signal output value[valueLen];
+    // signal output value[valueLen];
 
     // is name matches
     signal headerNameMatch <== SubstringMatchWithIndex(dataLen, nameLen)(data, headerName, r, index);

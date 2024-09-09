@@ -1,25 +1,41 @@
-import { circomkit, WitnessTester, generateDescription } from "../common";
+import { circomkit, WitnessTester, generateDescription, toByte, readHTTPInputFile } from "../common";
 
 describe("HTTP :: Interpreter", async () => {
-    describe("YieldMethod", async () => {
-        let circuit: WitnessTester<["bytes"], ["MethodTag"]>;
+    describe("MethodMatch", async () => {
+        let circuit: WitnessTester<["data", "method", "r", "index"], []>;
 
-        function generatePassCase(input: any, expected: any, depth: number, desc: string) {
+        function generatePassCase(input: number[], method: number[], index: number, desc: string) {
             const description = generateDescription(input);
 
             it(`(valid) witness: ${description} ${desc}`, async () => {
-                circuit = await circomkit.WitnessTester(`YieldMethod`, {
+                circuit = await circomkit.WitnessTester(`LockRequestLineData`, {
                     file: "circuits/http/interpreter",
-                    template: "YieldMethod",
-                    params: [4],
+                    template: "MethodMatch",
+                    params: [input.length, method.length],
                 });
                 console.log("#constraints:", await circuit.getConstraintCount());
 
-                await circuit.expectPass(input, expected);
+                await circuit.expectPass({ data: input, method: method, r: 100, index: index }, {});
             });
         }
 
-        // The string `"GET "`
-        generatePassCase({ bytes: [71, 69, 84, 32] }, { MethodTag: 1 }, 0, "");
+        function generateFailCase(input: number[], method: number[], index: number, desc: string) {
+            const description = generateDescription(input);
+
+            it(`(invalid) witness: ${description} ${desc}`, async () => {
+                circuit = await circomkit.WitnessTester(`LockRequestLineData`, {
+                    file: "circuits/http/interpreter",
+                    template: "MethodMatch",
+                    params: [input.length, method.length],
+                });
+                console.log("#constraints:", await circuit.getConstraintCount());
+
+                await circuit.expectFail({ data: input, method: method, r: 100, index: index });
+            });
+        }
+
+        let parsedHttp = readHTTPInputFile("get_request.http");
+        generatePassCase(parsedHttp.input, toByte("GET"), 0, "");
+        generateFailCase(parsedHttp.input, toByte("POST"), 0, "");
     });
 });
