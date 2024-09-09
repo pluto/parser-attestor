@@ -4,22 +4,15 @@ include "parser/language.circom";
 include "../utils/search.circom";
 include "../utils/array.circom";
 
-// template notInStartLine() {
-//     signal input parsing_start;
-//     signal output out;
-
-//     out <== IsZero()(parsing_start);
-// }
-
 template inStartLine() {
     signal input parsing_start;
     signal output out;
 
-    signal isMethod <== IsEqual()([parsing_start, 1]);
-    signal isTarget <== IsEqual()([parsing_start, 2]);
-    signal isVersion <== IsEqual()([parsing_start, 3]);
+    signal isBeginning <== IsEqual()([parsing_start, 1]);
+    signal isMiddle <== IsEqual()([parsing_start, 2]);
+    signal isEnd <== IsEqual()([parsing_start, 3]);
 
-    out <== isMethod + isTarget + isVersion;
+    out <== isBeginning + isMiddle + isEnd;
 }
 
 template inStartMiddle() {

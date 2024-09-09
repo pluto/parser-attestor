@@ -137,8 +137,10 @@ template LockHeader(DATA_BYTES, headerNameLen, headerValueLen) {
     State[0].parsing_body   <== 0;
     State[0].line_status    <== 0;
 
-    signal headerNameValueMatch[DATA_BYTES];
-    headerNameValueMatch[0] <== 0;
+    component headerFieldNameValueMatch[DATA_BYTES];
+    signal isHeaderFieldNameValueMatch[DATA_BYTES];
+
+    isHeaderFieldNameValueMatch[0] <== 0;
     var hasMatched = 0;
 
     for(var data_idx = 1; data_idx < DATA_BYTES; data_idx++) {
@@ -152,8 +154,13 @@ template LockHeader(DATA_BYTES, headerNameLen, headerValueLen) {
         State[data_idx].line_status    <== State[data_idx - 1].next_line_status;
 
         // TODO: change r
-        headerNameValueMatch[data_idx] <== HeaderFieldNameValueMatch(DATA_BYTES, headerNameLen, headerValueLen)(data, header, value, 100, data_idx);
-        hasMatched += headerNameValueMatch[data_idx];
+        headerFieldNameValueMatch[data_idx] =  HeaderFieldNameValueMatch(DATA_BYTES, headerNameLen, headerValueLen);
+        headerFieldNameValueMatch[data_idx].data <== data;
+        headerFieldNameValueMatch[data_idx].headerName <== header;
+        headerFieldNameValueMatch[data_idx].headerValue <== value;
+        headerFieldNameValueMatch[data_idx].r <== 100; 
+        headerFieldNameValueMatch[data_idx].index <== data_idx;
+        isHeaderFieldNameValueMatch[data_idx] <== isHeaderFieldNameValueMatch[data_idx-1] + headerFieldNameValueMatch[data_idx].out;
 
         // Debugging
         log("State[", data_idx, "].parsing_start      ", "= ", State[data_idx].parsing_start);
@@ -174,6 +181,5 @@ template LockHeader(DATA_BYTES, headerNameLen, headerValueLen) {
     log("State[", DATA_BYTES, "].line_status        ", "= ", State[DATA_BYTES-1].next_line_status);
     log("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
 
-    hasMatched === 1;
-
+    isHeaderFieldNameValueMatch[DATA_BYTES - 1] === 1;
 }
