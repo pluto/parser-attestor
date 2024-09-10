@@ -1,33 +1,48 @@
-# SPARK
-> Succinct Parser Attestation for Reconciliation of Knowledge
+<h1 align="center">
+  SPARK
+</h1>
 
-## Repo Structure
-The repository is currently new and being organized as follows:
-- `src/bin`: binaries
-  - `witness`: Used for doing witness generation
+<div align="center">
+  <a href="https://github.com/pluto/extractor/graphs/contributors">
+    <img src="https://img.shields.io/github/contributors/pluto/spark?style=flat-square&logo=github&logoColor=8b949e&labelColor=282f3b&color=32c955" alt="Contributors" />
+  </a>
+  <a href="https://github.com/pluto/extractor/actions/workflows/test.yaml">
+    <img src="https://img.shields.io/badge/tests-passing-32c955?style=flat-square&logo=github-actions&logoColor=8b949e&labelColor=282f3b" alt="Tests" />
+  </a>
+  <a href="https://github.com/pluto/extractor/actions/workflows/lint.yaml">
+    <img src="https://img.shields.io/badge/lint-passing-32c955?style=flat-square&logo=github-actions&logoColor=8b949e&labelColor=282f3b" alt="Lint" />
+  </a>
+</div>
+
+## Overview
+
+SPARK (Succinct Parser Attestation for Reconciliation of Knowledge) is a project focused on implementing parsers and extractors for various data formats using zero-knowledge proofs.
+
+## Repository Structure
+
+- `src/bin`: Binaries
+  - `witness`: Used for witness generation
   - `codegen`: Used for generating extractor circuits based on input
-- `circuits/`: Has current implementation of circuits
+- `circuits/`: Current implementation of circuits
   - `http`: HTTP parser and extractor
   - `json`: JSON parser and extractor
-  - `utils`: utility circuits
-  - `test`: circuit tests
-- `examples`: reference examples for JSON and HTTP parsers
+  - `utils`: Utility circuits
+  - `test`: Circuit tests
+- `examples/`: Reference examples for JSON and HTTP parsers
 
-## Instructions
+## Getting Started
 
-### Installing `circom` and `snarkjs` toolchain
-Feel free to follow [these instructions](https://docs.circom.io/getting-started/installation/#installing-dependencies).
-Quickly, somewhere on your machine, run the following to get `circom`:
-```
-git clone https://github.com/iden3/circom.git
-cd circom
-cargo build --release
-cargo install --path circom
-```
-Then we get `snarkjs` by:
-```
-npm install -g snarkjs
-```
+### Prerequisites
+
+To use this repo, you need to install the following:
+
+1. `circom` and `snarkjs`:
+   ```sh
+   git clone https://github.com/iden3/circom.git
+   cd circom
+   cargo build --release
+   cargo install --path circom
+   npm install -g snarkjs
 
 ### Circomkit
 You will need `yarn` on your system (brew, or apt-get or something).
@@ -190,3 +205,19 @@ snarkjs groth16 prove extractor_0001.zkey witness.wtns proof.json public.json
 # in rust
 snarkjs groth16 verify verification_key.json public.json proof.json
 ```
+
+
+## Contributing
+
+We welcome contributions to our open-source projects. If you want to contribute or follow along with contributor discussions, join our [main Telegram channel](https://t.me/pluto_xyz/1) to chat about Pluto's development.
+
+Our contributor guidelines can be found in [CONTRIBUTING.md](./CONTRIBUTING.md). A good starting point is issues labelled 'bounty' in our repositories.
+
+Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in the work by you, as defined in the Apache-2.0 license, shall be dual licensed as above, without any additional terms or conditions.
+
+## License
+
+Licensed under your option of either:
+
+- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
+- MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
