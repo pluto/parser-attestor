@@ -1,5 +1,5 @@
 {
-    "extract": {
+    "json-parser": {
         "file": "json/parser/parser",
         "template": "Parser",
         "params": [
@@ -7,93 +7,11 @@
             13
         ]
     },
-    "value_string": {
-        "file": "json/parser/parser",
-        "template": "Parser",
-        "params": [
-            12,
-            1
-        ]
-    },
-    "value_number": {
-        "file": "json/parser/parser",
-        "template": "Parser",
-        "params": [
-            12,
-            2
-        ]
-    },
-    "value_array": {
-        "file": "json/parser/parser",
-        "template": "Parser",
-        "params": [
-            18,
-            2
-        ]
-    },
-    "value_array_nested": {
-        "file": "json/parser/parser",
-        "template": "Parser",
-        "params": [
-            24,
-            4
-        ]
-    },
-    "value_array_object": {
-        "file": "json/parser/parser",
-        "template": "Parser",
-        "params": [
-            25,
-            4
-        ]
-    },
-    "value_array_object_array": {
-        "file": "json/parser/parser",
-        "template": "Parser",
-        "params": [
-            31,
-            5
-        ]
-    },
-    "value_object": {
-        "file": "json/parser/parser",
-        "template": "Parser",
-        "params": [
-            21,
-            3
-        ]
-    },
-    "search": {
-        "file": "search",
-        "template": "SubstringMatch",
-        "params": [
-            787,
-            10
-        ]
-    },
-    "get_request": {
+    "http-parser": {
         "file": "http/parser/parser",
         "template": "Parser",
         "params": [
             60
-        ]
-    },
-    "get_response": {
-        "file": "http/parser/parser",
-        "template": "Parser",
-        "params": [
-            89
-        ]
-    },
-    "json_extract_value_string": {
-        "file": "main/value_string",
-        "template": "ExtractStringValue",
-        "params": [
-            12,
-            1,
-            1,
-            0,
-            1
         ]
     }
 }

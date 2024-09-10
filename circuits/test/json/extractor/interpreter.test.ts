@@ -7,7 +7,7 @@ describe("Interpreter", async () => {
 
         before(async () => {
             circuit = await circomkit.WitnessTester(`InsideKey`, {
-                file: "circuits/json/interpreter",
+                file: "json/interpreter",
                 template: "InsideKey",
                 params: [4],
             });
@@ -46,7 +46,7 @@ describe("Interpreter", async () => {
 
         before(async () => {
             circuit = await circomkit.WitnessTester(`InsideValue`, {
-                file: "circuits/json/interpreter",
+                file: "json/interpreter",
                 template: "InsideValue",
                 params: [4],
             });
@@ -88,7 +88,7 @@ describe("Interpreter", async () => {
 
             it(`(valid) witness: ${description} ${desc}`, async () => {
                 circuit = await circomkit.WitnessTester(`InsideValueAtDepth`, {
-                    file: "circuits/json/interpreter",
+                    file: "json/interpreter",
                     template: "InsideValueAtDepth",
                     params: [4, depth],
                 });
@@ -125,7 +125,7 @@ describe("Interpreter", async () => {
 
             it(`(valid) witness: ${description} ${desc}`, async () => {
                 circuit = await circomkit.WitnessTester(`InsideArrayIndex`, {
-                    file: "circuits/json/interpreter",
+                    file: "json/interpreter",
                     template: "InsideArrayIndex",
                     params: [4, index],
                 });
@@ -165,7 +165,7 @@ describe("Interpreter", async () => {
 
             it(`(valid) witness: ${description} ${desc}`, async () => {
                 circuit = await circomkit.WitnessTester(`InsideArrayIndexAtDepth`, {
-                    file: "circuits/json/interpreter",
+                    file: "json/interpreter",
                     template: "InsideArrayIndexAtDepth",
                     params: [4, index, depth],
                 });
@@ -199,7 +199,7 @@ describe("Interpreter", async () => {
 
         before(async () => {
             circuit = await circomkit.WitnessTester(`NextKVPair`, {
-                file: "circuits/json/interpreter",
+                file: "json/interpreter",
                 template: "NextKVPair",
                 params: [4],
             });
@@ -239,7 +239,7 @@ describe("Interpreter", async () => {
 
             it(`(valid) witness: ${description} ${desc}`, async () => {
                 circuit = await circomkit.WitnessTester(`NextKVPairAtDepth`, {
-                    file: "circuits/json/interpreter",
+                    file: "json/interpreter",
                     template: "NextKVPairAtDepth",
                     params: [4, depth],
                 });
@@ -273,7 +273,7 @@ describe("Interpreter", async () => {
 
             it(`(valid) witness: ${description} ${desc}`, async () => {
                 circuit = await circomkit.WitnessTester(`KeyMatch`, {
-                    file: "circuits/json/interpreter",
+                    file: "json/interpreter",
                     template: "KeyMatch",
                     params: [input.data.length, input.key.length],
                 });
@@ -314,7 +314,7 @@ describe("Interpreter", async () => {
 
             it(`(valid) witness: ${description} ${desc}`, async () => {
                 circuit = await circomkit.WitnessTester(`KeyMatchAtDepth`, {
-                    file: "circuits/json/interpreter",
+                    file: "json/interpreter",
                     template: "KeyMatchAtDepth",
                     params: [input.data.length, 4, input.key.length, depth],
                 });

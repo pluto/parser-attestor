@@ -9,7 +9,7 @@ describe("HTTP :: Interpreter", async () => {
 
             it(`(valid) witness: ${description} ${desc}`, async () => {
                 circuit = await circomkit.WitnessTester(`LockRequestLineData`, {
-                    file: "circuits/http/interpreter",
+                    file: "http/interpreter",
                     template: "MethodMatch",
                     params: [input.length, method.length],
                 });
@@ -24,7 +24,7 @@ describe("HTTP :: Interpreter", async () => {
 
             it(`(invalid) witness: ${description} ${desc}`, async () => {
                 circuit = await circomkit.WitnessTester(`LockRequestLineData`, {
-                    file: "circuits/http/interpreter",
+                    file: "http/interpreter",
                     template: "MethodMatch",
                     params: [input.length, method.length],
                 });

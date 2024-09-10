@@ -5,7 +5,7 @@ describe("array", () => {
         let circuit: WitnessTester<["in"], ["out"]>;
         before(async () => {
             circuit = await circomkit.WitnessTester(`Slice`, {
-                file: "circuits/utils/array",
+                file: "utils/array",
                 template: "Slice",
                 params: [10, 2, 4],
             });
@@ -33,7 +33,7 @@ describe("IsEqualArray", () => {
     let circuit: WitnessTester<["in"], ["out"]>;
     before(async () => {
         circuit = await circomkit.WitnessTester(`IsEqualArray`, {
-            file: "circuits/utils/array",
+            file: "utils/array",
             template: "IsEqualArray",
             params: [3],
         });
@@ -87,7 +87,7 @@ describe("Contains", () => {
     let circuit: WitnessTester<["in", "array"], ["out"]>;
     before(async () => {
         circuit = await circomkit.WitnessTester(`Contains`, {
-            file: "circuits/utils/array",
+            file: "utils/array",
             template: "Contains",
             params: [3],
         });
@@ -128,7 +128,7 @@ describe("ArrayAdd", () => {
     let circuit: WitnessTester<["lhs", "rhs"], ["out"]>;
     before(async () => {
         circuit = await circomkit.WitnessTester(`ArrayAdd`, {
-            file: "circuits/utils/array",
+            file: "utils/array",
             template: "ArrayAdd",
             params: [3],
         });
@@ -148,7 +148,7 @@ describe("ArrayMul", () => {
     let circuit: WitnessTester<["lhs", "rhs"], ["out"]>;
     before(async () => {
         circuit = await circomkit.WitnessTester(`ArrayMul`, {
-            file: "circuits/utils/array",
+            file: "utils/array",
             template: "ArrayMul",
             params: [3],
         });
@@ -168,7 +168,7 @@ describe("GenericArrayAdd", () => {
     let circuit: WitnessTester<["arrays"], ["out"]>;
     before(async () => {
         circuit = await circomkit.WitnessTester(`ArrayAdd`, {
-            file: "circuits/utils/array",
+            file: "utils/array",
             template: "GenericArrayAdd",
             params: [3, 2],
         });

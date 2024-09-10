@@ -4,7 +4,7 @@ describe("ASCII", () => {
     let circuit: WitnessTester<["in"], ["out"]>;
     before(async () => {
         circuit = await circomkit.WitnessTester(`ASCII`, {
-            file: "circuits/utils/bytes",
+            file: "utils/bytes",
             template: "ASCII",
             params: [13],
         });

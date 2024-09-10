@@ -3,6 +3,8 @@ use std::{
     str::FromStr,
 };
 
+use std::collections::HashMap;
+
 use super::*;
 
 const PRAGMA: &str = "pragma circom 2.1.9;\n\n";
@@ -23,12 +25,25 @@ pub enum Key {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct Data {
+pub struct JsonLockfile {
     keys: Vec<Key>,
     value_type: ValueType,
 }
 
-fn extract_string(data: Data, circuit_buffer: &mut String) {
+impl JsonLockfile {
+    pub fn as_bytes(&self) -> HashMap<String, Vec<u8>> {
+        let mut keys = HashMap::<String, Vec<u8>>::new();
+        for (i, key) in self.keys.iter().enumerate() {
+            if let Key::String(key) = key {
+                let key_name = format!("key{}", i + 1);
+                keys.insert(key_name, key.as_bytes().to_vec());
+            }
+        }
+        keys
+    }
+}
+
+fn extract_string(data: JsonLockfile, circuit_buffer: &mut String, debug: bool) {
     *circuit_buffer += "template ExtractStringValue(DATA_BYTES, MAX_STACK_HEIGHT, ";
     for (i, key) in data.keys.iter().enumerate() {
         match key {
@@ -78,17 +93,22 @@ fn extract_string(data: Data, circuit_buffer: &mut String) {
     }
 
     *circuit_buffer += r#"
-    log("value_starting_index", value_starting_index[DATA_BYTES-2]);
-    value <== SelectSubArray(DATA_BYTES, maxValueLen)(data, value_starting_index[DATA_BYTES-2]+1, maxValueLen);
+    value <== SelectSubArray(DATA_BYTES, maxValueLen)(data, value_starting_index[DATA_BYTES-2]+1, maxValueLen);"#;
 
+    if debug {
+        *circuit_buffer += r#"
+    log("value_starting_index", value_starting_index[DATA_BYTES-2]);
     for (var i=0 ; i<maxValueLen; i++) {
         log("value[",i,"]=", value[i]);
+    }"#;
     }
+
+    *circuit_buffer += r#"
 }
 "#;
 }
 
-fn extract_number(data: Data, circuit_buffer: &mut String) {
+fn extract_number(data: JsonLockfile, circuit_buffer: &mut String, debug: bool) {
     *circuit_buffer += "template ExtractNumValue(DATA_BYTES, MAX_STACK_HEIGHT, ";
     for (i, key) in data.keys.iter().enumerate() {
         match key {
@@ -139,12 +159,18 @@ fn extract_number(data: Data, circuit_buffer: &mut String) {
     }
 
     *circuit_buffer += r#"
-    log("value_starting_index", value_starting_index[DATA_BYTES-2]);
     value_string <== SelectSubArray(DATA_BYTES, maxValueLen)(data, value_starting_index[DATA_BYTES-2], maxValueLen);
+"#;
 
+    if debug {
+        *circuit_buffer += r#"
+    log("value_starting_index", value_starting_index[DATA_BYTES-2]);
     for (var i=0 ; i<maxValueLen; i++) {
         log("value[",i,"]=", value_string[i]);
+    }"#;
     }
+
+    *circuit_buffer += r#"
 
     signal number_value[maxValueLen];
     number_value[0] <== (value_string[0]-48);
@@ -157,11 +183,18 @@ fn extract_number(data: Data, circuit_buffer: &mut String) {
 "#;
 }
 
-fn parse_json_request(
-    data: Data,
+fn build_json_circuit(
+    data: JsonLockfile,
     output_filename: String,
+    debug: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut circuit_buffer = String::new();
+
+    // Dump out the contents of the lockfile used into the circuit
+    circuit_buffer += "/*\n";
+    circuit_buffer += &format!("{:#?}", data);
+    circuit_buffer += "\n*/\n";
+
     circuit_buffer += PRAGMA;
     circuit_buffer += "include \"../json/interpreter.circom\";\n\n";
 
@@ -293,7 +326,11 @@ fn parse_json_request(
     signal is_value_match[DATA_BYTES];
     is_value_match[0] <== 0;
     signal value_mask[DATA_BYTES];
-    for(var data_idx = 1; data_idx < DATA_BYTES; data_idx++) {
+
+    for(var data_idx = 1; data_idx < DATA_BYTES; data_idx++) {"#;
+
+    if debug {
+        circuit_buffer += r#"
         // Debugging
         for(var i = 0; i<MAX_STACK_HEIGHT; i++) {
             log("State[", data_idx-1, "].stack[", i,"]    ", "= [",State[data_idx-1].next_stack[i][0], "][", State[data_idx-1].next_stack[i][1],"]" );
@@ -301,7 +338,10 @@ fn parse_json_request(
         log("State[", data_idx-1, "].byte", "= ", data[data_idx-1]);
         log("State[", data_idx-1, "].parsing_string", "= ", State[data_idx-1].next_parsing_string);
         log("State[", data_idx-1, "].parsing_number", "= ", State[data_idx-1].next_parsing_number);
+"#;
+    }
 
+    circuit_buffer += r#"
         State[data_idx]                  = StateUpdate(MAX_STACK_HEIGHT);
         State[data_idx].byte           <== data[data_idx];
         State[data_idx].stack          <== State[data_idx - 1].next_stack;
@@ -318,7 +358,6 @@ fn parse_json_request(
 
         // check if inside key or not
         parsing_key[data_idx-1] <== InsideKey(MAX_STACK_HEIGHT)(State[data_idx].stack, State[data_idx].parsing_string, State[data_idx].parsing_number);
-        // log("parsing key:", parsing_key[data_idx]);
 
 "#;
 
@@ -366,16 +405,20 @@ fn parse_json_request(
         }
 
         // optional debug logs
-        circuit_buffer += "        // log(\"parsing value:\", ";
-        for (i, key) in data.keys.iter().enumerate() {
-            match key {
-                Key::String(_) => {
-                    circuit_buffer += &format!("parsing_object{}_value[data_idx-1], ", i + 1)
+        if debug {
+            circuit_buffer += "        // log(\"parsing value:\", ";
+            for (i, key) in data.keys.iter().enumerate() {
+                match key {
+                    Key::String(_) => {
+                        circuit_buffer += &format!("parsing_object{}_value[data_idx-1], ", i + 1)
+                    }
+                    Key::Num(_) => {
+                        circuit_buffer += &format!("parsing_array{}[data_idx-1], ", i + 1)
+                    }
                 }
-                Key::Num(_) => circuit_buffer += &format!("parsing_array{}[data_idx-1], ", i + 1),
             }
+            circuit_buffer += "parsing_value[data_idx-1]);\n\n";
         }
-        circuit_buffer += "parsing_value[data_idx-1]);\n\n";
     }
 
     let mut num_objects = 0;
@@ -404,7 +447,9 @@ fn parse_json_request(
                     circuit_buffer += &format!("        is_key{}_match[data_idx-1] <== KeyMatchAtDepth(DATA_BYTES, MAX_STACK_HEIGHT, keyLen{}, depth{})(data, key{}, r, data_idx-1, parsing_key[data_idx-1], State[data_idx].stack);\n", i+1, i+1, i+1, i+1);
                     circuit_buffer += &format!("        is_next_pair_at_depth{}[data_idx-1] <== NextKVPairAtDepth(MAX_STACK_HEIGHT, depth{})(State[data_idx].stack, data[data_idx-1]);\n", i+1, i+1);
                     circuit_buffer += &format!("        is_key{}_match_for_value[data_idx] <== Mux1()([is_key{}_match_for_value[data_idx-1] * (1-is_next_pair_at_depth{}[data_idx-1]), is_key{}_match[data_idx-1] * (1-is_next_pair_at_depth{}[data_idx-1])], is_key{}_match[data_idx-1]);\n", i+1, i+1, i+1, i+1, i+1, i+1);
-                    circuit_buffer += &format!("        // log(\"is_key{}_match_for_value\", is_key{}_match_for_value[data_idx]);\n\n", i + 1, i + 1);
+                    if debug {
+                        circuit_buffer += &format!("        // log(\"is_key{}_match_for_value\", is_key{}_match_for_value[data_idx]);\n\n", i + 1, i + 1);
+                    }
                 }
                 Key::Num(_) => (),
             }
@@ -434,24 +479,26 @@ fn parse_json_request(
 
     // debugging and output bytes
     {
-        circuit_buffer += r#"        // log("is_value_match", is_value_match[data_idx]);
-
+        circuit_buffer += r#"
         // mask[i] = data[i] * parsing_value[i] * is_key_match_for_value[i]
         value_mask[data_idx-1] <== data[data_idx-1] * parsing_value[data_idx-1];
         mask[data_idx-1] <== value_mask[data_idx-1] * is_value_match[data_idx];
-        log("mask", mask[data_idx-1]);
-        log("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
-    }
+    }"#;
 
-    // Debugging
+        // Debugging
+        if debug {
+            circuit_buffer += r#"
     for(var i = 0; i < MAX_STACK_HEIGHT; i++) {
         log("State[", DATA_BYTES-1, "].stack[", i,"]    ", "= [",State[DATA_BYTES -1].next_stack[i][0], "][", State[DATA_BYTES - 1].next_stack[i][1],"]" );
     }
     log("State[", DATA_BYTES-1, "].parsing_string", "= ", State[DATA_BYTES-1].next_parsing_string);
     log("State[", DATA_BYTES-1, "].parsing_number", "= ", State[DATA_BYTES-1].next_parsing_number);
     log("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
+    "#;
+        }
 
-    // signal value_starting_index[DATA_BYTES];
+        circuit_buffer += r#"
+
     signal is_zero_mask[DATA_BYTES];
     signal is_prev_starting_index[DATA_BYTES];
     value_starting_index[0] <== 0;
@@ -468,8 +515,8 @@ fn parse_json_request(
     }
 
     match data.value_type {
-        ValueType::String => extract_string(data, &mut circuit_buffer),
-        ValueType::Number => extract_number(data, &mut circuit_buffer),
+        ValueType::String => extract_string(data, &mut circuit_buffer, debug),
+        ValueType::Number => extract_number(data, &mut circuit_buffer, debug),
     }
 
     // write circuits to file
@@ -489,11 +536,11 @@ fn parse_json_request(
     Ok(())
 }
 
-pub fn extractor(args: ExtractorArgs) -> Result<(), Box<dyn std::error::Error>> {
+pub fn json_circuit(args: JsonArgs) -> Result<(), Box<dyn std::error::Error>> {
     let data = std::fs::read(&args.template)?;
-    let json_data: Data = serde_json::from_slice(&data)?;
+    let json_data: JsonLockfile = serde_json::from_slice(&data)?;
 
-    parse_json_request(json_data, args.output_filename)?;
+    build_json_circuit(json_data, args.output_filename, args.debug)?;
 
     Ok(())
 }
