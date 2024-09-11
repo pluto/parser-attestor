@@ -21,7 +21,7 @@ The key ingredients of `utils` are:
 Tests for this module are located in the file: `./test/utils/utils.test.ts`
 */
 
-pragma circom 2.1.9;
+pragma circom 2.1.2;
 
 include "circomlib/circuits/bitify.circom";
 include "circomlib/circuits/comparators.circom";

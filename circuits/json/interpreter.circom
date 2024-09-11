@@ -1,4 +1,4 @@
-pragma circom 2.1.9;
+pragma circom 2.1.2;
 
 include "./parser/parser.circom";
 include "./parser/language.circom";

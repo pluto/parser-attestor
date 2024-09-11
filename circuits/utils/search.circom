@@ -1,4 +1,4 @@
-pragma circom 2.1.9;
+pragma circom 2.1.2;
 
 include "circomlib/circuits/mux1.circom";
 include "./hash.circom";
