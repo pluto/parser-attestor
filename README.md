@@ -1,22 +1,22 @@
 <h1 align="center">
-  SPARK
+  Parser Attestor
 </h1>
 
 <div align="center">
-  <a href="https://github.com/pluto/extractor/graphs/contributors">
+  <a href="https://github.com/pluto/parser-attestor/graphs/contributors">
     <img src="https://img.shields.io/github/contributors/pluto/spark?style=flat-square&logo=github&logoColor=8b949e&labelColor=282f3b&color=32c955" alt="Contributors" />
   </a>
-  <a href="https://github.com/pluto/extractor/actions/workflows/test.yaml">
+  <a href="https://github.com/pluto/parser-attestor/actions/workflows/test.yaml">
     <img src="https://img.shields.io/badge/tests-passing-32c955?style=flat-square&logo=github-actions&logoColor=8b949e&labelColor=282f3b" alt="Tests" />
   </a>
-  <a href="https://github.com/pluto/extractor/actions/workflows/lint.yaml">
+  <a href="https://github.com/pluto/parser-attestor/actions/workflows/lint.yaml">
     <img src="https://img.shields.io/badge/lint-passing-32c955?style=flat-square&logo=github-actions&logoColor=8b949e&labelColor=282f3b" alt="Lint" />
   </a>
 </div>
 
 ## Overview
 
-SPARK (Succinct Parser Attestation for Reconciliation of Knowledge) is a project focused on implementing parsers and extractors for various data formats using zero-knowledge proofs.
+The Parser Attestor repository consists of circuits for parsing, locking, and extracting from various widely-used data formats including JSON and HTTP using zero-knowledge proofs.
 
 ## Repository Structure
 
@@ -175,37 +175,6 @@ To run specific tests, use the `-g` flag for `mocha`, e.g., to run any proof des
 ```
 npx mocha -g State
 ```
-
-> [!NOTE]
-> Currently [search](./circuits/search.circom) circuit isn't working with circomkit, so you might have to compile using circom: `circom circuits/main/search.circom --r1cs --wasm -l node_modules/ -o build/search/`
-
-## (MOSTLY DEPRECATED DUE TO CIRCOMKIT) Running an example
-```
-circom extract.circom --r1cs --wasm
-
-# in rust? circom witness rs
-node extract_js/generate_witness.js extract_js/extract.wasm input.json witness.wtns
-
-##
-# IF YOU NEED A NEW pot (works for all circuits)
-snarkjs powersoftau new bn128 14 pot14_0000.ptau -v
-snarkjs powersoftau contribute pot14_0000.ptau pot14_0001.ptau --name="First contribution" -v
-snarkjs powersoftau prepare phase2 pot14_0001.ptau pot14_final.ptau -v
-##
-
-snarkjs groth16 setup extract.r1cs pot14_final.ptau extract_0000.zkey
-
-snarkjs zkey contribute extract_0000.zkey extract_0001.zkey --name="1st Contributor Name" -v
-
-snarkjs zkey export verificationkey extractor_0001.zkey verification_key.json
-
-# in rust
-snarkjs groth16 prove extractor_0001.zkey witness.wtns proof.json public.json
-
-# in rust
-snarkjs groth16 verify verification_key.json public.json proof.json
-```
-
 
 ## Contributing
 
