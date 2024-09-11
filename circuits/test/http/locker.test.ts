@@ -8,7 +8,7 @@ describe("HTTP :: Locker :: Request Line", async () => {
 
         it(`(valid) witness: ${description} ${desc}`, async () => {
             circuit = await circomkit.WitnessTester(`LockStartLine`, {
-                file: "circuits/http/locker",
+                file: "http/locker",
                 template: "LockStartLine",
                 params: [input.length, beginning.length, middle.length, final.length],
             });
@@ -23,7 +23,7 @@ describe("HTTP :: Locker :: Request Line", async () => {
 
         it(`(invalid) witness: ${description} ${desc}`, async () => {
             circuit = await circomkit.WitnessTester(`LockStartLine`, {
-                file: "circuits/http/locker",
+                file: "http/locker",
                 template: "LockStartLine",
                 params: [input.length, beginning.length, middle.length, final.length],
             });
@@ -58,7 +58,7 @@ describe("HTTP :: Locker :: Status Line", async () => {
 
         it(`(valid) witness: ${description} ${desc}`, async () => {
             circuit = await circomkit.WitnessTester(`LockStartLine`, {
-                file: "circuits/http/locker",
+                file: "http/locker",
                 template: "LockStartLine",
                 params: [input.length, beginning.length, middle.length, final.length],
             });
@@ -73,7 +73,7 @@ describe("HTTP :: Locker :: Status Line", async () => {
 
         it(`(invalid) witness: ${description} ${desc}`, async () => {
             circuit = await circomkit.WitnessTester(`LockStartLine`, {
-                file: "circuits/http/locker",
+                file: "http/locker",
                 template: "LockStartLine",
                 params: [input.length, beginning.length, middle.length, final.length],
             });
@@ -100,7 +100,7 @@ describe("HTTP :: Locker :: Header", async () => {
 
         it(`(valid) witness: ${description} ${desc}`, async () => {
             circuit = await circomkit.WitnessTester(`LockHeader`, {
-                file: "circuits/http/locker",
+                file: "http/locker",
                 template: "LockHeader",
                 params: [input.length, header.length, value.length],
             });
@@ -115,7 +115,7 @@ describe("HTTP :: Locker :: Header", async () => {
 
         it(`(invalid) witness: ${description} ${desc}`, async () => {
             circuit = await circomkit.WitnessTester(`LockHeader`, {
-                file: "circuits/http/locker",
+                file: "http/locker",
                 template: "LockHeader",
                 params: [input.length, header.length, value.length],
             });

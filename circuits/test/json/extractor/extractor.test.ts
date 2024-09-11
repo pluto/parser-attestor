@@ -5,9 +5,9 @@ import { spawn } from "child_process";
 
 function executeCodegen(inputFilename: string, outputFilename: string) {
     return new Promise((resolve, reject) => {
-        const inputPath = join(__dirname, "..", "..", "..", "..", "examples", "extractor", inputFilename);
+        const inputPath = join(__dirname, "..", "..", "..", "..", "examples", "json", "lockfile", inputFilename);
 
-        const codegen = spawn("cargo", ["run", "extractor", "--template", inputPath, "--output-filename", outputFilename]);
+        const codegen = spawn("cargo", ["run", "json", "--template", inputPath, "--output-filename", outputFilename]);
 
         codegen.stdout.on('data', (data) => {
             console.log(`stdout: ${data}`);
@@ -40,7 +40,7 @@ describe("ExtractValue", async () => {
         let [input, keyUnicode, output] = readJSONInputFile(`${filename}.json`, ["k"]);
 
         circuit = await circomkit.WitnessTester(`Extract`, {
-            file: `circuits/main/${filename}`,
+            file: `main/${filename}`,
             template: "ExtractStringValue",
             params: [input.length, 1, 1, 0, 1],
         });
@@ -60,7 +60,7 @@ describe("ExtractValue", async () => {
         let [input, keyUnicode, output] = readJSONInputFile(`${filename}.json`, ["key2"]);
 
         circuit = await circomkit.WitnessTester(`Extract`, {
-            file: `circuits/main/${filename}`,
+            file: `main/${filename}`,
             template: "ExtractStringValue",
             params: [input.length, 1, 4, 0, 3],
         });
@@ -75,7 +75,7 @@ describe("ExtractValue", async () => {
         let [input, keyUnicode, output] = readJSONInputFile(`${filename}.json`, ["k"]);
 
         circuit = await circomkit.WitnessTester(`Extract`, {
-            file: `circuits/main/${filename}`,
+            file: `main/${filename}`,
             template: "ExtractNumValue",
             params: [input.length, 1, 1, 0, 2],
         });
@@ -94,7 +94,7 @@ describe("ExtractValue", async () => {
             let [input, keyUnicode, output] = readJSONInputFile("value_array.json", ["b", i]);
 
             circuit = await circomkit.WitnessTester(`Extract`, {
-                file: `circuits/main/${filename}`,
+                file: `main/${filename}`,
                 template: "ExtractStringValue",
                 params: [input.length, 2, 1, 0, i, 1, output.length],
             });
@@ -112,7 +112,7 @@ describe("ExtractValue", async () => {
             let [input, keyUnicode, output] = readJSONInputFile("value_array.json", ["k", i]);
 
             circuit = await circomkit.WitnessTester(`Extract`, {
-                file: `circuits/main/${filename}`,
+                file: `main/${filename}`,
                 template: "ExtractNumValue",
                 params: [input.length, 2, 1, 0, i, 1, output.length],
             });
@@ -131,7 +131,7 @@ describe("ExtractValue", async () => {
         let [input, keyUnicode, output] = readJSONInputFile(`${filename}.json`, ["a", index_0, index_1]);
 
         circuit = await circomkit.WitnessTester(`Extract`, {
-            file: `circuits/main/${filename}`,
+            file: `main/${filename}`,
             template: "ExtractNumValue",
             params: [input.length, 3, 1, 0, index_0, 1, index_1, 2, 1],
         });
@@ -155,7 +155,7 @@ describe("ExtractValueMultiDepth", () => {
         let [input, keyUnicode, output] = readJSONInputFile(`${filename}.json`, ["e", "e"]);
 
         circuit = await circomkit.WitnessTester(`Extract`, {
-            file: `circuits/main/${filename}`,
+            file: `main/${filename}`,
             template: "ExtractStringValue",
             params: [input.length, 3, 1, 0, 1, 1, 1],
         });
@@ -183,7 +183,7 @@ describe("ExtractValueArrayObject", () => {
         let [input, keyUnicode, output] = readJSONInputFile(`${filename}.json`, ["a", index_0, "b", index_1]);
 
         circuit = await circomkit.WitnessTester(`Extract`, {
-            file: `circuits/main/${filename}`,
+            file: `main/${filename}`,
             template: "ExtractNumValue",
             params: [input.length, 4, 1, 0, index_0, 1, 1, 2, index_1, 3, 1],
         });

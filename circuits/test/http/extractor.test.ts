@@ -9,7 +9,7 @@ describe("HTTP :: body Extractor", async () => {
 
         it(`(valid) witness: ${description} ${desc}`, async () => {
             circuit = await circomkit.WitnessTester(`ExtractResponseData`, {
-                file: "circuits/http/extractor",
+                file: "http/extractor",
                 template: "ExtractResponse",
                 params: [input.length, expected.length],
             });
@@ -60,7 +60,7 @@ describe("HTTP :: header Extractor", async () => {
 
         it(`(valid) witness: ${description} ${desc}`, async () => {
             circuit = await circomkit.WitnessTester(`ExtractHeaderValue`, {
-                file: "circuits/http/extractor",
+                file: "http/extractor",
                 template: "ExtractHeaderValue",
                 params: [input.length, headerName.length, headerValue.length],
             });

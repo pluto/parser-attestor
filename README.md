@@ -1,5 +1,5 @@
 <h1 align="center">
-  SPARK
+  Parser Attestor
 </h1>
 
 <div align="center">
@@ -16,67 +16,118 @@
 
 ## Overview
 
-SPARK (Succinct Parser Attestation for Reconciliation of Knowledge) is a project focused on implementing parsers and extractors for various data formats using zero-knowledge proofs.
+`parser-attestor` is a project focused on implementing parsers and extractors/selective-disclosure for various data formats inside of zero-knowledge circuits.
 
 ## Repository Structure
 
-- `src/bin`: Binaries
-  - `witness`: Used for witness generation
-  - `codegen`: Used for generating extractor circuits based on input
 - `circuits/`: Current implementation of circuits
   - `http`: HTTP parser and extractor
   - `json`: JSON parser and extractor
+    - `json` has its own documentation [here](docs/json.md)
   - `utils`: Utility circuits
   - `test`: Circuit tests
+- `src/`: Rust `pabuild` binary
+  - `pabuild` has its own documentation [here](docs/pabuild.md)
 - `examples/`: Reference examples for JSON and HTTP parsers
+
+Documentation, in general, can be found in the `docs` directory.
+We will add to this over time to make working with `parser-attestor` easier.
 
 ## Getting Started
 
 ### Prerequisites
 
-To use this repo, you need to install the following:
+To use this repo, you will need to install the following dependencies.
+These instructions should work on Linux/GNU and MacOS, but aren't guaranteed to work on Windows.
 
-1. `circom` and `snarkjs`:
-   ```sh
-   git clone https://github.com/iden3/circom.git
-   cd circom
-   cargo build --release
-   cargo install --path circom
-   npm install -g snarkjs
+#### Install Rust
+To install Rust, you need to run:
+```sh
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+exec $SHELL
+```
+Check this is installed by running:
+```sh
+rustc --version && cargo --version
+```
+to see the path to your Rust compiler and Cargo package manager.
 
-### Circomkit
-You will need `yarn` on your system (brew, or apt-get or something).
-Then run: `npm install` to get everything else.
+#### Install Circom
+Succinctly, `cd` to a directory of your choosing and run:
+```sh
+git clone https://github.com/iden3/circom.git
+cd circom
+cargo build --release
+cargo install --path circom
+```
+in order to install `circom` globally.
 
-#### Commands
-To see what you can do, I suggest running:
+#### Install Node
+First, install `nvm` by running:
+```sh
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.3/install.sh | bash
+exec $SHELL
+```
+Now with `nvm` installed, run:
+```sh
+nvm install --lts
+nvm use --lts
+node --version && npm --version
+```
+
+#### Node packages
+From the root of the repository, you can now run:
+```sh
+npm install
+```
+which will install all the necessary packages for working with Circom.
+This includes executables `circomkit`, `snarkjs`, and `mocha` which are accessible with Node: `npx`.
+
+##### Circomkit
+This repository uses `circomkit` to manage Circom circuits.
+To see what you can do with `circomkit`, we suggest running:
 ```
 npx circomkit help
 ```
-from the repository root.
+`circomkit` can essentially do everything you would want to do with these Circuits, though we can't guarantee all commands work properly.
 
-#### Compiling and Witnessgen
-For example, to compile the extractor, you can:
+**Example:**
+For example, to compile the `json-parser`, you can run the following from the repository root:
 ```
-npx circomkit compile extract
+npx circomkit compile json-parser
 ```
-Then you can do
-```
-npx circomkit witness extract witness
-```
-And even:
-```
-npx circomkit prove extract witness
-```
+which implicitly checks the `circuits.json` for an object that points to the circuit's code itself.
 
-To clean up, just run:
-```
-npx circomkit clean extract
-```
+If you are having trouble with `circomkit`, consider:
 
-All of the above should be ran from repository root.
+##### SNARKJS
+Likewise, `snarkjs` is used to handle proofs and verification under the hood.
+There is [documentation](https://docs.circom.io/getting-started/compiling-circuits/) on Circom's usage to work with this.
+We suggest starting at that link and carrying through to "Proving circuits with ZK".
 
-## Binaries
+##### Mocha
+`mocha` will also be installed from before.
+Running
+```sh
+npx mocha
+```
+will run every circuit test.
+To filter tests, you can use the `-g` flag (very helpful!).
+
+
+### Install `pabuild`
+From the root of this repository, run:
+```sh
+cargo install --path .
+```
+to install the `wpbuild` binary.
+You can see a help menu with the subcommands by:
+```sh
+wpbuild --help
+```
+This is our local Rust command line application.
+Please see the [documentation](docs/pabuild.md) for how to use this alongside the other tools.
+
 
 ### Rust Example Witness JSON Creation
 To generate example input JSON files for the Circom circuits, run:
@@ -100,111 +151,6 @@ witness http --input-file examples/http/get_request.http --output-dir inputs/get
 ```
 
 Afterwards, you can run `circomkit compile get_request` then `circomkit witness get_request input`.
-
-### Codegen
-
-JSON extractor circuit is generated using rust to handle arbitrary keys and array indices.
-
-Run:
-```bash
-cargo run --bin codegen -- --help
-```
-to get options:
-```
-Usage: codegen [OPTIONS] --json-file <JSON_FILE>
-
-Options:
-  -j, --json-file <JSON_FILE>              Path to the JSON file
-  -o, --output-filename <OUTPUT_FILENAME>  Output circuit file name [default: extractor]
-```
-Takes input 2 arguments:
-- `json-file`: input json file. Examples are located in [codegen](./examples/json/test/codegen/)
-- `output-filename`: circuit filename to save. Located in [circuits/main](./circuits/main/). If not given, defaults to `extractor.circom`.
-
-To test an end-to-end JSON extraction proof:
-- Run codegen to generate circuits. Replace `value_string` with input filename.
-   ```bash
-   cargo run --bin codegen -- --json-file ./examples/json/test/codegen/value_string.json --output-filename value_string
-   ```
-
-- Compile circom circuit using
-   ```
-   circom ./circuits/main/value_string.circom --r1cs --wasm
-   ```
-
-- To use circomkit: add circuit config to [circuits.json](./circuits.json). and input file to [inputs](./inputs/)
-
-- Generate witness:
-   ```bash
-   node build/json_extract_value_string/json_extract_value_string_js/generate_witness inputs/json_extract_value_string/value_string.json build/json_extract_value_string/witness/
-   ```
-   or generate using circomkit:
-   ```bash
-   npx circomkit witness json_extract_value_string value_string
-   ```
-
-- create trusted setup:
-   ```bash
-   npx circomkit setup json_extract_value_string
-   # OR
-   snarkjs groth16 setup build/json_extract_value_string/json_extract_value_string.r1cs ptau/powersOfTau28_hez_final_14.ptau build/json_extract_value_string/groth16_pkey.zkey
-   ```
-
-- create proof:
-   ```bash
-   npx circomkit prove json_extract_value_string value_string
-   # OR
-   snarkjs groth16 prove build/json_extract_value_string/groth16_pkey.zkey build/json_extract_value_string/value_string/witness.wtns build/json_extract_value_string/value_string/groth16_proof.json inputs/json_extract_value_string/value_string.json
-   ```
-
-- verify proof:
-   ```bash
-   npx circomkit verify json_extract_value_string value_string
-   # OR
-   snarkjs groth16 verify build/json_extract_value_string/groth16_vkey.json inputs/json_extract_value_string/value_string.json build/json_extract_value_string/value_string/groth16_proof.json
-   ```
-
-## Testing
-To test, you can just run
-```
-npx mocha
-```
-from the repository root.
-
-To run specific tests, use the `-g` flag for `mocha`, e.g., to run any proof described with "State" we can pass:
-```
-npx mocha -g State
-```
-
-> [!NOTE]
-> Currently [search](./circuits/search.circom) circuit isn't working with circomkit, so you might have to compile using circom: `circom circuits/main/search.circom --r1cs --wasm -l node_modules/ -o build/search/`
-
-## (MOSTLY DEPRECATED DUE TO CIRCOMKIT) Running an example
-```
-circom extract.circom --r1cs --wasm
-
-# in rust? circom witness rs
-node extract_js/generate_witness.js extract_js/extract.wasm input.json witness.wtns
-
-##
-# IF YOU NEED A NEW pot (works for all circuits)
-snarkjs powersoftau new bn128 14 pot14_0000.ptau -v
-snarkjs powersoftau contribute pot14_0000.ptau pot14_0001.ptau --name="First contribution" -v
-snarkjs powersoftau prepare phase2 pot14_0001.ptau pot14_final.ptau -v
-##
-
-snarkjs groth16 setup extract.r1cs pot14_final.ptau extract_0000.zkey
-
-snarkjs zkey contribute extract_0000.zkey extract_0001.zkey --name="1st Contributor Name" -v
-
-snarkjs zkey export verificationkey extractor_0001.zkey verification_key.json
-
-# in rust
-snarkjs groth16 prove extractor_0001.zkey witness.wtns proof.json public.json
-
-# in rust
-snarkjs groth16 verify verification_key.json public.json proof.json
-```
 
 
 ## Contributing

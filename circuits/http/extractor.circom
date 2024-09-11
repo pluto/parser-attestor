@@ -72,7 +72,7 @@ template ExtractResponse(DATA_BYTES, maxContentLength) {
     signal isPrevStartingIndex[DATA_BYTES];
     valueStartingIndex[0] <== 0;
     isZeroMask[0] <== IsZero()(dataMask[0]);
-    for (var i=1 ; i<DATA_BYTES ; i++) {
+    for (var i=1 ; i < DATA_BYTES; i++) {
         isZeroMask[i] <== IsZero()(dataMask[i]);
         isPrevStartingIndex[i] <== IsZero()(valueStartingIndex[i-1]);
         valueStartingIndex[i] <== valueStartingIndex[i-1] + i * (1-isZeroMask[i]) * isPrevStartingIndex[i];

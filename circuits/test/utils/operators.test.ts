@@ -4,7 +4,7 @@ describe("SwitchArray", () => {
     let circuit: WitnessTester<["case", "branches", "vals"], ["match", "out"]>;
     before(async () => {
         circuit = await circomkit.WitnessTester(`SwitchArray`, {
-            file: "circuits/utils/operators",
+            file: "utils/operators",
             template: "SwitchArray",
             params: [3, 2],
         });
@@ -59,7 +59,7 @@ describe("Switch", () => {
     let circuit: WitnessTester<["case", "branches", "vals"], ["match", "out"]>;
     before(async () => {
         circuit = await circomkit.WitnessTester(`Switch`, {
-            file: "circuits/utils/operators",
+            file: "utils/operators",
             template: "Switch",
             params: [3],
         });
@@ -101,7 +101,7 @@ describe("InRange", () => {
     let circuit: WitnessTester<["in", "range"], ["out"]>;
     before(async () => {
         circuit = await circomkit.WitnessTester(`InRange`, {
-            file: "circuits/utils/operators",
+            file: "utils/operators",
             template: "InRange",
             params: [8],
         });

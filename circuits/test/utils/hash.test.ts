@@ -7,7 +7,7 @@ describe("hash", () => {
 
         before(async () => {
             circuit = await circomkit.WitnessTester(`PoseidonModular`, {
-                file: "circuits/utils/hash",
+                file: "utils/hash",
                 template: "PoseidonModular",
                 params: [16],
             });
@@ -30,7 +30,7 @@ describe("hash", () => {
 
         before(async () => {
             circuit = await circomkit.WitnessTester(`PoseidonModular`, {
-                file: "circuits/utils/hash",
+                file: "utils/hash",
                 template: "PoseidonModular",
                 params: [379],
             });

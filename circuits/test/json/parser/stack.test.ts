@@ -5,7 +5,7 @@ describe("GetTopOfStack", () => {
     let circuit: WitnessTester<["stack"], ["value", "pointer"]>;
     before(async () => {
         circuit = await circomkit.WitnessTester(`GetTopOfStack`, {
-            file: "circuits/json/parser/machine",
+            file: "json/parser/machine",
             template: "GetTopOfStack",
             params: [4],
         });
@@ -34,7 +34,7 @@ describe("StateUpdate :: RewriteStack", () => {
     >;
     before(async () => {
         circuit = await circomkit.WitnessTester(`GetTopOfStack`, {
-            file: "circuits/json/parser/machine",
+            file: "json/parser/machine",
             template: "StateUpdate",
             params: [4],
         });
