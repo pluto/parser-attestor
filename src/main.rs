@@ -35,7 +35,7 @@ pub struct ParserWitnessArgs {
     output_dir: PathBuf,
 
     /// Output filename (will be created if it doesn't exist)
-    #[arg(global = true, long, default_value = "output.json")]
+    #[arg(global = true, long, default_value = "input.json")]
     output_filename: String,
 }
 
@@ -57,7 +57,7 @@ pub struct ExtractorWitnessArgs {
     output_dir: PathBuf,
 
     /// Output filename (will be created if it doesn't exist)
-    #[arg(global = true, long, default_value = "output.json")]
+    #[arg(global = true, long, default_value = "input.json")]
     output_filename: String,
 }
 

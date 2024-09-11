@@ -11,7 +11,7 @@ pub enum HttpData {
     Response(Response),
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct Request {
     method: String,
     target: String,
@@ -21,7 +21,7 @@ pub struct Request {
     headers: HashMap<String, String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct Response {
     version: String,
     status: String,
@@ -46,6 +46,46 @@ impl std::fmt::Debug for HttpData {
             HttpData::Request(req) => req.fmt(f),
             HttpData::Response(res) => res.fmt(f),
         }
+    }
+}
+
+impl Serialize for Request {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        use serde::ser::SerializeMap;
+        let mut map = serializer.serialize_map(Some(3 + self.headers.len() * 2))?;
+
+        map.serialize_entry("method", self.method.as_bytes())?;
+        map.serialize_entry("target", self.target.as_bytes())?;
+        map.serialize_entry("version", self.version.as_bytes())?;
+
+        for (i, (key, value)) in self.headers.iter().enumerate() {
+            map.serialize_entry(&format!("key{}", i + 1), key.as_bytes())?;
+            map.serialize_entry(&format!("value{}", i + 1), value.as_bytes())?;
+        }
+        map.end()
+    }
+}
+
+impl Serialize for Response {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        use serde::ser::SerializeMap;
+        let mut map = serializer.serialize_map(Some(3 + self.headers.len() * 2))?;
+
+        map.serialize_entry("version", self.version.as_bytes())?;
+        map.serialize_entry("status", self.status.as_bytes())?;
+        map.serialize_entry("message", self.message.as_bytes())?;
+
+        for (i, (key, value)) in self.headers.iter().enumerate() {
+            map.serialize_entry(&format!("key{}", i + 1), key)?;
+            map.serialize_entry(&format!("value{}", i + 1), value)?;
+        }
+        map.end()
     }
 }
 
@@ -267,7 +307,7 @@ fn build_http_circuit(
             methodIsEqual[data_idx] === 1;
         }
 
-        // Get the target bytes 
+        // Get the target bytes
         startLineMask[data_idx]    <== inStartLine()(State[data_idx].parsing_start);
         targetMask[data_idx]       <== inStartMiddle()(State[data_idx].parsing_start);
         versionMask[data_idx]      <== inStartEnd()(State[data_idx].parsing_start);
@@ -286,7 +326,7 @@ fn build_http_circuit(
             versionIsEqual[data_idx] === 1;
         }
 
-        // Get the status bytes 
+        // Get the status bytes
         startLineMask[data_idx]    <== inStartLine()(State[data_idx].parsing_start);
         statusMask[data_idx]       <== inStartMiddle()(State[data_idx].parsing_start);
         messageMask[data_idx]      <== inStartEnd()(State[data_idx].parsing_start);
@@ -346,7 +386,7 @@ fn build_http_circuit(
     // Get the output body bytes
     {
         if let HttpData::Response(_) = data {
-            circuit_buffer += r#" 
+            circuit_buffer += r#"
     signal bodyStartingIndex[DATA_BYTES];
     signal isZeroMask[DATA_BYTES];
     signal isPrevStartingIndex[DATA_BYTES];
@@ -384,13 +424,13 @@ fn build_http_circuit(
     signal targetMatch <== SubstringMatchWithIndex(DATA_BYTES, targetLen)(data, target, 100, target_start_counter);
     targetMatch        === 1;
     targetLen          === target_end_counter - target_start_counter - 1;
-    
+
     // Check version is correct by substring match and length check
     // TODO: change r
     signal versionMatch <== SubstringMatchWithIndex(DATA_BYTES, versionLen)(data, version, 100, target_end_counter);
     versionMatch === 1;
     // -2 here for the CRLF
-    versionLen   === version_end_counter - target_end_counter - 2;  
+    versionLen   === version_end_counter - target_end_counter - 2;
 "#;
             }
             HttpData::Response(_) => {
@@ -403,13 +443,13 @@ fn build_http_circuit(
     signal statusMatch <== SubstringMatchWithIndex(DATA_BYTES, statusLen)(data, status, 100, status_start_counter);
     statusMatch        === 1;
     statusLen          === status_end_counter - status_start_counter - 1;
-    
+
     // Check message is correct by substring match and length check
     // TODO: change r
     signal messageMatch <== SubstringMatchWithIndex(DATA_BYTES, messageLen)(data, message, 100, status_end_counter);
     messageMatch        === 1;
     // -2 here for the CRLF
-    messageLen          === message_end_counter - status_end_counter - 2;  
+    messageLen          === message_end_counter - status_end_counter - 2;
 "#;
             }
         }
