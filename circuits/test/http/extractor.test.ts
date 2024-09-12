@@ -31,7 +31,7 @@ describe("HTTP :: body Extractor", async () => {
 
         let output3 = parsedHttp.bodyBytes.slice(0);
         output3.pop();
-        // output3.pop(); // TODO: fails due to shift subarray bug
+        output3.pop();
         generatePassCase(parsedHttp.input, output3, "output length less than actual length");
     });
 
@@ -75,15 +75,6 @@ describe("HTTP :: header Extractor", async () => {
         let parsedHttp = readHTTPInputFile("get_response.http");
 
         generatePassCase(parsedHttp.input, toByte("Content-Length"), toByte(parsedHttp.headers["Content-Length"]), "");
-
-        // let output2 = parsedHttp.bodyBytes.slice(0);
-        // output2.push(0, 0, 0, 0);
-        // generatePassCase(parsedHttp.input, output2, "output length more than actual length");
-
-        // let output3 = parsedHttp.bodyBytes.slice(0);
-        // output3.pop();
-        // // output3.pop(); // TODO: fails due to shift subarray bug
-        // generatePassCase(parsedHttp.input, output3, "output length less than actual length");
     });
 });
 
