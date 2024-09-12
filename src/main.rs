@@ -18,6 +18,12 @@ pub enum Command {
     Codegen(ExtractorArgs),
 }
 
+#[derive(clap::ValueEnum, Clone, Debug)]
+pub enum FileType {
+    Json,
+    Http,
+}
+
 #[derive(Parser, Debug)]
 pub struct ParserWitnessArgs {
     #[arg(value_enum)]
@@ -48,12 +54,6 @@ pub struct ExtractorWitnessArgs {
     /// Path to the lockfile
     #[arg(long)]
     lockfile: PathBuf,
-}
-
-#[derive(clap::ValueEnum, Clone, Debug)]
-pub enum FileType {
-    Json,
-    Http,
 }
 
 #[derive(Parser, Debug)]

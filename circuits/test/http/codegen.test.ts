@@ -72,9 +72,10 @@ describe("HTTP :: Codegen :: Request", async () => {
     it("(valid) GET:", async () => {
         let lockfile = "request.lock";
         let inputfile = "get_request.http";
+        let circuitName = "get_request_test";
 
         // generate extractor circuit using codegen
-        await executeCodegen("get_request_test", inputfile, `${lockfile}.json`);
+        await executeCodegen(circuitName, inputfile, `${lockfile}.json`);
 
         const lockData = readLockFile<Request>(`${lockfile}.json`);
         console.log("lockData: ", JSON.stringify(lockData));
@@ -90,7 +91,7 @@ describe("HTTP :: Codegen :: Request", async () => {
 
 
         circuit = await circomkit.WitnessTester(`Extract`, {
-            file: `main/${lockfile}`,
+            file: `main/http_${circuitName}`,
             template: "LockHTTPRequest",
             params: params,
         });
@@ -114,9 +115,10 @@ describe("HTTP :: Codegen :: Request", async () => {
     it("(invalid) GET:", async () => {
         let lockfile = "request.lock";
         let inputfile = "get_request.http";
+        let circuitName = "get_request_test";
 
         // generate extractor circuit using codegen
-        await executeCodegen("get_request_test", inputfile, `${lockfile}.json`);
+        await executeCodegen(circuitName, inputfile, `${lockfile}.json`);
 
         const lockData = readLockFile<Request>(`${lockfile}.json`);
 
@@ -131,7 +133,7 @@ describe("HTTP :: Codegen :: Request", async () => {
 
 
         circuit = await circomkit.WitnessTester(`Extract`, {
-            file: `main/${lockfile}`,
+            file: `main/http_${circuitName}`,
             template: "LockHTTPRequest",
             params: params,
         });
@@ -160,9 +162,10 @@ describe("HTTP :: Codegen :: Response", async () => {
     it("(valid) GET:", async () => {
         let lockfile = "response.lock";
         let inputfile = "get_response.http";
+        let circuitName = "get_response_test";
 
         // generate extractor circuit using codegen
-        await executeCodegen("get_response_test", inputfile, `${lockfile}.json`);
+        await executeCodegen(circuitName, inputfile, `${lockfile}.json`);
 
         const lockData = readLockFile<Response>(`${lockfile}.json`);
         console.log("lockData: ", JSON.stringify(lockData));
@@ -180,7 +183,7 @@ describe("HTTP :: Codegen :: Response", async () => {
 
 
         circuit = await circomkit.WitnessTester(`Extract`, {
-            file: `main/${lockfile}`,
+            file: `main/http_${circuitName}`,
             template: "LockHTTPResponse",
             params: params,
         });
@@ -206,9 +209,10 @@ describe("HTTP :: Codegen :: Response", async () => {
     it("(invalid) GET:", async () => {
         let lockfile = "response.lock";
         let inputfile = "get_response.http";
+        let circuitName = "get_response_test";
 
         // generate extractor circuit using codegen
-        await executeCodegen("get_response_test", inputfile, `${lockfile}.json`);
+        await executeCodegen(circuitName, inputfile, `${lockfile}.json`);
 
         const lockData = readLockFile<Response>(`${lockfile}.json`);
 
@@ -225,7 +229,7 @@ describe("HTTP :: Codegen :: Response", async () => {
 
 
         circuit = await circomkit.WitnessTester(`Extract`, {
-            file: `main/${lockfile}`,
+            file: `main/http_${circuitName}`,
             template: "LockHTTPResponse",
             params: params,
         });
