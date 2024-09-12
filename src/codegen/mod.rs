@@ -2,6 +2,9 @@ use std::{collections::HashMap, env};
 
 use serde::{Deserialize, Serialize};
 
+pub mod http;
+pub mod json;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CircomkitCircuitsInput {
     pub file: String,

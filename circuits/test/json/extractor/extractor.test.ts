@@ -3,12 +3,12 @@ import { join } from "path";
 import { spawn } from "child_process";
 
 
-function executeCodegen(circuitName: string, inputFileName: string, lockfileName: string, outputFilename: string) {
+function executeCodegen(circuitName: string, inputFileName: string, lockfileName: string) {
     return new Promise((resolve, reject) => {
         const inputFilePath = join(__dirname, "..", "..", "..", "..", "examples", "json", "test", inputFileName);
         const lockfilePath = join(__dirname, "..", "..", "..", "..", "examples", "json", "lockfile", lockfileName);
 
-        const codegen = spawn("cargo", ["run", "json", "--circuit-name", circuitName, "--input-file", inputFilePath, "--lockfile", lockfilePath, "--output-filename", outputFilename]);
+        const codegen = spawn("cargo", ["run", "codegen", "json", "--circuit-name", circuitName, "--input-file", inputFilePath, "--lockfile", lockfilePath]);
 
         codegen.stdout.on('data', (data) => {
             console.log(`stdout: ${data}`);
@@ -35,7 +35,7 @@ describe("ExtractValue", async () => {
         let filename = "value_string";
 
         // generate extractor circuit using codegen
-        await executeCodegen(`${filename}_test`, `${filename}.json`, `${filename}.json`, filename);
+        await executeCodegen(`${filename}_test`, `${filename}.json`, `${filename}.json`);
 
         // read JSON input file into bytes
         let [input, keyUnicode, output] = readJSONInputFile(`${filename}.json`, ["k"]);
@@ -57,7 +57,7 @@ describe("ExtractValue", async () => {
 
     it("two_keys: {\"key1\": \"abc\", \"key2\": \"def\" }", async () => {
         let filename = "two_keys"
-        await executeCodegen(`${filename}_test`, `${filename}.json`, `${filename}.json`, filename);
+        await executeCodegen(`${filename}_test`, `${filename}.json`, `${filename}.json`);
         let [input, keyUnicode, output] = readJSONInputFile(`${filename}.json`, ["key2"]);
 
         circuit = await circomkit.WitnessTester(`Extract`, {
@@ -72,7 +72,7 @@ describe("ExtractValue", async () => {
 
     it("value_number: {\"k\": 69 }", async () => {
         let filename = "value_number";
-        await executeCodegen(`${filename}_test`, `${filename}.json`, `${filename}.json`, filename);
+        await executeCodegen(`${filename}_test`, `${filename}.json`, `${filename}.json`);
         let [input, keyUnicode, output] = readJSONInputFile(`${filename}.json`, ["k"]);
 
         circuit = await circomkit.WitnessTester(`Extract`, {
@@ -90,10 +90,10 @@ describe("ExtractValue", async () => {
     it("value_array_string: { \"k\" : [   420 , 69 , 4200 , 600 ], \"b\": [ \"ab\" ,  \"ba\",  \"ccc\", \"d\" ] }", async () => {
         let filename = "value_array_string";
         let inputFileName = "value_array.json";
-        await executeCodegen(`${filename}_test`, `${inputFileName}`, `${filename}.json`, filename);
+        await executeCodegen(`${filename}_test`, inputFileName, `${filename}.json`);
 
         for (let i = 0; i < 4; i++) {
-            let [input, keyUnicode, output] = readJSONInputFile(`${inputFileName}`, ["b", i]);
+            let [input, keyUnicode, output] = readJSONInputFile(inputFileName, ["b", i]);
 
             circuit = await circomkit.WitnessTester(`Extract`, {
                 file: `main/${filename}`,
@@ -110,10 +110,10 @@ describe("ExtractValue", async () => {
         let filename = "value_array_number";
         let inputFileName = "value_array.json";
 
-        await executeCodegen(`${filename}_test`, `${inputFileName}`, `${filename}.json`, filename);
+        await executeCodegen(`${filename}_test`, inputFileName, `${filename}.json`);
 
         for (let i = 0; i < 4; i++) {
-            let [input, keyUnicode, output] = readJSONInputFile(`${inputFileName}`, ["k", i]);
+            let [input, keyUnicode, output] = readJSONInputFile(inputFileName, ["k", i]);
 
             circuit = await circomkit.WitnessTester(`Extract`, {
                 file: `main/${filename}`,
@@ -129,7 +129,7 @@ describe("ExtractValue", async () => {
 
     it("value_array_nested: { \"a\": [[1,0],[0,1,3]] }", async () => {
         let filename = "value_array_nested";
-        await executeCodegen(`${filename}_test`, `${filename}.json`, `${filename}.json`, filename);
+        await executeCodegen(`${filename}_test`, `${filename}.json`, `${filename}.json`);
         let index_0 = 1;
         let index_1 = 0;
         let [input, keyUnicode, output] = readJSONInputFile(`${filename}.json`, ["a", index_0, index_1]);
@@ -154,7 +154,7 @@ describe("ExtractValueMultiDepth", () => {
     it("value_object: { \"a\": { \"d\" : \"e\", \"e\": \"c\" }, \"e\": { \"f\": \"a\", \"e\": \"2\" } }", async () => {
         let filename = "value_object";
 
-        await executeCodegen(`${filename}_test`, `${filename}.json`, `${filename}.json`, filename);
+        await executeCodegen(`${filename}_test`, `${filename}.json`, `${filename}.json`);
 
         let [input, keyUnicode, output] = readJSONInputFile(`${filename}.json`, ["e", "e"]);
 
@@ -180,7 +180,7 @@ describe("ExtractValueArrayObject", () => {
     it("value_array_object: {\"a\":[{\"b\":[1,4]},{\"c\":\"b\"}]}", async () => {
         let filename = "value_array_object";
 
-        await executeCodegen(`${filename}_test`, `${filename}.json`, `${filename}.json`, filename);
+        await executeCodegen(`${filename}_test`, `${filename}.json`, `${filename}.json`);
 
         let index_0 = 0;
         let index_1 = 0;

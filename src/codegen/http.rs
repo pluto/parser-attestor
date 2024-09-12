@@ -1,14 +1,16 @@
-use codegen::CircomkitCircuitsInput;
+use crate::{
+    codegen::{write_circuit_config, CircomkitCircuitsInput},
+    witness::read_input_file_as_bytes,
+    ExtractorArgs, FileType,
+};
 use regex::Regex;
-use witness::read_input_file_as_bytes;
+use serde::{Deserialize, Serialize};
 
-use super::*;
 use std::{
     collections::HashMap,
+    error::Error,
     fs::{self, create_dir_all},
 };
-
-use super::codegen::write_circuit_config;
 
 #[derive(Serialize, Deserialize)]
 #[serde(untagged)]
@@ -535,8 +537,9 @@ fn parse_http_file(
 fn build_circuit_config(
     args: &ExtractorArgs,
     lockfile: &HttpData,
+    codegen_filename: String,
 ) -> Result<CircomkitCircuitsInput, Box<dyn std::error::Error>> {
-    let input = read_input_file_as_bytes(WitnessType::Http, args.input_file.clone())?;
+    let input = read_input_file_as_bytes(FileType::Http, args.input_file.clone())?;
 
     let (_, http_body) = parse_http_file(lockfile, input.clone())?;
 
@@ -570,7 +573,7 @@ fn build_circuit_config(
     }
 
     Ok(CircomkitCircuitsInput {
-        file: format!("main/{}", args.output_filename),
+        file: codegen_filename,
         template: circuit_template_name,
         params,
     })
@@ -581,9 +584,11 @@ pub fn http_circuit(args: ExtractorArgs) -> Result<(), Box<dyn Error>> {
 
     let http_data: HttpData = serde_json::from_slice(&data)?;
 
-    build_http_circuit(&http_data, &args.output_filename, args.debug)?;
+    let codegen_filename = format!("http_{}", args.circuit_name);
 
-    let circomkit_circuit_input = build_circuit_config(&args, &http_data)?;
+    build_http_circuit(&http_data, &codegen_filename, args.debug)?;
+
+    let circomkit_circuit_input = build_circuit_config(&args, &http_data, codegen_filename)?;
 
     write_circuit_config(args.circuit_name, &circomkit_circuit_input)?;
 

@@ -1,10 +1,7 @@
 use clap::{Parser, Subcommand};
-use serde::{Deserialize, Serialize};
 use std::{error::Error, path::PathBuf};
 
 pub mod codegen;
-pub mod http;
-pub mod json;
 pub mod witness;
 
 #[derive(Parser, Debug)]
@@ -18,14 +15,13 @@ pub struct Args {
 pub enum Command {
     ParserWitness(ParserWitnessArgs),
     ExtractorWitness(ExtractorWitnessArgs),
-    Json(ExtractorArgs),
-    Http(ExtractorArgs),
+    Codegen(ExtractorArgs),
 }
 
 #[derive(Parser, Debug)]
 pub struct ParserWitnessArgs {
     #[arg(value_enum)]
-    subcommand: WitnessType,
+    subcommand: FileType,
 
     /// Path to the JSON file
     #[arg(long)]
@@ -39,7 +35,7 @@ pub struct ParserWitnessArgs {
 #[derive(Parser, Debug)]
 pub struct ExtractorWitnessArgs {
     #[arg(value_enum)]
-    subcommand: WitnessType,
+    subcommand: FileType,
 
     /// Name of the circuit (to be used in circomkit config)
     #[arg(long)]
@@ -55,13 +51,16 @@ pub struct ExtractorWitnessArgs {
 }
 
 #[derive(clap::ValueEnum, Clone, Debug)]
-pub enum WitnessType {
+pub enum FileType {
     Json,
     Http,
 }
 
 #[derive(Parser, Debug)]
 pub struct ExtractorArgs {
+    #[arg(value_enum)]
+    subcommand: FileType,
+
     /// Name of the circuit (to be used in circomkit config)
     #[arg(long)]
     circuit_name: String,
@@ -74,10 +73,6 @@ pub struct ExtractorArgs {
     #[arg(long)]
     lockfile: PathBuf,
 
-    /// Output circuit file name (located in circuits/main/)
-    #[arg(long, short, default_value = "extractor")]
-    output_filename: String,
-
     /// Optional circuit debug logs
     #[arg(long, short, action = clap::ArgAction::SetTrue)]
     debug: bool,
@@ -86,8 +81,10 @@ pub struct ExtractorArgs {
 pub fn main() -> Result<(), Box<dyn Error>> {
     match Args::parse().command {
         Command::ParserWitness(args) => witness::parser_witness(args),
-        Command::Json(args) => json::json_circuit(args),
-        Command::Http(args) => http::http_circuit(args),
+        Command::Codegen(args) => match args.subcommand {
+            FileType::Http => codegen::http::http_circuit(args),
+            FileType::Json => codegen::json::json_circuit(args),
+        },
         Command::ExtractorWitness(args) => witness::extractor_witness(args),
     }
 }

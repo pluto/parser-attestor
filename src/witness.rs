@@ -1,7 +1,5 @@
-use json::JsonLockfile;
-
-use super::http::HttpData;
 use super::*;
+use crate::codegen::{http::HttpData, json::JsonLockfile};
 use std::{collections::HashMap, io::Write};
 
 #[derive(serde::Serialize)]
@@ -42,12 +40,12 @@ fn print_boxed_output(lines: Vec<String>) {
 }
 
 pub fn read_input_file_as_bytes(
-    file_type: WitnessType,
+    file_type: FileType,
     file_path: PathBuf,
 ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     match file_type {
-        WitnessType::Json => Ok(std::fs::read(file_path)?),
-        WitnessType::Http => {
+        FileType::Json => Ok(std::fs::read(file_path)?),
+        FileType::Http => {
             let mut data = std::fs::read(file_path)?;
             let mut i = 0;
             // convert LF to CRLF
@@ -162,7 +160,7 @@ fn http_extractor_witness(args: ExtractorWitnessArgs) -> Result<(), Box<dyn std:
 
 pub fn extractor_witness(args: ExtractorWitnessArgs) -> Result<(), Box<dyn std::error::Error>> {
     match args.subcommand {
-        WitnessType::Json => json_extractor_witness(args),
-        WitnessType::Http => http_extractor_witness(args),
+        FileType::Json => json_extractor_witness(args),
+        FileType::Http => http_extractor_witness(args),
     }
 }

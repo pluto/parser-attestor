@@ -1,4 +1,5 @@
-use super::*;
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::{
     cmp::max_by,
     collections::HashMap,
@@ -6,8 +7,10 @@ use std::{
     str::FromStr,
 };
 
-use codegen::{write_circuit_config, CircomkitCircuitsInput};
-use serde_json::Value;
+use crate::{
+    codegen::{write_circuit_config, CircomkitCircuitsInput},
+    ExtractorArgs,
+};
 
 #[derive(Debug, Deserialize)]
 pub enum ValueType {
@@ -539,6 +542,7 @@ fn build_json_circuit(
 fn build_circuit_config(
     args: &ExtractorArgs,
     lockfile: &JsonLockfile,
+    codegen_filename: String,
 ) -> Result<CircomkitCircuitsInput, Box<dyn std::error::Error>> {
     let input = fs::read(args.input_file.clone())?;
 
@@ -611,7 +615,7 @@ fn build_circuit_config(
     params.push(value_bytes.as_bytes().len());
 
     Ok(CircomkitCircuitsInput {
-        file: format!("main/{}", args.output_filename),
+        file: format!("main/{}", codegen_filename),
         template: circuit_template_name,
         params,
     })
@@ -620,9 +624,11 @@ fn build_circuit_config(
 pub fn json_circuit(args: ExtractorArgs) -> Result<(), Box<dyn std::error::Error>> {
     let lockfile: JsonLockfile = serde_json::from_slice(&std::fs::read(&args.lockfile)?)?;
 
-    build_json_circuit(&lockfile, &args.output_filename, args.debug)?;
+    let codegen_filename = format!("json_{}", args.circuit_name);
 
-    let circomkit_circuit_input = build_circuit_config(&args, &lockfile)?;
+    build_json_circuit(&lockfile, &codegen_filename, args.debug)?;
+
+    let circomkit_circuit_input = build_circuit_config(&args, &lockfile, codegen_filename)?;
 
     write_circuit_config(args.circuit_name, &circomkit_circuit_input)?;
 

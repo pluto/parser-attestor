@@ -41,12 +41,12 @@ interface Response {
 }
 
 
-function executeCodegen(circuitName: string, inputFileName: string, lockfileName: string, outputFilename: string) {
+function executeCodegen(circuitName: string, inputFileName: string, lockfileName: string) {
     return new Promise((resolve, reject) => {
         const inputFilePath = join(__dirname, "..", "..", "..", "examples", "http", inputFileName);
         const lockfilePath = join(__dirname, "..", "..", "..", "examples", "http", "lockfile", lockfileName);
 
-        const codegen = spawn("cargo", ["run", "http", "--circuit-name", circuitName, "--input-file", inputFilePath, "--lockfile", lockfilePath, "--output-filename", outputFilename]);
+        const codegen = spawn("cargo", ["run", "codegen", "http", "--circuit-name", circuitName, "--input-file", inputFilePath, "--lockfile", lockfilePath]);
 
         codegen.stdout.on('data', (data) => {
             console.log(`stdout: ${data}`);
@@ -74,7 +74,7 @@ describe("HTTP :: Codegen :: Request", async () => {
         let inputfile = "get_request.http";
 
         // generate extractor circuit using codegen
-        await executeCodegen("get_request_test", inputfile, `${lockfile}.json`, lockfile);
+        await executeCodegen("get_request_test", inputfile, `${lockfile}.json`);
 
         const lockData = readLockFile<Request>(`${lockfile}.json`);
         console.log("lockData: ", JSON.stringify(lockData));
@@ -116,7 +116,7 @@ describe("HTTP :: Codegen :: Request", async () => {
         let inputfile = "get_request.http";
 
         // generate extractor circuit using codegen
-        await executeCodegen("get_request_test", inputfile, `${lockfile}.json`, lockfile);
+        await executeCodegen("get_request_test", inputfile, `${lockfile}.json`);
 
         const lockData = readLockFile<Request>(`${lockfile}.json`);
 
@@ -162,7 +162,7 @@ describe("HTTP :: Codegen :: Response", async () => {
         let inputfile = "get_response.http";
 
         // generate extractor circuit using codegen
-        await executeCodegen("get_response_test", inputfile, `${lockfile}.json`, lockfile);
+        await executeCodegen("get_response_test", inputfile, `${lockfile}.json`);
 
         const lockData = readLockFile<Response>(`${lockfile}.json`);
         console.log("lockData: ", JSON.stringify(lockData));
@@ -208,7 +208,7 @@ describe("HTTP :: Codegen :: Response", async () => {
         let inputfile = "get_response.http";
 
         // generate extractor circuit using codegen
-        await executeCodegen("get_response_test", inputfile, `${lockfile}.json`, lockfile);
+        await executeCodegen("get_response_test", inputfile, `${lockfile}.json`);
 
         const lockData = readLockFile<Response>(`${lockfile}.json`);
 
