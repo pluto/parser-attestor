@@ -66,7 +66,7 @@ pub struct ExtractorArgs {
     #[arg(long)]
     circuit_name: String,
 
-    /// Path to the JSON file
+    /// Path to the JSON/HTTP file
     #[arg(long)]
     input_file: PathBuf,
 

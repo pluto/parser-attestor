@@ -1,8 +1,14 @@
+use codegen::CircomkitCircuitsInput;
+use regex::Regex;
+use witness::read_input_file_as_bytes;
+
 use super::*;
 use std::{
     collections::HashMap,
     fs::{self, create_dir_all},
 };
+
+use super::codegen::write_circuit_config;
 
 #[derive(Serialize, Deserialize)]
 #[serde(untagged)]
@@ -111,8 +117,8 @@ where
 const PRAGMA: &str = "pragma circom 2.1.9;\n\n";
 
 fn build_http_circuit(
-    data: HttpData,
-    output_filename: String,
+    data: &HttpData,
+    output_filename: &String,
     debug: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut circuit_buffer = String::new();
@@ -481,13 +487,106 @@ fn build_http_circuit(
     Ok(())
 }
 
-// TODO: This needs to codegen a circuit now.
+fn parse_http_file(
+    locfile: &HttpData,
+    input: Vec<u8>,
+) -> Result<(HttpData, Vec<u8>), Box<dyn std::error::Error>> {
+    let input_string = String::from_utf8(input)?;
+
+    let parts: Vec<&str> = input_string.split("\r\n\r\n").collect();
+    assert!(parts.len() <= 2);
+
+    let mut body = vec![];
+    if parts.len() == 2 {
+        body = parts[1].as_bytes().to_vec();
+    }
+
+    let headers: Vec<&str> = parts[0].split("\r\n").collect();
+    let start_line: Vec<&str> = headers[0].split(" ").collect();
+    assert_eq!(start_line.len(), 3);
+
+    let (_, headers) = headers.split_at(1);
+    let mut headers_map = HashMap::<String, String>::new();
+    let re = Regex::new(r":\s(.+)").unwrap();
+    for &header in headers {
+        let key_value: Vec<&str> = re.split(header).collect();
+        assert_eq!(key_value.len(), 2);
+        headers_map.insert(key_value[0].to_string(), key_value[1].to_string());
+    }
+
+    let http_data = match locfile {
+        HttpData::Request(_) => HttpData::Request(Request {
+            method: start_line[0].to_string(),
+            target: start_line[1].to_string(),
+            version: start_line[2].to_string(),
+            headers: headers_map,
+        }),
+        HttpData::Response(_) => HttpData::Response(Response {
+            version: start_line[0].to_string(),
+            status: start_line[1].to_string(),
+            message: start_line[2].to_string(),
+            headers: headers_map,
+        }),
+    };
+
+    Ok((http_data, body))
+}
+
+fn build_circuit_config(
+    args: &ExtractorArgs,
+    lockfile: &HttpData,
+) -> Result<CircomkitCircuitsInput, Box<dyn std::error::Error>> {
+    let input = read_input_file_as_bytes(WitnessType::Http, args.input_file.clone())?;
+
+    let (_, http_body) = parse_http_file(lockfile, input.clone())?;
+
+    let circuit_template_name = match lockfile {
+        HttpData::Request(_) => String::from("LockHTTPRequest"),
+        HttpData::Response(_) => String::from("LockHTTPResponse"),
+    };
+
+    let mut params = vec![input.len()];
+
+    match lockfile {
+        HttpData::Request(request) => {
+            params.push(request.method.len());
+            params.push(request.target.len());
+            params.push(request.version.len());
+            for (key, value) in request.headers.iter() {
+                params.push(key.len());
+                params.push(value.len());
+            }
+        }
+        HttpData::Response(response) => {
+            params.push(http_body.len());
+            params.push(response.version.len());
+            params.push(response.status.len());
+            params.push(response.message.len());
+            for (key, value) in response.headers.iter() {
+                println!("{}, {}", key, value);
+                params.push(key.len());
+                params.push(value.len());
+            }
+        }
+    }
+
+    Ok(CircomkitCircuitsInput {
+        file: format!("main/{}", args.output_filename),
+        template: circuit_template_name,
+        params,
+    })
+}
+
 pub fn http_circuit(args: ExtractorArgs) -> Result<(), Box<dyn Error>> {
     let data = std::fs::read(&args.lockfile)?;
 
     let http_data: HttpData = serde_json::from_slice(&data)?;
 
-    build_http_circuit(http_data, args.output_filename, args.debug)?;
+    build_http_circuit(&http_data, &args.output_filename, args.debug)?;
+
+    let circomkit_circuit_input = build_circuit_config(&args, &http_data)?;
+
+    write_circuit_config(args.circuit_name, &circomkit_circuit_input)?;
 
     Ok(())
 }

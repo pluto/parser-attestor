@@ -41,7 +41,7 @@ fn print_boxed_output(lines: Vec<String>) {
     println!("{}", bottom_border);
 }
 
-fn read_input_file_as_bytes(
+pub fn read_input_file_as_bytes(
     file_type: WitnessType,
     file_path: PathBuf,
 ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
