@@ -551,9 +551,9 @@ fn build_circuit_config(
     let mut curr_stack_height = 1;
     let mut inside_string: bool = false;
 
-    for (i, char) in input[1..].iter().enumerate() {
+    for (i, char) in input.iter().skip(1).enumerate() {
         match char {
-            b'"' if input[i - 1] != b'\\' => inside_string = !inside_string,
+            b'"' if input[i] != b'\\' => inside_string = !inside_string,
             b'{' | b'[' if !inside_string => {
                 curr_stack_height += 1;
                 max_stack_height = max_by(max_stack_height, curr_stack_height, |x, y| x.cmp(y));

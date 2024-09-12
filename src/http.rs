@@ -563,7 +563,6 @@ fn build_circuit_config(
             params.push(response.status.len());
             params.push(response.message.len());
             for (key, value) in response.headers.iter() {
-                println!("{}, {}", key, value);
                 params.push(key.len());
                 params.push(value.len());
             }

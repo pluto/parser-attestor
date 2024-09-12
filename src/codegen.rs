@@ -33,11 +33,11 @@ pub fn write_circuit_config(
     }
 
     std::fs::write(
-        circomkit_circuits_config,
+        circomkit_circuits_config.clone(),
         serde_json::to_string_pretty(&circomkit_circuits)?,
     )?;
 
-    println!("circomkit circuits config updated for {}", name);
+    println!("config updated: {}", circomkit_circuits_config.display());
 
     Ok(())
 }
