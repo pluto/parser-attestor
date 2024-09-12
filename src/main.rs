@@ -2,6 +2,7 @@ use clap::{Parser, Subcommand};
 use serde::{Deserialize, Serialize};
 use std::{error::Error, path::PathBuf};
 
+pub mod codegen;
 pub mod http;
 pub mod json;
 pub mod witness;
@@ -17,78 +18,63 @@ pub struct Args {
 pub enum Command {
     ParserWitness(ParserWitnessArgs),
     ExtractorWitness(ExtractorWitnessArgs),
-    Json(JsonArgs),
-    Http(HttpArgs),
+    Json(ExtractorArgs),
+    Http(ExtractorArgs),
 }
 
 #[derive(Parser, Debug)]
 pub struct ParserWitnessArgs {
-    #[arg(global = true, value_enum)]
-    subcommand: WitnessSubcommand,
+    #[arg(value_enum)]
+    subcommand: WitnessType,
 
     /// Path to the JSON file
-    #[arg(global = true, long)]
+    #[arg(long)]
     input_file: PathBuf,
 
-    /// Output directory (will be created if it doesn't exist)
-    #[arg(global = true, long, default_value = ".")]
-    output_dir: PathBuf,
-
-    /// Output filename (will be created if it doesn't exist)
-    #[arg(global = true, long, default_value = "input.json")]
-    output_filename: String,
+    /// Name of the circuit (to be used in circomkit config)
+    #[arg(long)]
+    circuit_name: String,
 }
 
 #[derive(Parser, Debug)]
 pub struct ExtractorWitnessArgs {
-    #[arg(global = true, value_enum)]
-    subcommand: WitnessSubcommand,
+    #[arg(value_enum)]
+    subcommand: WitnessType,
+
+    /// Name of the circuit (to be used in circomkit config)
+    #[arg(long)]
+    circuit_name: String,
 
     /// Path to the JSON file
-    #[arg(global = true, long)]
+    #[arg(long)]
     input_file: PathBuf,
 
     /// Path to the lockfile
-    #[arg(global = true, long)]
+    #[arg(long)]
     lockfile: PathBuf,
-
-    /// Output directory (will be created if it doesn't exist)
-    #[arg(global = true, long, default_value = ".")]
-    output_dir: PathBuf,
-
-    /// Output filename (will be created if it doesn't exist)
-    #[arg(global = true, long, default_value = "input.json")]
-    output_filename: String,
 }
 
 #[derive(clap::ValueEnum, Clone, Debug)]
-pub enum WitnessSubcommand {
+pub enum WitnessType {
     Json,
     Http,
 }
 
 #[derive(Parser, Debug)]
-pub struct JsonArgs {
-    /// Path to the JSON file selective-disclosure template
-    #[arg(long, short)]
-    template: PathBuf,
+pub struct ExtractorArgs {
+    /// Name of the circuit (to be used in circomkit config)
+    #[arg(long)]
+    circuit_name: String,
 
-    /// Output circuit file name
-    #[arg(long, short, default_value = "extractor")]
-    output_filename: String,
-
-    /// Optional circuit debug logs
-    #[arg(long, short, action = clap::ArgAction::SetTrue)]
-    debug: bool,
-}
-
-#[derive(Parser, Debug)]
-pub struct HttpArgs {
     /// Path to the JSON file
+    #[arg(long)]
+    input_file: PathBuf,
+
+    /// Path to the lockfile
     #[arg(long)]
     lockfile: PathBuf,
 
-    /// Output circuit file name
+    /// Output circuit file name (located in circuits/main/)
     #[arg(long, short, default_value = "extractor")]
     output_filename: String,
 

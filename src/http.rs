@@ -482,7 +482,7 @@ fn build_http_circuit(
 }
 
 // TODO: This needs to codegen a circuit now.
-pub fn http_circuit(args: HttpArgs) -> Result<(), Box<dyn Error>> {
+pub fn http_circuit(args: ExtractorArgs) -> Result<(), Box<dyn Error>> {
     let data = std::fs::read(&args.lockfile)?;
 
     let http_data: HttpData = serde_json::from_slice(&data)?;

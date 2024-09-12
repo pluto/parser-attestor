@@ -42,12 +42,12 @@ fn print_boxed_output(lines: Vec<String>) {
 }
 
 fn read_input_file_as_bytes(
-    file_type: WitnessSubcommand,
+    file_type: WitnessType,
     file_path: PathBuf,
 ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     match file_type {
-        WitnessSubcommand::Json => Ok(std::fs::read(file_path)?),
-        WitnessSubcommand::Http => {
+        WitnessType::Json => Ok(std::fs::read(file_path)?),
+        WitnessType::Http => {
             let mut data = std::fs::read(file_path)?;
             let mut i = 0;
             // convert LF to CRLF
@@ -69,12 +69,17 @@ pub fn parser_witness(args: ParserWitnessArgs) -> Result<(), Box<dyn std::error:
 
     let witness = ParserWitness { data: data.clone() };
 
-    if !args.output_dir.exists() {
-        std::fs::create_dir_all(&args.output_dir)?;
+    let mut output_dir = std::env::current_dir()?;
+    output_dir.push("inputs");
+    output_dir.push(args.circuit_name);
+
+    if !output_dir.exists() {
+        std::fs::create_dir_all(&output_dir)?;
     }
 
-    let output_file = args.output_dir.join(args.output_filename);
+    let output_file = output_dir.join("inputs.json");
     let mut file = std::fs::File::create(output_file)?;
+
     file.write_all(serde_json::to_string_pretty(&witness)?.as_bytes())?;
 
     // Prepare lines to print
@@ -98,12 +103,17 @@ fn json_extractor_witness(args: ExtractorWitnessArgs) -> Result<(), Box<dyn std:
         keys: lockfile.as_bytes(),
     };
 
-    if !args.output_dir.exists() {
-        std::fs::create_dir_all(&args.output_dir)?;
+    let mut output_dir = std::env::current_dir()?;
+    output_dir.push("inputs");
+    output_dir.push(args.circuit_name);
+
+    if !output_dir.exists() {
+        std::fs::create_dir_all(&output_dir)?;
     }
 
-    let output_file = args.output_dir.join(args.output_filename);
+    let output_file = output_dir.join("inputs.json");
     let mut file = std::fs::File::create(output_file)?;
+
     file.write_all(serde_json::to_string_pretty(&witness)?.as_bytes())?;
 
     // Prepare lines to print
@@ -127,12 +137,17 @@ fn http_extractor_witness(args: ExtractorWitnessArgs) -> Result<(), Box<dyn std:
         http_data,
     };
 
-    if !args.output_dir.exists() {
-        std::fs::create_dir_all(&args.output_dir)?;
+    let mut output_dir = std::env::current_dir()?;
+    output_dir.push("inputs");
+    output_dir.push(args.circuit_name);
+
+    if !output_dir.exists() {
+        std::fs::create_dir_all(&output_dir)?;
     }
 
-    let output_file = args.output_dir.join(args.output_filename);
+    let output_file = output_dir.join("inputs.json");
     let mut file = std::fs::File::create(output_file)?;
+
     file.write_all(serde_json::to_string_pretty(&witness)?.as_bytes())?;
 
     // Prepare lines to print
@@ -147,7 +162,7 @@ fn http_extractor_witness(args: ExtractorWitnessArgs) -> Result<(), Box<dyn std:
 
 pub fn extractor_witness(args: ExtractorWitnessArgs) -> Result<(), Box<dyn std::error::Error>> {
     match args.subcommand {
-        WitnessSubcommand::Json => json_extractor_witness(args),
-        WitnessSubcommand::Http => http_extractor_witness(args),
+        WitnessType::Json => json_extractor_witness(args),
+        WitnessType::Http => http_extractor_witness(args),
     }
 }

@@ -1,13 +1,13 @@
+use super::*;
 use std::{
+    cmp::max_by,
+    collections::HashMap,
     fs::{self, create_dir_all},
     str::FromStr,
 };
 
-use std::collections::HashMap;
-
-use super::*;
-
-const PRAGMA: &str = "pragma circom 2.1.9;\n\n";
+use codegen::{write_circuit_config, CircomkitCircuitsInput};
+use serde_json::Value;
 
 #[derive(Debug, Deserialize)]
 pub enum ValueType {
@@ -21,7 +21,7 @@ pub enum ValueType {
 #[serde(untagged)]
 pub enum Key {
     String(String),
-    Num(i64),
+    Num(usize),
 }
 
 #[derive(Debug, Deserialize)]
@@ -43,7 +43,7 @@ impl JsonLockfile {
     }
 }
 
-fn extract_string(data: JsonLockfile, circuit_buffer: &mut String, debug: bool) {
+fn extract_string(data: &JsonLockfile, circuit_buffer: &mut String, debug: bool) {
     *circuit_buffer += "template ExtractStringValue(DATA_BYTES, MAX_STACK_HEIGHT, ";
     for (i, key) in data.keys.iter().enumerate() {
         match key {
@@ -108,7 +108,7 @@ fn extract_string(data: JsonLockfile, circuit_buffer: &mut String, debug: bool) 
 "#;
 }
 
-fn extract_number(data: JsonLockfile, circuit_buffer: &mut String, debug: bool) {
+fn extract_number(data: &JsonLockfile, circuit_buffer: &mut String, debug: bool) {
     *circuit_buffer += "template ExtractNumValue(DATA_BYTES, MAX_STACK_HEIGHT, ";
     for (i, key) in data.keys.iter().enumerate() {
         match key {
@@ -184,8 +184,8 @@ fn extract_number(data: JsonLockfile, circuit_buffer: &mut String, debug: bool) 
 }
 
 fn build_json_circuit(
-    data: JsonLockfile,
-    output_filename: String,
+    data: &JsonLockfile,
+    output_filename: &String,
     debug: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut circuit_buffer = String::new();
@@ -195,7 +195,7 @@ fn build_json_circuit(
     circuit_buffer += &format!("{:#?}", data);
     circuit_buffer += "\n*/\n";
 
-    circuit_buffer += PRAGMA;
+    circuit_buffer += "pragma circom 2.1.9;\n\n";
     circuit_buffer += "include \"../json/interpreter.circom\";\n\n";
 
     // template ExtractValue(DATA_BYTES, MAX_STACK_HEIGHT, keyLen1, depth1, index2, depth2, keyLen3, depth3, index4, depth4, maxValueLen) {
@@ -536,11 +536,95 @@ fn build_json_circuit(
     Ok(())
 }
 
-pub fn json_circuit(args: JsonArgs) -> Result<(), Box<dyn std::error::Error>> {
-    let data = std::fs::read(&args.template)?;
-    let json_data: JsonLockfile = serde_json::from_slice(&data)?;
+fn build_circuit_config(
+    args: &ExtractorArgs,
+    lockfile: &JsonLockfile,
+) -> Result<CircomkitCircuitsInput, Box<dyn std::error::Error>> {
+    let input = fs::read(args.input_file.clone())?;
 
-    build_json_circuit(json_data, args.output_filename, args.debug)?;
+    let circuit_template_name = match lockfile.value_type {
+        ValueType::String => String::from("ExtractStringValue"),
+        ValueType::Number => String::from("ExtractNumValue"),
+    };
+
+    let mut max_stack_height = 1;
+    let mut curr_stack_height = 1;
+    let mut inside_string: bool = false;
+
+    for (i, char) in input[1..].iter().enumerate() {
+        match char {
+            b'"' if input[i - 1] != b'\\' => inside_string = !inside_string,
+            b'{' | b'[' if !inside_string => {
+                curr_stack_height += 1;
+                max_stack_height = max_by(max_stack_height, curr_stack_height, |x, y| x.cmp(y));
+            }
+            b'}' | b']' if !inside_string => curr_stack_height -= 1,
+            _ => {}
+        }
+    }
+
+    let mut params = vec![input.len(), max_stack_height];
+
+    let mut current_value: Value = serde_json::from_slice(&input)?;
+    for (i, key) in lockfile.keys.iter().enumerate() {
+        match key {
+            Key::String(key) => {
+                if let Some(value) = current_value.get_mut(key) {
+                    // update circuit params
+                    params.push(key.len());
+
+                    // update current object value inside key
+                    current_value = value.to_owned();
+                } else {
+                    return Err(String::from("provided key not present in input JSON").into());
+                }
+            }
+            Key::Num(index) => {
+                if let Some(value) = current_value.get_mut(index) {
+                    params.push(index.to_string().as_bytes().len());
+                    current_value = value.to_owned();
+                } else {
+                    return Err(String::from("provided index not present in input JSON").into());
+                }
+            }
+        }
+        params.push(i);
+    }
+
+    let value_bytes = match lockfile.value_type {
+        ValueType::Number => {
+            if !current_value.is_u64() {
+                return Err(String::from("value type doesn't match").into());
+            }
+
+            current_value.as_u64().unwrap().to_string()
+        }
+        ValueType::String => {
+            if !current_value.is_string() {
+                return Err(String::from("value type doesn't match").into());
+            }
+
+            current_value.as_str().unwrap().to_string()
+        }
+    };
+
+    params.push(value_bytes.as_bytes().len());
+
+    Ok(CircomkitCircuitsInput {
+        file: format!("main/{}", args.output_filename),
+        template: circuit_template_name,
+        params,
+    })
+}
+
+pub fn json_circuit(args: ExtractorArgs) -> Result<(), Box<dyn std::error::Error>> {
+    let lockfile: JsonLockfile = serde_json::from_slice(&std::fs::read(&args.lockfile)?)?;
+
+    build_json_circuit(&lockfile, &args.output_filename, args.debug)?;
+
+    let circomkit_circuit_input = build_circuit_config(&args, &lockfile)?;
+
+    write_circuit_config(args.circuit_name, &circomkit_circuit_input)?;
 
     Ok(())
 }
