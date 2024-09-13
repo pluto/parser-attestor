@@ -3,13 +3,13 @@
 </h1>
 
 <div align="center">
-  <a href="https://github.com/pluto/extractor/graphs/contributors">
+  <a href="https://github.com/pluto/parser-attestor/graphs/contributors">
     <img src="https://img.shields.io/github/contributors/pluto/spark?style=flat-square&logo=github&logoColor=8b949e&labelColor=282f3b&color=32c955" alt="Contributors" />
   </a>
-  <a href="https://github.com/pluto/extractor/actions/workflows/test.yaml">
+  <a href="https://github.com/pluto/parser-attestor/actions/workflows/test.yaml">
     <img src="https://img.shields.io/badge/tests-passing-32c955?style=flat-square&logo=github-actions&logoColor=8b949e&labelColor=282f3b" alt="Tests" />
   </a>
-  <a href="https://github.com/pluto/extractor/actions/workflows/lint.yaml">
+  <a href="https://github.com/pluto/parser-attestor/actions/workflows/lint.yaml">
     <img src="https://img.shields.io/badge/lint-passing-32c955?style=flat-square&logo=github-actions&logoColor=8b949e&labelColor=282f3b" alt="Lint" />
   </a>
 </div>
@@ -120,10 +120,10 @@ From the root of this repository, run:
 ```sh
 cargo install --path .
 ```
-to install the `wpbuild` binary.
+to install the `pabuild` binary.
 You can see a help menu with the subcommands by:
 ```sh
-wpbuild --help
+pabuild --help
 ```
 This is our local Rust command line application.
 Please see the [documentation](docs/pabuild.md) for how to use this alongside the other tools.

@@ -1,9 +1,8 @@
 use clap::{Parser, Subcommand};
-use serde::{Deserialize, Serialize};
 use std::{error::Error, path::PathBuf};
 
-pub mod http;
-pub mod json;
+pub mod circuit_config;
+pub mod codegen;
 pub mod witness;
 
 #[derive(Parser, Debug)]
@@ -15,82 +14,71 @@ pub struct Args {
 
 #[derive(Subcommand, Debug)]
 pub enum Command {
-    ParserWitness(ParserWitnessArgs),
-    ExtractorWitness(ExtractorWitnessArgs),
-    Json(JsonArgs),
-    Http(HttpArgs),
+    #[command(subcommand)]
+    Witness(WitnessType),
+    Codegen(ExtractorArgs),
 }
 
-#[derive(Parser, Debug)]
-pub struct ParserWitnessArgs {
-    #[arg(global = true, value_enum)]
-    subcommand: WitnessSubcommand,
-
-    /// Path to the JSON file
-    #[arg(global = true, long)]
-    input_file: PathBuf,
-
-    /// Output directory (will be created if it doesn't exist)
-    #[arg(global = true, long, default_value = ".")]
-    output_dir: PathBuf,
-
-    /// Output filename (will be created if it doesn't exist)
-    #[arg(global = true, long, default_value = "output.json")]
-    output_filename: String,
-}
-
-#[derive(Parser, Debug)]
-pub struct ExtractorWitnessArgs {
-    #[arg(global = true, value_enum)]
-    subcommand: WitnessSubcommand,
-
-    /// Path to the JSON file
-    #[arg(global = true, long)]
-    input_file: PathBuf,
-
-    /// Path to the lockfile
-    #[arg(global = true, long)]
-    lockfile: PathBuf,
-
-    /// Output directory (will be created if it doesn't exist)
-    #[arg(global = true, long, default_value = ".")]
-    output_dir: PathBuf,
-
-    /// Output filename (will be created if it doesn't exist)
-    #[arg(global = true, long, default_value = "output.json")]
-    output_filename: String,
-}
-
-#[derive(clap::ValueEnum, Clone, Debug)]
-pub enum WitnessSubcommand {
+#[derive(clap::ValueEnum, Clone, Debug, PartialEq)]
+pub enum FileType {
     Json,
     Http,
 }
 
-#[derive(Parser, Debug)]
-pub struct JsonArgs {
-    /// Path to the JSON file selective-disclosure template
-    #[arg(long, short)]
-    template: PathBuf,
-
-    /// Output circuit file name
-    #[arg(long, short, default_value = "extractor")]
-    output_filename: String,
-
-    /// Optional circuit debug logs
-    #[arg(long, short, action = clap::ArgAction::SetTrue)]
-    debug: bool,
+#[derive(Debug, Parser)]
+pub enum WitnessType {
+    Parser(ParserWitnessArgs),
+    Extractor(ExtractorWitnessArgs),
 }
 
 #[derive(Parser, Debug)]
-pub struct HttpArgs {
+pub struct ParserWitnessArgs {
+    #[arg(value_enum)]
+    subcommand: FileType,
+
     /// Path to the JSON file
     #[arg(long)]
-    lockfile: PathBuf,
+    input_file: PathBuf,
 
-    /// Output circuit file name
-    #[arg(long, short, default_value = "extractor")]
-    output_filename: String,
+    /// Name of the circuit (to be used in circomkit config)
+    #[arg(long)]
+    circuit_name: String,
+}
+
+#[derive(Parser, Debug)]
+pub struct ExtractorWitnessArgs {
+    #[arg(value_enum)]
+    subcommand: FileType,
+
+    /// Name of the circuit (to be used in circomkit config)
+    #[arg(long)]
+    circuit_name: String,
+
+    /// Path to the JSON file
+    #[arg(long)]
+    input_file: PathBuf,
+
+    /// Path to the lockfile
+    #[arg(long)]
+    lockfile: PathBuf,
+}
+
+#[derive(Parser, Debug)]
+pub struct ExtractorArgs {
+    #[arg(value_enum)]
+    subcommand: FileType,
+
+    /// Name of the circuit (to be used in circomkit config)
+    #[arg(long)]
+    circuit_name: String,
+
+    /// Path to the JSON/HTTP file
+    #[arg(long)]
+    input_file: PathBuf,
+
+    /// Path to the lockfile
+    #[arg(long)]
+    lockfile: PathBuf,
 
     /// Optional circuit debug logs
     #[arg(long, short, action = clap::ArgAction::SetTrue)]
@@ -99,9 +87,13 @@ pub struct HttpArgs {
 
 pub fn main() -> Result<(), Box<dyn Error>> {
     match Args::parse().command {
-        Command::ParserWitness(args) => witness::parser_witness(args),
-        Command::Json(args) => json::json_circuit(args),
-        Command::Http(args) => http::http_circuit(args),
-        Command::ExtractorWitness(args) => witness::extractor_witness(args),
+        Command::Witness(witness_type) => match witness_type {
+            WitnessType::Parser(args) => witness::parser_witness(args),
+            WitnessType::Extractor(args) => witness::extractor_witness(args),
+        },
+        Command::Codegen(args) => match args.subcommand {
+            FileType::Http => codegen::http::http_circuit(args),
+            FileType::Json => codegen::json::json_circuit(args),
+        },
     }
 }
