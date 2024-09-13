@@ -1,5 +1,5 @@
 use crate::{
-    codegen::{write_circuit_config, CircomkitCircuitsInput},
+    circuit_config::{write_config, CircomkitCircuitConfig},
     witness::read_input_file_as_bytes,
     ExtractorArgs, FileType,
 };
@@ -538,8 +538,8 @@ fn build_circuit_config(
     args: &ExtractorArgs,
     lockfile: &HttpData,
     codegen_filename: String,
-) -> Result<CircomkitCircuitsInput, Box<dyn std::error::Error>> {
-    let input = read_input_file_as_bytes(FileType::Http, args.input_file.clone())?;
+) -> Result<CircomkitCircuitConfig, Box<dyn std::error::Error>> {
+    let input = read_input_file_as_bytes(&FileType::Http, args.input_file.clone())?;
 
     let (_, http_body) = parse_http_file(lockfile, input.clone())?;
 
@@ -572,7 +572,7 @@ fn build_circuit_config(
         }
     }
 
-    Ok(CircomkitCircuitsInput {
+    Ok(CircomkitCircuitConfig {
         file: codegen_filename,
         template: circuit_template_name,
         params,
@@ -590,7 +590,7 @@ pub fn http_circuit(args: ExtractorArgs) -> Result<(), Box<dyn Error>> {
 
     let circomkit_circuit_input = build_circuit_config(&args, &http_data, codegen_filename)?;
 
-    write_circuit_config(args.circuit_name, &circomkit_circuit_input)?;
+    write_config(args.circuit_name, &circomkit_circuit_input)?;
 
     Ok(())
 }

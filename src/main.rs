@@ -1,6 +1,7 @@
 use clap::{Parser, Subcommand};
 use std::{error::Error, path::PathBuf};
 
+pub mod circuit_config;
 pub mod codegen;
 pub mod witness;
 
@@ -18,7 +19,7 @@ pub enum Command {
     Codegen(ExtractorArgs),
 }
 
-#[derive(clap::ValueEnum, Clone, Debug)]
+#[derive(clap::ValueEnum, Clone, Debug, PartialEq)]
 pub enum FileType {
     Json,
     Http,
