@@ -46,8 +46,16 @@ impl Lockfile {
     }
 }
 
-fn extract_string(data: &Lockfile, circuit_buffer: &mut String, debug: bool) {
-    *circuit_buffer += "template ExtractStringValue(DATA_BYTES, MAX_STACK_HEIGHT, ";
+fn extract_string(
+    config: &CircomkitCircuitConfig,
+    data: &Lockfile,
+    circuit_buffer: &mut String,
+    debug: bool,
+) {
+    *circuit_buffer += &format!(
+        "template {}(DATA_BYTES, MAX_STACK_HEIGHT, ",
+        config.template
+    );
     for (i, key) in data.keys.iter().enumerate() {
         match key {
             Key::String(_) => *circuit_buffer += &format!("keyLen{}, depth{}, ", i + 1, i + 1),
@@ -111,8 +119,16 @@ fn extract_string(data: &Lockfile, circuit_buffer: &mut String, debug: bool) {
 "#;
 }
 
-fn extract_number(data: &Lockfile, circuit_buffer: &mut String, debug: bool) {
-    *circuit_buffer += "template ExtractNumValue(DATA_BYTES, MAX_STACK_HEIGHT, ";
+fn extract_number(
+    config: &CircomkitCircuitConfig,
+    data: &Lockfile,
+    circuit_buffer: &mut String,
+    debug: bool,
+) {
+    *circuit_buffer += &format!(
+        "template {}(DATA_BYTES, MAX_STACK_HEIGHT, ",
+        config.template
+    );
     for (i, key) in data.keys.iter().enumerate() {
         match key {
             Key::String(_) => *circuit_buffer += &format!("keyLen{}, depth{}, ", i + 1, i + 1),
@@ -187,6 +203,7 @@ fn extract_number(data: &Lockfile, circuit_buffer: &mut String, debug: bool) {
 }
 
 fn build_json_circuit(
+    config: &CircomkitCircuitConfig,
     data: &Lockfile,
     output_filename: &String,
     debug: bool,
@@ -518,8 +535,8 @@ fn build_json_circuit(
     }
 
     match data.value_type {
-        ValueType::String => extract_string(data, &mut circuit_buffer, debug),
-        ValueType::Number => extract_number(data, &mut circuit_buffer, debug),
+        ValueType::String => extract_string(config, data, &mut circuit_buffer, debug),
+        ValueType::Number => extract_number(config, data, &mut circuit_buffer, debug),
     }
 
     // write circuits to file
@@ -563,7 +580,7 @@ pub fn json_max_stack_height(input: &[u8]) -> usize {
 pub fn build_circuit_config(
     args: &ExtractorArgs,
     lockfile: &Lockfile,
-    codegen_filename: String,
+    codegen_filename: &str,
 ) -> Result<CircomkitCircuitConfig, Box<dyn std::error::Error>> {
     let input = fs::read(args.input_file.clone())?;
 
@@ -630,11 +647,11 @@ pub fn build_circuit_config(
 pub fn json_circuit(args: ExtractorArgs) -> Result<(), Box<dyn std::error::Error>> {
     let lockfile: Lockfile = serde_json::from_slice(&std::fs::read(&args.lockfile)?)?;
 
-    let codegen_filename = format!("json_{}", args.circuit_name);
+    let circuit_filename = format!("json_{}", args.circuit_name);
 
-    build_json_circuit(&lockfile, &codegen_filename, args.debug)?;
+    let config = build_circuit_config(&args, &lockfile, &circuit_filename)?;
 
-    let config = build_circuit_config(&args, &lockfile, codegen_filename)?;
+    build_json_circuit(&config, &lockfile, &circuit_filename, args.debug)?;
 
     write_config(args.circuit_name, &config)?;
 

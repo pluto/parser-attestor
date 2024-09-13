@@ -70,7 +70,7 @@ impl Serialize for Request {
         map.serialize_entry("version", self.version.as_bytes())?;
 
         for (i, (key, value)) in self.headers.iter().enumerate() {
-            map.serialize_entry(&format!("key{}", i + 1), key.as_bytes())?;
+            map.serialize_entry(&format!("header{}", i + 1), key.as_bytes())?;
             map.serialize_entry(&format!("value{}", i + 1), value.as_bytes())?;
         }
         map.end()
@@ -90,8 +90,8 @@ impl Serialize for Response {
         map.serialize_entry("message", self.message.as_bytes())?;
 
         for (i, (key, value)) in self.headers.iter().enumerate() {
-            map.serialize_entry(&format!("key{}", i + 1), key)?;
-            map.serialize_entry(&format!("value{}", i + 1), value)?;
+            map.serialize_entry(&format!("header{}", i + 1), key.as_bytes())?;
+            map.serialize_entry(&format!("value{}", i + 1), value.as_bytes())?;
         }
         map.end()
     }
@@ -573,7 +573,7 @@ fn build_circuit_config(
     }
 
     Ok(CircomkitCircuitConfig {
-        file: codegen_filename,
+        file: format!("main/{}", codegen_filename),
         template: circuit_template_name,
         params,
     })
