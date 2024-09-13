@@ -13,8 +13,8 @@ pub struct Args {
 
 #[derive(Subcommand, Debug)]
 pub enum Command {
-    ParserWitness(ParserWitnessArgs),
-    ExtractorWitness(ExtractorWitnessArgs),
+    #[command(subcommand)]
+    Witness(WitnessType),
     Codegen(ExtractorArgs),
 }
 
@@ -22,6 +22,12 @@ pub enum Command {
 pub enum FileType {
     Json,
     Http,
+}
+
+#[derive(Debug, Parser)]
+pub enum WitnessType {
+    Parser(ParserWitnessArgs),
+    Extractor(ExtractorWitnessArgs),
 }
 
 #[derive(Parser, Debug)]
@@ -80,11 +86,13 @@ pub struct ExtractorArgs {
 
 pub fn main() -> Result<(), Box<dyn Error>> {
     match Args::parse().command {
-        Command::ParserWitness(args) => witness::parser_witness(args),
+        Command::Witness(witness_type) => match witness_type {
+            WitnessType::Parser(args) => witness::parser_witness(args),
+            WitnessType::Extractor(args) => witness::extractor_witness(args),
+        },
         Command::Codegen(args) => match args.subcommand {
             FileType::Http => codegen::http::http_circuit(args),
             FileType::Json => codegen::json::json_circuit(args),
         },
-        Command::ExtractorWitness(args) => witness::extractor_witness(args),
     }
 }
