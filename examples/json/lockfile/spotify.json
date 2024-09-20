@@ -1,0 +1,14 @@
+{
+    "keys": [
+        "data",
+        "me",
+        "profile",
+        "topArtists",
+        "items",
+        0,
+        "data",
+        "profile",
+        "name"
+    ],
+    "value_type": "string"
+}
