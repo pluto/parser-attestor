@@ -1,4 +1,5 @@
-import { circomkit, WitnessTester, generateDescription, readHTTPInputFile, toByte } from "../common";
+import { circomkit, WitnessTester, generateDescription, toByte } from "../common";
+import { readHTTPInputFile } from "../common/http";
 
 describe("HTTP :: body Extractor", async () => {
     let circuit: WitnessTester<["data"], ["response"]>;

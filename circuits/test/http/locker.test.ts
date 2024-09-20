@@ -1,4 +1,5 @@
-import { circomkit, WitnessTester, generateDescription, toByte, readHTTPInputFile } from "../common";
+import { circomkit, WitnessTester, generateDescription, toByte } from "../common";
+import { readHTTPInputFile } from "../common/http";
 
 describe("HTTP :: Locker :: Request Line", async () => {
     let circuit: WitnessTester<["data", "beginning", "middle", "final"], []>;

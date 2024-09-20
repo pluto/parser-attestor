@@ -1,47 +1,10 @@
-import { circomkit, WitnessTester, readHTTPInputFile, toByte } from "../common";
+import { circomkit, WitnessTester, toByte } from "../common";
+import { readHTTPInputFile, readLockFile, getHeaders, Request, Response } from "../common/http";
 import { join } from "path";
 import { spawn } from "child_process";
-import { readFileSync } from "fs";
-
-function readLockFile<T>(filename: string): T {
-    const filePath = join(__dirname, "..", "..", "..", "examples", "http", "lockfile", filename);
-    const jsonString = readFileSync(filePath, 'utf-8');
-    const jsonData = JSON.parse(jsonString);
-    return jsonData;
-}
-
-function getHeaders(data: Request | Response): [string, string][] {
-    const headers: [string, string][] = [];
-    let i = 1;
-    while (true) {
-        const nameKey = `headerName${i}`;
-        const valueKey = `headerValue${i}`;
-        if (nameKey in data && valueKey in data) {
-            headers.push([data[nameKey], data[valueKey]]);
-            i++;
-        } else {
-            break;
-        }
-    }
-    return headers;
-}
-
-interface Request {
-    method: string,
-    target: string,
-    version: string,
-    [key: string]: string,
-}
-
-interface Response {
-    version: string,
-    status: string,
-    message: string,
-    [key: string]: string,
-}
 
 
-function executeCodegen(circuitName: string, inputFileName: string, lockfileName: string) {
+export function executeCodegen(circuitName: string, inputFileName: string, lockfileName: string) {
     return new Promise((resolve, reject) => {
         const inputFilePath = join(__dirname, "..", "..", "..", "examples", "http", inputFileName);
         const lockfilePath = join(__dirname, "..", "..", "..", "examples", "http", "lockfile", lockfileName);

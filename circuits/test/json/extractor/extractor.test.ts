@@ -3,7 +3,7 @@ import { join } from "path";
 import { spawn } from "child_process";
 
 
-function executeCodegen(circuitName: string, inputFileName: string, lockfileName: string) {
+export function executeCodegen(circuitName: string, inputFileName: string, lockfileName: string) {
     return new Promise((resolve, reject) => {
         const inputFilePath = join(__dirname, "..", "..", "..", "..", "examples", "json", "test", inputFileName);
         const lockfilePath = join(__dirname, "..", "..", "..", "..", "examples", "json", "lockfile", lockfileName);
