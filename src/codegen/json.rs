@@ -609,7 +609,7 @@ pub fn build_circuit_config(
             }
             Key::Num(index) => {
                 if let Some(value) = current_value.get_mut(index) {
-                    params.push(index.to_string().as_bytes().len());
+                    params.push(*index);
                     current_value = value.to_owned();
                 } else {
                     return Err(String::from("provided index not present in input JSON").into());
