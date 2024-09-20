@@ -23,6 +23,7 @@ pub enum Command {
 pub enum FileType {
     Json,
     Http,
+    Extended,
 }
 
 #[derive(Debug, Parser)]
@@ -88,12 +89,21 @@ pub struct ExtractorArgs {
 pub fn main() -> Result<(), Box<dyn Error>> {
     match Args::parse().command {
         Command::Witness(witness_type) => match witness_type {
-            WitnessType::Parser(args) => witness::parser_witness(args),
-            WitnessType::Extractor(args) => witness::extractor_witness(args),
+            WitnessType::Parser(args) => witness::parser_witness(args)?,
+            WitnessType::Extractor(args) => witness::extractor_witness(args)?,
         },
         Command::Codegen(args) => match args.subcommand {
-            FileType::Http => codegen::http::http_circuit(args),
-            FileType::Json => codegen::json::json_circuit(args),
+            FileType::Http => {
+                codegen::http::http_circuit(&args)?;
+            }
+            FileType::Json => {
+                codegen::json::json_circuit(&args)?;
+            }
+            FileType::Extended => {
+                codegen::integrated::integrated_circuit(&args)?;
+            }
         },
-    }
+    };
+
+    Ok(())
 }

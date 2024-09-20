@@ -20,7 +20,7 @@ pub struct CircomkitConfig(HashMap<String, CircomkitCircuitConfig>);
 /// - `name`: circuit name
 /// - `circuit_config`: [`CircomkitCircuitConfig`]
 pub fn write_config(
-    name: String,
+    name: &str,
     circuit_config: &CircomkitCircuitConfig,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut circomkit_config = env::current_dir()?;
@@ -31,12 +31,12 @@ pub fn write_config(
     let mut circomkit_circuits: CircomkitConfig =
         serde_json::from_slice(&std::fs::read(&circomkit_config)?)?;
 
-    if let Some(circuits_inputs) = circomkit_circuits.0.get_mut(&name) {
+    if let Some(circuits_inputs) = circomkit_circuits.0.get_mut(name) {
         *circuits_inputs = circuit_config.clone();
     } else {
         let _ = circomkit_circuits
             .0
-            .insert(name.clone(), circuit_config.clone());
+            .insert(name.to_string(), circuit_config.clone());
     }
 
     std::fs::write(
