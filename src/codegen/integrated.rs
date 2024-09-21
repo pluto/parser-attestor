@@ -1,17 +1,23 @@
 use crate::{
-    circuit_config::CircomkitCircuitConfig,
+    circuit_config::{write_config, CircomkitCircuitConfig},
     codegen::{
-        http::{http_circuit, parse_http_file, HttpData},
-        json::{
-            get_inputs as get_json_inputs, get_params as get_json_params, json_circuit,
-            json_max_stack_height, Key, Lockfile as JsonLockfile, ValueType,
-        },
+        http::{parse_http_file, HttpData},
+        json::{json_max_stack_height, Key, Lockfile as JsonLockfile, ValueType},
     },
     witness::read_input_file_as_bytes,
     ExtractorArgs,
 };
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::path::Path;
+
+use super::{http::http_circuit_from_lockfile, json::json_circuit_from_lockfile};
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ExtendedLockfile {
+    http: HttpData,
+    json: JsonLockfile,
+}
 
 fn build_integrated_circuit(
     http_data: &HttpData,
@@ -41,17 +47,14 @@ fn build_integrated_circuit(
 
     let http_params = http_data.params();
 
-    let mut json_params = get_json_params(json_lockfile);
+    let mut json_params = json_lockfile.params();
     json_params.remove(0);
 
     circuit_buffer += &format!(
-        "template HttpJson({}{}",
+        "template HttpJson({}{}) {{\n",
         http_params.join(", "),
         json_params.join(", ")
     );
-    circuit_buffer.pop(); // remove extra `, `
-    circuit_buffer.pop();
-    circuit_buffer += ") {\n";
 
     {
         circuit_buffer += r#"
@@ -101,19 +104,14 @@ fn build_integrated_circuit(
 
     circuit_buffer += "\n    signal httpBody[maxContentLength];\n\n";
     circuit_buffer += &format!(
-        "    httpBody <== {}({}",
+        "    httpBody <== {}({})(httpData, ",
         http_circuit_config.template,
         http_params.join(", "),
     );
-    circuit_buffer.pop();
-    circuit_buffer.pop();
-    circuit_buffer += ")(httpData, ";
 
     let mut http_inputs = http_data.inputs();
     http_inputs.remove(0);
     circuit_buffer += &http_inputs.join(", ");
-    circuit_buffer.pop();
-    circuit_buffer.pop();
     circuit_buffer += ");\n\n";
 
     for (i, key) in json_lockfile.keys.iter().enumerate() {
@@ -131,14 +129,9 @@ fn build_integrated_circuit(
         json_circuit_config.template,
         json_params.join(", ")
     );
-    circuit_buffer.pop();
-    circuit_buffer.pop();
 
-    let json_inputs = get_json_inputs(json_lockfile);
-    circuit_buffer += &format!(")(httpBody, {}", json_inputs.join(", "));
-    circuit_buffer.pop();
-    circuit_buffer.pop();
-    circuit_buffer += ");\n";
+    let json_inputs = json_lockfile.inputs();
+    circuit_buffer += &format!(")(httpBody, {});\n", json_inputs.join(", "));
 
     circuit_buffer += "}";
 
@@ -160,12 +153,12 @@ fn build_integrated_circuit(
 }
 
 fn build_circuit_config(
-    http_args: &ExtractorArgs,
+    args: &ExtractorArgs,
     http_data: &HttpData,
     json_lockfile: &JsonLockfile,
     output_filename: &str,
 ) -> Result<CircomkitCircuitConfig, Box<dyn std::error::Error>> {
-    let input = read_input_file_as_bytes(&crate::FileType::Http, http_args.input_file.clone())?;
+    let input = read_input_file_as_bytes(&crate::FileType::Http, &args.input_file)?;
 
     let (_, http_body) = parse_http_file(http_data, input.clone())?;
 
@@ -247,21 +240,39 @@ fn build_circuit_config(
 }
 
 pub fn integrated_circuit(args: &ExtractorArgs) -> Result<(), Box<dyn std::error::Error>> {
-    let http_data: HttpData = serde_json::from_slice(&std::fs::read(&http_args.lockfile)?)?;
-    let lockfile: JsonLockfile = serde_json::from_slice(&std::fs::read(&json_args.lockfile)?)?;
+    let extended_lockfile: ExtendedLockfile =
+        serde_json::from_slice(&std::fs::read(&args.lockfile)?)?;
 
-    let http_circuit_config = http_circuit(&http_args)?;
-    let json_circuit_config = json_circuit(&json_args)?;
+    let http_data: HttpData = extended_lockfile.http;
+    let lockfile: JsonLockfile = extended_lockfile.json;
 
-    build_circuit_config(&http_args, &http_data, &lockfile, output_filename)?;
+    let http_circuit_filename = format!("{}_http", args.circuit_name);
+    let http_circuit_config = http_circuit_from_lockfile(
+        &args.input_file,
+        &http_data,
+        &http_circuit_filename,
+        args.debug,
+    )?;
+
+    // read http response body as json input
+    let json_circuit_filename = format!("{}_json", args.circuit_name);
+    let input = read_input_file_as_bytes(&crate::FileType::Http, &args.input_file)?;
+    let (_, http_body) = parse_http_file(&http_data, input.clone())?;
+
+    let json_circuit_config =
+        json_circuit_from_lockfile(&http_body, &lockfile, &json_circuit_filename, args.debug)?;
+
+    let config = build_circuit_config(args, &http_data, &lockfile, &args.circuit_name)?;
 
     build_integrated_circuit(
         &http_data,
         &http_circuit_config,
         &lockfile,
         &json_circuit_config,
-        output_filename,
+        &args.circuit_name,
     )?;
+
+    write_config(&args.circuit_name, &config)?;
 
     Ok(())
 }
