@@ -299,7 +299,7 @@ fn build_http_circuit(
 
     circuit_buffer += r#"
     component State[DATA_BYTES];
-    State[0]                       = StateUpdate();
+    State[0]                       = HttpStateUpdate();
     State[0].byte                <== data[0];
     State[0].parsing_start       <== 1;
     State[0].parsing_header      <== 0;
@@ -323,7 +323,7 @@ fn build_http_circuit(
     {
         circuit_buffer += r#"
     for(var data_idx = 1; data_idx < DATA_BYTES; data_idx++) {
-        State[data_idx]                       = StateUpdate();
+        State[data_idx]                       = HttpStateUpdate();
         State[data_idx].byte                <== data[data_idx];
         State[data_idx].parsing_start       <== State[data_idx - 1].next_parsing_start;
         State[data_idx].parsing_header      <== State[data_idx - 1].next_parsing_header;

@@ -22,7 +22,7 @@ template LockStartLine(DATA_BYTES, beginningLen, middleLen, finalLen) {
 
     // Initialze the parser
     component State[DATA_BYTES];
-    State[0] = StateUpdate();
+    State[0] = HttpStateUpdate();
     State[0].byte           <== data[0];
     State[0].parsing_start  <== 1;
     State[0].parsing_header <== 0;
@@ -31,7 +31,7 @@ template LockStartLine(DATA_BYTES, beginningLen, middleLen, finalLen) {
     State[0].parsing_body   <== 0;
     State[0].line_status    <== 0;
 
-    /* 
+    /*
     Note, because we know a beginning is the very first thing in a request
     we can make this more efficient by just comparing the first `beginningLen` bytes
     of the data ASCII against the beginning ASCII itself.
@@ -50,7 +50,7 @@ template LockStartLine(DATA_BYTES, beginningLen, middleLen, finalLen) {
     var middle_end_counter = 1;
     var final_end_counter = 1;
     for(var data_idx = 1; data_idx < DATA_BYTES; data_idx++) {
-        State[data_idx]                  = StateUpdate();
+        State[data_idx]                  = HttpStateUpdate();
         State[data_idx].byte           <== data[data_idx];
         State[data_idx].parsing_start  <== State[data_idx - 1].next_parsing_start;
         State[data_idx].parsing_header <== State[data_idx - 1].next_parsing_header;
@@ -58,7 +58,7 @@ template LockStartLine(DATA_BYTES, beginningLen, middleLen, finalLen) {
         State[data_idx].parsing_field_value <== State[data_idx-1].next_parsing_field_value;
         State[data_idx].parsing_body   <== State[data_idx - 1].next_parsing_body;
         State[data_idx].line_status    <== State[data_idx - 1].next_line_status;
-        
+
         // Check remaining beginning bytes
         if(data_idx < beginningLen) {
             beginningIsEqual[data_idx] <== IsEqual()([data[data_idx], beginning[data_idx]]);
@@ -70,7 +70,7 @@ template LockStartLine(DATA_BYTES, beginningLen, middleLen, finalLen) {
         middleMask[data_idx] <==  inStartMiddle()(State[data_idx].parsing_start);
         finalMask[data_idx] <== inStartEnd()(State[data_idx].parsing_start);
         middle_start_counter += startLineMask[data_idx] - middleMask[data_idx] - finalMask[data_idx];
-        // The end of middle is the start of the final 
+        // The end of middle is the start of the final
         middle_end_counter += startLineMask[data_idx] - finalMask[data_idx];
         final_end_counter += startLineMask[data_idx];
 
@@ -86,7 +86,7 @@ template LockStartLine(DATA_BYTES, beginningLen, middleLen, finalLen) {
         log("middle_end_counter                        = ", middle_end_counter);
         log("final_end_counter                       = ", final_end_counter);
         log("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
-    } 
+    }
 
     // Debugging
     log("State[", DATA_BYTES, "].parsing_start      ", "= ", State[DATA_BYTES-1].next_parsing_start);
@@ -105,7 +105,7 @@ template LockStartLine(DATA_BYTES, beginningLen, middleLen, finalLen) {
     signal middleMatch <== SubstringMatchWithIndex(DATA_BYTES, middleLen)(data, middle, 100, middle_start_counter);
     middleMatch === 1;
     middleLen === middle_end_counter - middle_start_counter - 1;
-    
+
     // Check final is correct by substring match and length check
     // TODO: change r
     signal finalMatch <== SubstringMatchWithIndex(DATA_BYTES, finalLen)(data, final, 100, middle_end_counter);
@@ -128,7 +128,7 @@ template LockHeader(DATA_BYTES, headerNameLen, headerValueLen) {
 
     // Initialze the parser
     component State[DATA_BYTES];
-    State[0] = StateUpdate();
+    State[0] = HttpStateUpdate();
     State[0].byte           <== data[0];
     State[0].parsing_start  <== 1;
     State[0].parsing_header <== 0;
@@ -144,7 +144,7 @@ template LockHeader(DATA_BYTES, headerNameLen, headerValueLen) {
     var hasMatched = 0;
 
     for(var data_idx = 1; data_idx < DATA_BYTES; data_idx++) {
-        State[data_idx]                  = StateUpdate();
+        State[data_idx]                  = HttpStateUpdate();
         State[data_idx].byte           <== data[data_idx];
         State[data_idx].parsing_start  <== State[data_idx - 1].next_parsing_start;
         State[data_idx].parsing_header <== State[data_idx - 1].next_parsing_header;
@@ -158,7 +158,7 @@ template LockHeader(DATA_BYTES, headerNameLen, headerValueLen) {
         headerFieldNameValueMatch[data_idx].data <== data;
         headerFieldNameValueMatch[data_idx].headerName <== header;
         headerFieldNameValueMatch[data_idx].headerValue <== value;
-        headerFieldNameValueMatch[data_idx].r <== 100; 
+        headerFieldNameValueMatch[data_idx].r <== 100;
         headerFieldNameValueMatch[data_idx].index <== data_idx;
         isHeaderFieldNameValueMatch[data_idx] <== isHeaderFieldNameValueMatch[data_idx-1] + headerFieldNameValueMatch[data_idx].out;
 

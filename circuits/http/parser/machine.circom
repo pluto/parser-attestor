@@ -3,7 +3,7 @@ pragma circom 2.1.9;
 include "language.circom";
 include "../../utils/array.circom";
 
-template StateUpdate() {
+template HttpStateUpdate() {
     signal input parsing_start; // flag that counts up to 3 for each value in the start line
     signal input parsing_header; // Flag + Counter for what header line we are in
     signal input parsing_field_name; // flag that tells if parsing header field name
@@ -19,20 +19,20 @@ template StateUpdate() {
     signal output next_parsing_body;
     signal output next_line_status;
 
-    component Syntax = Syntax();
+    component HttpSyntax = HttpSyntax();
 
     //---------------------------------------------------------------------------------//
     // check if we read space or colon
     component readSP = IsEqual();
-    readSP.in <== [byte, Syntax.SPACE];
+    readSP.in <== [byte, HttpSyntax.SPACE];
     component readColon = IsEqual();
-    readColon.in <== [byte, Syntax.COLON];
+    readColon.in <== [byte, HttpSyntax.COLON];
 
     // Check if what we just read is a CR / LF
     component readCR = IsEqual();
-    readCR.in      <== [byte, Syntax.CR];
+    readCR.in      <== [byte, HttpSyntax.CR];
     component readLF = IsEqual();
-    readLF.in      <== [byte, Syntax.LF];
+    readLF.in      <== [byte, HttpSyntax.LF];
 
     signal notCRAndLF <== (1 - readCR.out) * (1 - readLF.out);
     //---------------------------------------------------------------------------------//
