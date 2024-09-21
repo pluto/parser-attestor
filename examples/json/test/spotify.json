@@ -1,10 +1,3 @@
-{"data": {"me": {"profile": {"topArtists": {"__typename": "ArtistPageV2","items": [{"data": {"__typename": "Artist","profile": {"name": "Taylor Swift"},"uri": "spotify:artist:06HL4z0CvFAxyc27GXpf02"
-                            }
-                        }
-                    ],
-                    "totalCount": 1
-                }
-            }
-        }
-    }
+{
+    "data": {"items": [{"data": "Artist","profile": {"name": "Taylor Swift"}}]}
 }
