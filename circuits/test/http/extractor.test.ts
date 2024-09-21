@@ -75,7 +75,7 @@ describe("HTTP :: header Extractor", async () => {
 
         let parsedHttp = readHTTPInputFile("get_response.http");
 
-        generatePassCase(parsedHttp.input, toByte("Content-Length"), toByte(parsedHttp.headers["Content-Length"]), "");
+        generatePassCase(parsedHttp.input, toByte("Content-Length"), toByte(parsedHttp.headers["content-length"]), "");
     });
 });
 

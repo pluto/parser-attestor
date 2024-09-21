@@ -1,5 +1,5 @@
 import 'mocha';
-import { readFileSync } from "fs";
+import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 import { Circomkit, WitnessTester } from "circomkit";
 
@@ -31,7 +31,10 @@ export function readJSONInputFile(filename: string, key: any[]): [number[], numb
     let input: number[] = [];
     let output: number[] = [];
 
-    let data = readFileSync(valueStringPath, 'utf-8');
+    let data = filename;
+    if (existsSync(valueStringPath)) {
+        data = readFileSync(valueStringPath, 'utf-8');
+    }
 
     let keyUnicode: number[][] = [];
     for (let i = 0; i < key.length; i++) {

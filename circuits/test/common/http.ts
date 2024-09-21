@@ -56,7 +56,7 @@ export function readHTTPInputFile(filename: string) {
 
         headerLines.forEach(line => {
             const [key, value] = line.split(/:\s(.+)/);
-            if (key) headers[key] = value ? value : '';
+            if (key) headers[key.toLowerCase()] = value ? value : '';
         });
 
         return headers;
@@ -69,7 +69,7 @@ export function readHTTPInputFile(filename: string) {
 
     // Parse the body, if JSON response
     let responseBody = {};
-    if (headers["Content-Type"] == "application/json" && bodySection) {
+    if (headers["content-type"] && headers["content-type"].startsWith("application/json") && bodySection) {
         try {
             responseBody = JSON.parse(bodySection);
         } catch (e) {
