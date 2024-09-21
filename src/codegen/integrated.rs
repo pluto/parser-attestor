@@ -15,8 +15,8 @@ use super::{http::http_circuit_from_lockfile, json::json_circuit_from_lockfile};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ExtendedLockfile {
-    http: HttpData,
-    json: JsonLockfile,
+    pub http: HttpData,
+    pub json: JsonLockfile,
 }
 
 fn build_integrated_circuit(
@@ -42,8 +42,8 @@ fn build_integrated_circuit(
         .to_str()
         .expect("improper circuit filename");
 
-    circuit_buffer += &format!("include \"./{}\";\n", http_circuit_filename);
-    circuit_buffer += &format!("include\"./{}\";\n\n", json_circuit_filename);
+    circuit_buffer += &format!("include \"./{}.circom\";\n", http_circuit_filename);
+    circuit_buffer += &format!("include \"./{}.circom\";\n\n", json_circuit_filename);
 
     let http_params = http_data.params();
 
@@ -51,7 +51,7 @@ fn build_integrated_circuit(
     json_params.remove(0);
 
     circuit_buffer += &format!(
-        "template HttpJson({}{}) {{\n",
+        "template HttpJson({}, {}) {{\n",
         http_params.join(", "),
         json_params.join(", ")
     );
@@ -103,16 +103,13 @@ fn build_integrated_circuit(
     }
 
     circuit_buffer += "\n    signal httpBody[maxContentLength];\n\n";
+    let http_inputs = http_data.inputs();
     circuit_buffer += &format!(
-        "    httpBody <== {}({})(httpData, ",
+        "    httpBody <== {}({})({});\n\n",
         http_circuit_config.template,
         http_params.join(", "),
+        http_inputs.join(", "),
     );
-
-    let mut http_inputs = http_data.inputs();
-    http_inputs.remove(0);
-    circuit_buffer += &http_inputs.join(", ");
-    circuit_buffer += ");\n\n";
 
     for (i, key) in json_lockfile.keys.iter().enumerate() {
         match key {
@@ -123,14 +120,15 @@ fn build_integrated_circuit(
         }
     }
 
-    circuit_buffer += "\n    signal output value[maxValueLen]\n";
+    circuit_buffer += "\n    signal output value[maxValueLen];\n";
     circuit_buffer += &format!(
         "    value <== {}(maxContentLength, {}",
         json_circuit_config.template,
         json_params.join(", ")
     );
 
-    let json_inputs = json_lockfile.inputs();
+    let mut json_inputs = json_lockfile.inputs();
+    json_inputs.remove(0);
     circuit_buffer += &format!(")(httpBody, {});\n", json_inputs.join(", "));
 
     circuit_buffer += "}";
@@ -152,6 +150,7 @@ fn build_integrated_circuit(
     Ok(())
 }
 
+// TODO: too much duplicate code, make this more modular
 fn build_circuit_config(
     args: &ExtractorArgs,
     http_data: &HttpData,
@@ -262,14 +261,15 @@ pub fn integrated_circuit(args: &ExtractorArgs) -> Result<(), Box<dyn std::error
     let json_circuit_config =
         json_circuit_from_lockfile(&http_body, &lockfile, &json_circuit_filename, args.debug)?;
 
-    let config = build_circuit_config(args, &http_data, &lockfile, &args.circuit_name)?;
+    let output_filename = format!("extended_{}", args.circuit_name);
+    let config = build_circuit_config(args, &http_data, &lockfile, &output_filename)?;
 
     build_integrated_circuit(
         &http_data,
         &http_circuit_config,
         &lockfile,
         &json_circuit_config,
-        &args.circuit_name,
+        &output_filename,
     )?;
 
     write_config(&args.circuit_name, &config)?;
