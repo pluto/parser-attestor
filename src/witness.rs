@@ -1,18 +1,21 @@
+use serde::Serialize;
+
 use crate::{
     codegen::{
         http::HttpData,
+        integrated::ExtendedLockfile,
         json::{json_max_stack_height, Lockfile},
     },
     ExtractorWitnessArgs, FileType, ParserWitnessArgs,
 };
 use std::{collections::HashMap, io::Write, path::Path};
 
-#[derive(serde::Serialize)]
+#[derive(Serialize)]
 pub struct ParserWitness {
     data: Vec<u8>,
 }
 
-#[derive(serde::Serialize)]
+#[derive(Serialize)]
 pub struct JsonExtractorWitness {
     data: Vec<u8>,
 
@@ -20,12 +23,20 @@ pub struct JsonExtractorWitness {
     keys: HashMap<String, Vec<u8>>,
 }
 
-#[derive(serde::Serialize)]
+#[derive(Serialize)]
 pub struct HttpExtractorWitness {
     data: Vec<u8>,
 
     #[serde(flatten)]
     http_data: HttpData,
+}
+
+#[derive(Serialize)]
+pub struct ExtendedWitness {
+    #[serde(flatten)]
+    http_witness: HttpExtractorWitness,
+    #[serde(flatten)]
+    keys: HashMap<String, Vec<u8>>,
 }
 
 fn print_boxed_output(lines: Vec<String>) {
@@ -49,8 +60,8 @@ pub fn read_input_file_as_bytes(
     file_path: &Path,
 ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     match file_type {
-        FileType::Json | FileType::Extended => Ok(std::fs::read(file_path)?),
-        FileType::Http => {
+        FileType::Json => Ok(std::fs::read(file_path)?),
+        FileType::Http | FileType::Extended => {
             let mut data = std::fs::read(file_path)?;
             let mut i = 0;
             // convert LF to CRLF
@@ -177,10 +188,51 @@ fn http_extractor_witness(args: ExtractorWitnessArgs) -> Result<(), Box<dyn std:
     Ok(())
 }
 
+fn extended_extractor_witness(
+    args: ExtractorWitnessArgs,
+) -> Result<(), Box<dyn std::error::Error>> {
+    // read input and lockfile
+    let input_data = read_input_file_as_bytes(&args.subcommand, &args.input_file)?;
+
+    let lockfile_data = std::fs::read(&args.lockfile)?;
+    let lockfile: ExtendedLockfile = serde_json::from_slice(&lockfile_data)?;
+
+    // create witness data
+    let witness = ExtendedWitness {
+        http_witness: HttpExtractorWitness {
+            data: input_data.clone(),
+            http_data: lockfile.http,
+        },
+        keys: lockfile.json.as_bytes(),
+    };
+
+    // create witness dir
+    let mut output_dir = std::env::current_dir()?;
+    output_dir.push("inputs");
+    output_dir.push(&args.circuit_name);
+    if !output_dir.exists() {
+        std::fs::create_dir_all(&output_dir)?;
+    }
+
+    // write witness to file
+    let output_file = output_dir.join("inputs.json");
+    let mut file = std::fs::File::create(output_file)?;
+    file.write_all(serde_json::to_string_pretty(&witness)?.as_bytes())?;
+
+    // Prepare lines to print
+    let mut lines = Vec::new();
+    lines.push(format!("Data length: {}", input_data.len()));
+
+    // Print the output inside a nicely formatted box
+    print_boxed_output(lines);
+
+    Ok(())
+}
+
 pub fn extractor_witness(args: ExtractorWitnessArgs) -> Result<(), Box<dyn std::error::Error>> {
     match args.subcommand {
         FileType::Json => json_extractor_witness(args),
         FileType::Http => http_extractor_witness(args),
-        FileType::Extended => todo!(),
+        FileType::Extended => extended_extractor_witness(args),
     }
 }
