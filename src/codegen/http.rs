@@ -10,6 +10,7 @@ use std::{
     collections::HashMap,
     error::Error,
     fs::{self, create_dir_all},
+    path::Path,
 };
 
 #[derive(Serialize, Deserialize)]
@@ -173,7 +174,7 @@ const PRAGMA: &str = "pragma circom 2.1.9;\n\n";
 fn build_http_circuit(
     config: &CircomkitCircuitConfig,
     data: &HttpData,
-    output_filename: &String,
+    output_filename: &str,
     debug: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut circuit_buffer = String::new();
@@ -194,11 +195,7 @@ fn build_http_circuit(
 
     {
         let params = data.params();
-        circuit_buffer += &format!("template {}(", config.template);
-        circuit_buffer += &params.join(", ");
-        circuit_buffer.pop(); // remove extra `, `
-        circuit_buffer.pop();
-        circuit_buffer += ") {";
+        circuit_buffer += &format!("template {}({}) {{", config.template, params.join(", "));
     }
 
     {
@@ -579,11 +576,11 @@ pub fn parse_http_file(
 }
 
 fn build_circuit_config(
-    args: &ExtractorArgs,
+    input_file: &Path,
     lockfile: &HttpData,
     codegen_filename: &str,
 ) -> Result<CircomkitCircuitConfig, Box<dyn std::error::Error>> {
-    let input = read_input_file_as_bytes(&FileType::Http, args.input_file.clone())?;
+    let input = read_input_file_as_bytes(&FileType::Http, input_file)?;
 
     let (_, http_body) = parse_http_file(lockfile, input.clone())?;
 
@@ -623,18 +620,32 @@ fn build_circuit_config(
     })
 }
 
-pub fn http_circuit(args: &ExtractorArgs) -> Result<CircomkitCircuitConfig, Box<dyn Error>> {
+pub fn http_circuit_from_args(
+    args: &ExtractorArgs,
+) -> Result<CircomkitCircuitConfig, Box<dyn Error>> {
     let data = std::fs::read(&args.lockfile)?;
 
     let http_data: HttpData = serde_json::from_slice(&data)?;
 
     let codegen_filename = format!("http_{}", args.circuit_name);
 
-    let config = build_circuit_config(args, &http_data, &codegen_filename)?;
-
-    build_http_circuit(&config, &http_data, &codegen_filename, args.debug)?;
+    let config =
+        http_circuit_from_lockfile(&args.input_file, &http_data, &codegen_filename, args.debug)?;
 
     write_config(&args.circuit_name, &config)?;
+
+    Ok(config)
+}
+
+pub fn http_circuit_from_lockfile(
+    input_file: &Path,
+    http_data: &HttpData,
+    codegen_filename: &str,
+    debug: bool,
+) -> Result<CircomkitCircuitConfig, Box<dyn std::error::Error>> {
+    let config = build_circuit_config(input_file, http_data, codegen_filename)?;
+
+    build_http_circuit(&config, http_data, codegen_filename, debug)?;
 
     Ok(config)
 }

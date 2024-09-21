@@ -5,7 +5,7 @@ use crate::{
     },
     ExtractorWitnessArgs, FileType, ParserWitnessArgs,
 };
-use std::{collections::HashMap, io::Write, path::PathBuf};
+use std::{collections::HashMap, io::Write, path::Path};
 
 #[derive(serde::Serialize)]
 pub struct ParserWitness {
@@ -46,10 +46,10 @@ fn print_boxed_output(lines: Vec<String>) {
 
 pub fn read_input_file_as_bytes(
     file_type: &FileType,
-    file_path: PathBuf,
+    file_path: &Path,
 ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     match file_type {
-        FileType::Json => Ok(std::fs::read(file_path)?),
+        FileType::Json | FileType::Extended => Ok(std::fs::read(file_path)?),
         FileType::Http => {
             let mut data = std::fs::read(file_path)?;
             let mut i = 0;
@@ -68,7 +68,7 @@ pub fn read_input_file_as_bytes(
 }
 
 pub fn parser_witness(args: ParserWitnessArgs) -> Result<(), Box<dyn std::error::Error>> {
-    let data = read_input_file_as_bytes(&args.subcommand, args.input_file)?;
+    let data = read_input_file_as_bytes(&args.subcommand, &args.input_file)?;
 
     let witness = ParserWitness { data: data.clone() };
 
@@ -103,7 +103,7 @@ pub fn parser_witness(args: ParserWitnessArgs) -> Result<(), Box<dyn std::error:
 
 fn json_extractor_witness(args: ExtractorWitnessArgs) -> Result<(), Box<dyn std::error::Error>> {
     // read input and lockfile
-    let input_data = read_input_file_as_bytes(&args.subcommand, args.input_file)?;
+    let input_data = read_input_file_as_bytes(&args.subcommand, &args.input_file)?;
 
     let lockfile_data = std::fs::read(&args.lockfile)?;
     let lockfile: Lockfile = serde_json::from_slice(&lockfile_data)?;
@@ -143,7 +143,7 @@ fn json_extractor_witness(args: ExtractorWitnessArgs) -> Result<(), Box<dyn std:
 
 fn http_extractor_witness(args: ExtractorWitnessArgs) -> Result<(), Box<dyn std::error::Error>> {
     // read input and lockfile
-    let input_data = read_input_file_as_bytes(&args.subcommand, args.input_file)?;
+    let input_data = read_input_file_as_bytes(&args.subcommand, &args.input_file)?;
 
     let lockfile_data = std::fs::read(&args.lockfile)?;
     let http_data: HttpData = serde_json::from_slice(&lockfile_data)?;
@@ -181,5 +181,6 @@ pub fn extractor_witness(args: ExtractorWitnessArgs) -> Result<(), Box<dyn std::
     match args.subcommand {
         FileType::Json => json_extractor_witness(args),
         FileType::Http => http_extractor_witness(args),
+        FileType::Extended => todo!(),
     }
 }

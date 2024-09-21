@@ -94,10 +94,10 @@ pub fn main() -> Result<(), Box<dyn Error>> {
         },
         Command::Codegen(args) => match args.subcommand {
             FileType::Http => {
-                codegen::http::http_circuit(&args)?;
+                codegen::http::http_circuit_from_args(&args)?;
             }
             FileType::Json => {
-                codegen::json::json_circuit(&args)?;
+                codegen::json::json_circuit_from_args(&args)?;
             }
             FileType::Extended => {
                 codegen::integrated::integrated_circuit(&args)?;
