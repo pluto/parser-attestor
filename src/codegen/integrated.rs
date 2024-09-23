@@ -1,14 +1,13 @@
 use crate::{
-    circuit_config::{write_config, CircomkitCircuitConfig},
+    circuit_config::CircomkitCircuitConfig,
     codegen::{
         http::{parse_http_file, HttpData},
-        json::{json_max_stack_height, Key, Lockfile as JsonLockfile, ValueType},
+        json::{Key, Lockfile as JsonLockfile},
     },
     witness::read_input_file_as_bytes,
     ExtractorArgs,
 };
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use std::path::Path;
 
 use super::{http::http_circuit_from_lockfile, json::json_circuit_from_lockfile};
@@ -24,6 +23,7 @@ fn build_integrated_circuit(
     http_circuit_config: &CircomkitCircuitConfig,
     json_lockfile: &JsonLockfile,
     json_circuit_config: &CircomkitCircuitConfig,
+    integrated_circuit_config: &CircomkitCircuitConfig,
     output_filename: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut circuit_buffer = String::new();
@@ -48,10 +48,12 @@ fn build_integrated_circuit(
     let http_params = http_data.params();
 
     let mut json_params = json_lockfile.params();
+    // remove `DATA_BYTES` from json params
     json_params.remove(0);
 
     circuit_buffer += &format!(
-        "template HttpJson({}, {}) {{\n",
+        "template {}({}, {}) {{\n",
+        integrated_circuit_config.template,
         http_params.join(", "),
         json_params.join(", ")
     );
@@ -150,7 +152,6 @@ fn build_integrated_circuit(
     Ok(())
 }
 
-// TODO: too much duplicate code, make this more modular
 fn build_circuit_config(
     args: &ExtractorArgs,
     http_data: &HttpData,
@@ -185,51 +186,10 @@ fn build_circuit_config(
         }
     }
 
-    params.push(json_max_stack_height(&http_body));
-
-    let mut current_value: Value = serde_json::from_slice(&http_body)?;
-    for (i, key) in json_lockfile.keys.iter().enumerate() {
-        match key {
-            Key::String(key) => {
-                if let Some(value) = current_value.get_mut(key) {
-                    // update circuit params
-                    params.push(key.len());
-
-                    // update current object value inside key
-                    current_value = value.to_owned();
-                } else {
-                    return Err(String::from("provided key not present in input JSON").into());
-                }
-            }
-            Key::Num(index) => {
-                if let Some(value) = current_value.get_mut(index) {
-                    params.push(*index);
-                    current_value = value.to_owned();
-                } else {
-                    return Err(String::from("provided index not present in input JSON").into());
-                }
-            }
-        }
-        params.push(i);
-    }
-
-    // get value of specified key
-    // Currently only supports number, string
-    let value_bytes = match json_lockfile.value_type {
-        ValueType::Number => {
-            if !current_value.is_u64() {
-                return Err(String::from("value type doesn't match").into());
-            }
-            current_value.as_u64().unwrap().to_string()
-        }
-        ValueType::String => {
-            if !current_value.is_string() {
-                return Err(String::from("value type doesn't match").into());
-            }
-            current_value.as_str().unwrap().to_string()
-        }
-    };
-    params.push(value_bytes.as_bytes().len());
+    // add json params and remove first param: `DATA_BYTES`
+    let mut json_params = json_lockfile.populate_params(&http_body)?;
+    json_params.remove(0);
+    params.append(&mut json_params);
 
     Ok(CircomkitCircuitConfig {
         file: format!("main/{}", output_filename),
@@ -238,6 +198,8 @@ fn build_circuit_config(
     })
 }
 
+/// Builds a HTTP + JSON combined circuit extracting body response from HTTP response and
+/// extracting value of keys from JSON.
 pub fn integrated_circuit(args: &ExtractorArgs) -> Result<(), Box<dyn std::error::Error>> {
     let extended_lockfile: ExtendedLockfile =
         serde_json::from_slice(&std::fs::read(&args.lockfile)?)?;
@@ -269,10 +231,11 @@ pub fn integrated_circuit(args: &ExtractorArgs) -> Result<(), Box<dyn std::error
         &http_circuit_config,
         &lockfile,
         &json_circuit_config,
+        &config,
         &output_filename,
     )?;
 
-    write_config(&args.circuit_name, &config)?;
+    config.write(&args.circuit_name)?;
 
     Ok(())
 }

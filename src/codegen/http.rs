@@ -1,7 +1,6 @@
 use crate::{
-    circuit_config::{write_config, CircomkitCircuitConfig},
-    witness::read_input_file_as_bytes,
-    ExtractorArgs, FileType,
+    circuit_config::CircomkitCircuitConfig, witness::read_input_file_as_bytes, ExtractorArgs,
+    FileType,
 };
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -632,7 +631,7 @@ pub fn http_circuit_from_args(
     let config =
         http_circuit_from_lockfile(&args.input_file, &http_data, &codegen_filename, args.debug)?;
 
-    write_config(&args.circuit_name, &config)?;
+    config.write(&args.circuit_name)?;
 
     Ok(config)
 }
