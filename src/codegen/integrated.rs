@@ -1,11 +1,10 @@
 use crate::{
     circuit_config::CircomkitCircuitConfig,
     codegen::{
-        http::{parse_http_file, HttpData},
+        http::HttpData,
         json::{Key, Lockfile as JsonLockfile},
     },
-    witness::read_input_file_as_bytes,
-    ExtractorArgs,
+    ExtractorArgs, FileType,
 };
 use serde::{Deserialize, Serialize};
 use std::path::Path;
@@ -158,33 +157,12 @@ fn build_circuit_config(
     json_lockfile: &JsonLockfile,
     output_filename: &str,
 ) -> Result<CircomkitCircuitConfig, Box<dyn std::error::Error>> {
-    let input = read_input_file_as_bytes(&crate::FileType::Http, &args.input_file)?;
+    let input = FileType::Http.read_input(&args.input_file)?;
 
-    let (_, http_body) = parse_http_file(http_data, input.clone())?;
+    let (_, http_body) = http_data.parse_input(input.clone())?;
 
-    let mut params = vec![input.len()];
-
-    match http_data {
-        HttpData::Request(request) => {
-            params.push(request.method.len());
-            params.push(request.target.len());
-            params.push(request.version.len());
-            for (key, value) in request.headers.iter() {
-                params.push(key.len());
-                params.push(value.len());
-            }
-        }
-        HttpData::Response(response) => {
-            params.push(http_body.len());
-            params.push(response.version.len());
-            params.push(response.status.len());
-            params.push(response.message.len());
-            for (key, value) in response.headers.iter() {
-                params.push(key.len());
-                params.push(value.len());
-            }
-        }
-    }
+    // populate http params
+    let mut params = http_data.populate_params(input)?;
 
     // add json params and remove first param: `DATA_BYTES`
     let mut json_params = json_lockfile.populate_params(&http_body)?;
@@ -217,8 +195,8 @@ pub fn integrated_circuit(args: &ExtractorArgs) -> Result<(), Box<dyn std::error
 
     // read http response body as json input
     let json_circuit_filename = format!("{}_json", args.circuit_name);
-    let input = read_input_file_as_bytes(&crate::FileType::Http, &args.input_file)?;
-    let (_, http_body) = parse_http_file(&http_data, input.clone())?;
+    let input = FileType::Http.read_input(&args.input_file)?;
+    let (_, http_body) = http_data.parse_input(input.clone())?;
 
     let json_circuit_config =
         json_circuit_from_lockfile(&http_body, &lockfile, &json_circuit_filename, args.debug)?;

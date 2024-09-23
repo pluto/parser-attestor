@@ -3,6 +3,7 @@ use serde_json::Value;
 use std::{
     cmp::max_by,
     collections::HashMap,
+    error::Error,
     fs::{self, create_dir_all},
     str::FromStr,
 };
@@ -31,7 +32,7 @@ pub struct Lockfile {
 }
 
 impl Lockfile {
-    pub fn as_bytes(&self) -> HashMap<String, Vec<u8>> {
+    pub fn keys_as_bytes(&self) -> HashMap<String, Vec<u8>> {
         let mut keys = HashMap::<String, Vec<u8>>::new();
         for (i, key) in self.keys.iter().enumerate() {
             if let Key::String(key) = key {
@@ -80,7 +81,7 @@ impl Lockfile {
         &self,
         input: &[u8],
         output_filename: &str,
-    ) -> Result<CircomkitCircuitConfig, Box<dyn std::error::Error>> {
+    ) -> Result<CircomkitCircuitConfig, Box<dyn Error>> {
         let circuit_template_name = match self.value_type {
             ValueType::String => String::from("ExtractStringValue"),
             ValueType::Number => String::from("ExtractNumValue"),
@@ -95,7 +96,7 @@ impl Lockfile {
 
     /// Builds circuit arguments
     /// `[DATA_BYTES, MAX_STACK_HEIGHT, keyLen1, depth1, ..., maxValueLen]`
-    pub fn populate_params(&self, input: &[u8]) -> Result<Vec<usize>, Box<dyn std::error::Error>> {
+    pub fn populate_params(&self, input: &[u8]) -> Result<Vec<usize>, Box<dyn Error>> {
         let mut params = vec![input.len(), json_max_stack_height(input)];
 
         for (i, key) in self.keys.iter().enumerate() {
@@ -112,7 +113,7 @@ impl Lockfile {
         Ok(params)
     }
 
-    pub fn get_value(&self, input: &[u8]) -> Result<String, Box<dyn std::error::Error>> {
+    pub fn get_value(&self, input: &[u8]) -> Result<String, Box<dyn Error>> {
         let mut current_value: Value = serde_json::from_slice(input)?;
         for key in self.keys.iter() {
             match key {
@@ -290,7 +291,7 @@ fn build_json_circuit(
     data: &Lockfile,
     output_filename: &str,
     debug: bool,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Box<dyn Error>> {
     let mut circuit_buffer = String::new();
 
     // Dump out the contents of the lockfile used into the circuit
@@ -641,12 +642,12 @@ fn build_json_circuit(
 /// - writes file
 pub fn json_circuit_from_args(
     args: &ExtractorArgs,
-) -> Result<CircomkitCircuitConfig, Box<dyn std::error::Error>> {
-    let lockfile: Lockfile = serde_json::from_slice(&std::fs::read(&args.lockfile)?)?;
+) -> Result<CircomkitCircuitConfig, Box<dyn Error>> {
+    let lockfile: Lockfile = serde_json::from_slice(&fs::read(&args.lockfile)?)?;
 
     let circuit_filename = format!("json_{}", args.circuit_name);
 
-    let input = std::fs::read(&args.input_file)?;
+    let input = fs::read(&args.input_file)?;
 
     let config = json_circuit_from_lockfile(&input, &lockfile, &circuit_filename, args.debug)?;
     config.write(&args.circuit_name)?;
@@ -659,7 +660,7 @@ pub fn json_circuit_from_lockfile(
     lockfile: &Lockfile,
     output_filename: &str,
     debug: bool,
-) -> Result<CircomkitCircuitConfig, Box<dyn std::error::Error>> {
+) -> Result<CircomkitCircuitConfig, Box<dyn Error>> {
     let config = lockfile.build_circuit_config(input, output_filename)?;
 
     build_json_circuit(&config, lockfile, output_filename, debug)?;
@@ -668,7 +669,7 @@ pub fn json_circuit_from_lockfile(
 
 #[cfg(test)]
 mod test {
-    use super::Lockfile;
+    use super::*;
 
     #[test]
     fn params() {
@@ -695,5 +696,55 @@ mod test {
 
         assert_eq!(inputs.len(), 2);
         assert_eq!(inputs[0], "data");
+    }
+
+    #[test]
+    fn populate_params() {
+        let input = include_bytes!("../../examples/json/test/spotify.json");
+        let lockfile: Lockfile =
+            serde_json::from_slice(include_bytes!("../../examples/json/lockfile/spotify.json"))
+                .unwrap();
+
+        let params = lockfile.populate_params(input).unwrap();
+
+        assert_eq!(params.len(), lockfile.params().len());
+        assert_eq!(params[0], input.len());
+    }
+
+    #[test]
+    fn build_circuit_config() {
+        let input = include_bytes!("../../examples/json/test/spotify.json");
+        let lockfile: Lockfile =
+            serde_json::from_slice(include_bytes!("../../examples/json/lockfile/spotify.json"))
+                .unwrap();
+
+        let config = lockfile
+            .build_circuit_config(input, "output_filename")
+            .unwrap();
+
+        assert_eq!(config.template, "ExtractStringValue");
+        assert_eq!(config.file, "main/output_filename");
+    }
+
+    #[test]
+    fn json_value() {
+        let input = include_bytes!("../../examples/json/test/spotify.json");
+        let lockfile: Lockfile =
+            serde_json::from_slice(include_bytes!("../../examples/json/lockfile/spotify.json"))
+                .unwrap();
+
+        let value = lockfile.get_value(input).unwrap();
+
+        assert_eq!(value, "Taylor Swift");
+    }
+
+    #[test]
+    fn max_stack_height() {
+        let input = include_bytes!("../../examples/json/test/two_keys.json");
+
+        assert_eq!(json_max_stack_height(input), 1);
+
+        let input = include_bytes!("../../examples/json/test/spotify.json");
+        assert_eq!(json_max_stack_height(input), 5);
     }
 }

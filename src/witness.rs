@@ -55,31 +55,30 @@ fn print_boxed_output(lines: Vec<String>) {
     println!("{}", bottom_border);
 }
 
-pub fn read_input_file_as_bytes(
-    file_type: &FileType,
-    file_path: &Path,
-) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-    match file_type {
-        FileType::Json => Ok(std::fs::read(file_path)?),
-        FileType::Http | FileType::Extended => {
-            let mut data = std::fs::read(file_path)?;
-            let mut i = 0;
-            // convert LF to CRLF
-            while i < data.len() {
-                if data[i] == 10 && (i == 0 || data[i - 1] != 13) {
-                    data.insert(i, 13);
-                    i += 2;
-                } else {
-                    i += 1;
+impl FileType {
+    pub fn read_input(&self, input: &Path) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+        match self {
+            FileType::Json => Ok(std::fs::read(input)?),
+            FileType::Http | FileType::Extended => {
+                let mut data = std::fs::read(input)?;
+                let mut i = 0;
+                // convert LF to CRLF
+                while i < data.len() {
+                    if data[i] == 10 && (i == 0 || data[i - 1] != 13) {
+                        data.insert(i, 13);
+                        i += 2;
+                    } else {
+                        i += 1;
+                    }
                 }
+                Ok(data)
             }
-            Ok(data)
         }
     }
 }
 
 pub fn parser_witness(args: ParserWitnessArgs) -> Result<(), Box<dyn std::error::Error>> {
-    let data = read_input_file_as_bytes(&args.subcommand, &args.input_file)?;
+    let data = args.subcommand.read_input(&args.input_file)?;
 
     let witness = ParserWitness { data: data.clone() };
 
@@ -114,7 +113,7 @@ pub fn parser_witness(args: ParserWitnessArgs) -> Result<(), Box<dyn std::error:
 
 fn json_extractor_witness(args: ExtractorWitnessArgs) -> Result<(), Box<dyn std::error::Error>> {
     // read input and lockfile
-    let input_data = read_input_file_as_bytes(&args.subcommand, &args.input_file)?;
+    let input_data = args.subcommand.read_input(&args.input_file)?;
 
     let lockfile_data = std::fs::read(&args.lockfile)?;
     let lockfile: Lockfile = serde_json::from_slice(&lockfile_data)?;
@@ -122,7 +121,7 @@ fn json_extractor_witness(args: ExtractorWitnessArgs) -> Result<(), Box<dyn std:
     // create extractor witness data
     let witness = JsonExtractorWitness {
         data: input_data.clone(),
-        keys: lockfile.as_bytes(),
+        keys: lockfile.keys_as_bytes(),
     };
 
     // create output dir if not exists
@@ -154,14 +153,14 @@ fn json_extractor_witness(args: ExtractorWitnessArgs) -> Result<(), Box<dyn std:
 
 fn http_extractor_witness(args: ExtractorWitnessArgs) -> Result<(), Box<dyn std::error::Error>> {
     // read input and lockfile
-    let input_data = read_input_file_as_bytes(&args.subcommand, &args.input_file)?;
+    let data = args.subcommand.read_input(&args.input_file)?;
 
     let lockfile_data = std::fs::read(&args.lockfile)?;
     let http_data: HttpData = serde_json::from_slice(&lockfile_data)?;
 
     // create witness data
     let witness = HttpExtractorWitness {
-        data: input_data.clone(),
+        data: data.clone(),
         http_data,
     };
 
@@ -180,7 +179,7 @@ fn http_extractor_witness(args: ExtractorWitnessArgs) -> Result<(), Box<dyn std:
 
     // Prepare lines to print
     let mut lines = Vec::new();
-    lines.push(format!("Data length: {}", input_data.len()));
+    lines.push(format!("Data length: {}", data.len()));
 
     // Print the output inside a nicely formatted box
     print_boxed_output(lines);
@@ -192,7 +191,7 @@ fn extended_extractor_witness(
     args: ExtractorWitnessArgs,
 ) -> Result<(), Box<dyn std::error::Error>> {
     // read input and lockfile
-    let input_data = read_input_file_as_bytes(&args.subcommand, &args.input_file)?;
+    let data = args.subcommand.read_input(&args.input_file)?;
 
     let lockfile_data = std::fs::read(&args.lockfile)?;
     let lockfile: ExtendedLockfile = serde_json::from_slice(&lockfile_data)?;
@@ -200,10 +199,10 @@ fn extended_extractor_witness(
     // create witness data
     let witness = ExtendedWitness {
         http_witness: HttpExtractorWitness {
-            data: input_data.clone(),
+            data: data.clone(),
             http_data: lockfile.http,
         },
-        keys: lockfile.json.as_bytes(),
+        keys: lockfile.json.keys_as_bytes(),
     };
 
     // create witness dir
@@ -221,7 +220,7 @@ fn extended_extractor_witness(
 
     // Prepare lines to print
     let mut lines = Vec::new();
-    lines.push(format!("Data length: {}", input_data.len()));
+    lines.push(format!("Data length: {}", data.len()));
 
     // Print the output inside a nicely formatted box
     print_boxed_output(lines);
