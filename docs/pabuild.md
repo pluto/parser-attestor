@@ -67,7 +67,7 @@ to get options:
 Usage: pabuild codegen [OPTIONS] --circuit-name <CIRCUIT_NAME> --input-file <INPUT_FILE> --lockfile <LOCKFILE> <SUBCOMMAND>
 
 Arguments:
-  <SUBCOMMAND>  [possible values: json, http]
+  <SUBCOMMAND>  [possible values: json, http, extended]
 
 Options:
       --circuit-name <CIRCUIT_NAME>  Name of the circuit (to be used in circomkit config)
@@ -179,3 +179,24 @@ To test an end-to-end HTTP response extraction proof:
    # OR
    snarkjs groth16 verify build/get-response/groth16_vkey.json inputs/get-response/inputs.json build/get-response/groth16_proof.json
    ```
+
+### Extended HTTP + JSON extraction
+
+`pabuild` allows to create a proof of arbitrary HTTP response.
+- Locks start line, and headers for HTTP as specified in [lockfile](../examples/http/lockfile/spotify_extended.lock.json).
+  - **NOTE**: `Accept-Encoding: identity` header is mandatory as pabuild doesn't support `gzip` encoding.
+- extracts response body out
+- create a JSON value extractor circuit based on keys in [lockfile](../examples/http/lockfile/spotify_extended.lock.json)
+- extract the value out and create a proof
+
+Steps to run an end-to-end proof is similar to HTTP/JSON extractor:
+- Run codegen to generate circuits. Replace `value_string` with `circuit-name`.
+   ```sh
+   pabuild codegen extended --circuit-name spotify_top_artists --input-file examples/http/spotify_top_artists.json --lockfile examples/http/lockfile/spotify_extended.lock.json -d
+   ```
+
+- Refer to [HTTP extractor](#http-locking-and-extraction) for following steps:
+   - generate witness
+   - create trusted setup
+   - create proof
+   - verify proof

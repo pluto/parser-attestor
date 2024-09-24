@@ -9,7 +9,7 @@ template HttpStateUpdate() {
     signal input parsing_field_name; // flag that tells if parsing header field name
     signal input parsing_field_value; // flag that tells if parsing header field value
     signal input parsing_body; // Flag when we are inside body
-    signal input line_status; // Flag that counts up to 4 to read a double CLRF
+    signal input line_status; // Flag that counts up to 4 to read a double CRLF
     signal input byte;
 
     signal output next_parsing_start;
