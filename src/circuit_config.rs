@@ -16,10 +16,9 @@ pub struct CircomkitCircuitConfig {
 pub struct CircomkitConfig(HashMap<String, CircomkitCircuitConfig>);
 
 impl CircomkitCircuitConfig {
-    /// Writes config to `circuits.json` for circomkit support
+    /// Writes [`CircomkitCircuitConfig`] to `circuits.json` for circomkit support
     /// # Inputs
     /// - `name`: circuit name
-    /// - `circuit_config`: [`CircomkitCircuitConfig`]
     pub fn write(&self, name: &str) -> Result<(), Box<dyn std::error::Error>> {
         let mut circomkit_config = env::current_dir()?;
         circomkit_config.push("circuits.json");

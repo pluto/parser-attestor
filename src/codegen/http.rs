@@ -656,8 +656,6 @@ pub fn http_circuit_from_lockfile(
 
 #[cfg(test)]
 mod test {
-    use std::path::PathBuf;
-
     use super::*;
 
     #[test]

@@ -77,23 +77,33 @@ impl FileType {
     }
 }
 
-pub fn parser_witness(args: ParserWitnessArgs) -> Result<(), Box<dyn std::error::Error>> {
-    let data = args.subcommand.read_input(&args.input_file)?;
-
-    let witness = ParserWitness { data: data.clone() };
-
+fn write_witness(circuit_name: &str, witness: &[u8]) -> Result<String, Box<dyn std::error::Error>> {
     let mut output_dir = std::env::current_dir()?;
     output_dir.push("inputs");
-    output_dir.push(args.circuit_name);
+    output_dir.push(circuit_name);
 
     if !output_dir.exists() {
         std::fs::create_dir_all(&output_dir)?;
     }
 
     let output_file = output_dir.join("inputs.json");
-    let mut file = std::fs::File::create(output_file)?;
+    let mut file = std::fs::File::create(&output_file)?;
 
-    file.write_all(serde_json::to_string_pretty(&witness)?.as_bytes())?;
+    file.write_all(witness)?;
+
+    let output = format!("Witness file generated: {:?}", output_file.display());
+    Ok(output)
+}
+
+pub fn parser_witness(args: ParserWitnessArgs) -> Result<(), Box<dyn std::error::Error>> {
+    let data = args.subcommand.read_input(&args.input_file)?;
+
+    let witness = ParserWitness { data: data.clone() };
+
+    let output = write_witness(
+        &args.circuit_name,
+        serde_json::to_string_pretty(&witness)?.as_bytes(),
+    )?;
 
     // Prepare lines to print
     let mut lines = Vec::new();
@@ -105,6 +115,9 @@ pub fn parser_witness(args: ParserWitnessArgs) -> Result<(), Box<dyn std::error:
             json_max_stack_height(&data)
         ))
     }
+
+    lines.push(output);
+
     // Print the output inside a nicely formatted box
     print_boxed_output(lines);
 
@@ -124,18 +137,10 @@ fn json_extractor_witness(args: ExtractorWitnessArgs) -> Result<(), Box<dyn std:
         keys: lockfile.keys_as_bytes(),
     };
 
-    // create output dir if not exists
-    let mut output_dir = std::env::current_dir()?;
-    output_dir.push("inputs");
-    output_dir.push(&args.circuit_name);
-    if !output_dir.exists() {
-        std::fs::create_dir_all(&output_dir)?;
-    }
-
-    // write input file
-    let output_file = output_dir.join("inputs.json");
-    let mut file = std::fs::File::create(output_file)?;
-    file.write_all(serde_json::to_string_pretty(&witness)?.as_bytes())?;
+    let output = write_witness(
+        &args.circuit_name,
+        serde_json::to_string_pretty(&witness)?.as_bytes(),
+    )?;
 
     // Prepare lines to print
     let mut lines = Vec::new();
@@ -144,6 +149,8 @@ fn json_extractor_witness(args: ExtractorWitnessArgs) -> Result<(), Box<dyn std:
         "Max stack height: {}",
         json_max_stack_height(&input_data)
     ));
+
+    lines.push(output);
 
     // Print the output inside a nicely formatted box
     print_boxed_output(lines);
@@ -164,22 +171,16 @@ fn http_extractor_witness(args: ExtractorWitnessArgs) -> Result<(), Box<dyn std:
         http_data,
     };
 
-    // create witness dir
-    let mut output_dir = std::env::current_dir()?;
-    output_dir.push("inputs");
-    output_dir.push(&args.circuit_name);
-    if !output_dir.exists() {
-        std::fs::create_dir_all(&output_dir)?;
-    }
-
-    // write witness to file
-    let output_file = output_dir.join("inputs.json");
-    let mut file = std::fs::File::create(output_file)?;
-    file.write_all(serde_json::to_string_pretty(&witness)?.as_bytes())?;
+    let output = write_witness(
+        &args.circuit_name,
+        serde_json::to_string_pretty(&witness)?.as_bytes(),
+    )?;
 
     // Prepare lines to print
     let mut lines = Vec::new();
     lines.push(format!("Data length: {}", data.len()));
+
+    lines.push(output);
 
     // Print the output inside a nicely formatted box
     print_boxed_output(lines);
@@ -205,22 +206,16 @@ fn extended_extractor_witness(
         keys: lockfile.json.keys_as_bytes(),
     };
 
-    // create witness dir
-    let mut output_dir = std::env::current_dir()?;
-    output_dir.push("inputs");
-    output_dir.push(&args.circuit_name);
-    if !output_dir.exists() {
-        std::fs::create_dir_all(&output_dir)?;
-    }
-
-    // write witness to file
-    let output_file = output_dir.join("inputs.json");
-    let mut file = std::fs::File::create(output_file)?;
-    file.write_all(serde_json::to_string_pretty(&witness)?.as_bytes())?;
+    let output = write_witness(
+        &args.circuit_name,
+        serde_json::to_string_pretty(&witness)?.as_bytes(),
+    )?;
 
     // Prepare lines to print
     let mut lines = Vec::new();
     lines.push(format!("Data length: {}", data.len()));
+
+    lines.push(output);
 
     // Print the output inside a nicely formatted box
     print_boxed_output(lines);
