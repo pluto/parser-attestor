@@ -1,5 +1,5 @@
 import 'mocha';
-import { readFileSync } from "fs";
+import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 import { Circomkit, WitnessTester } from "circomkit";
 
@@ -31,7 +31,10 @@ export function readJSONInputFile(filename: string, key: any[]): [number[], numb
     let input: number[] = [];
     let output: number[] = [];
 
-    let data = readFileSync(valueStringPath, 'utf-8');
+    let data = filename;
+    if (existsSync(valueStringPath)) {
+        data = readFileSync(valueStringPath, 'utf-8');
+    }
 
     let keyUnicode: number[][] = [];
     for (let i = 0; i < key.length; i++) {
@@ -63,52 +66,4 @@ export function toByte(data: string): number[] {
         byteArray.push(data.charCodeAt(i));
     }
     return byteArray
-}
-
-export function readHTTPInputFile(filename: string) {
-    const filePath = join(__dirname, "..", "..", "..", "examples", "http", filename);
-    let data = readFileSync(filePath, 'utf-8');
-
-    let input = toByte(data);
-
-    // Split headers and body, accounting for possible lack of body
-    const parts = data.split('\r\n\r\n');
-    const headerSection = parts[0];
-    const bodySection = parts.length > 1 ? parts[1] : '';
-
-    // Function to parse headers into a dictionary
-    function parseHeaders(headerLines: string[]) {
-        const headers: { [id: string]: string } = {};
-
-        headerLines.forEach(line => {
-            const [key, value] = line.split(/:\s(.+)/);
-            if (key) headers[key] = value ? value : '';
-        });
-
-        return headers;
-    }
-
-    // Parse the headers
-    const headerLines = headerSection.split('\r\n');
-    const initialLine = headerLines[0].split(' ');
-    const headers = parseHeaders(headerLines.slice(1));
-
-    // Parse the body, if JSON response
-    let responseBody = {};
-    if (headers["Content-Type"] == "application/json" && bodySection) {
-        try {
-            responseBody = JSON.parse(bodySection);
-        } catch (e) {
-            console.error("Failed to parse JSON body:", e);
-        }
-    }
-
-    // Combine headers and body into an object
-    return {
-        input: input,
-        initialLine: initialLine,
-        headers: headers,
-        body: responseBody,
-        bodyBytes: toByte(bodySection || ''),
-    };
 }

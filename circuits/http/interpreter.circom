@@ -18,7 +18,7 @@ template inStartLine() {
 template inStartMiddle() {
     signal input parsing_start;
     signal output out;
-    
+
     out <== IsEqual()([parsing_start, 2]);
 }
 
@@ -49,7 +49,7 @@ template HeaderFieldNameValueMatch(dataLen, nameLen, valueLen) {
     signal input r;
     signal input index;
 
-    component syntax = Syntax();
+    component syntax = HttpSyntax();
 
     // signal output value[valueLen];
 
@@ -76,7 +76,7 @@ template HeaderFieldNameMatch(dataLen, nameLen) {
     signal input r;
     signal input index;
 
-    component syntax = Syntax();
+    component syntax = HttpSyntax();
 
     // is name matches
     signal headerNameMatch <== SubstringMatchWithIndex(dataLen, nameLen)(data, headerName, r, index);

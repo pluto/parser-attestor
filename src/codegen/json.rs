@@ -3,16 +3,14 @@ use serde_json::Value;
 use std::{
     cmp::max_by,
     collections::HashMap,
+    error::Error,
     fs::{self, create_dir_all},
     str::FromStr,
 };
 
-use crate::{
-    circuit_config::{write_config, CircomkitCircuitConfig},
-    ExtractorArgs,
-};
+use crate::{circuit_config::CircomkitCircuitConfig, ExtractorArgs};
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum ValueType {
     #[serde(rename = "string")]
     String,
@@ -27,14 +25,14 @@ pub enum Key {
     Num(usize),
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Lockfile {
-    keys: Vec<Key>,
-    value_type: ValueType,
+    pub keys: Vec<Key>,
+    pub value_type: ValueType,
 }
 
 impl Lockfile {
-    pub fn as_bytes(&self) -> HashMap<String, Vec<u8>> {
+    pub fn keys_as_bytes(&self) -> HashMap<String, Vec<u8>> {
         let mut keys = HashMap::<String, Vec<u8>>::new();
         for (i, key) in self.keys.iter().enumerate() {
             if let Key::String(key) = key {
@@ -44,6 +42,132 @@ impl Lockfile {
         }
         keys
     }
+    pub fn params(&self) -> Vec<String> {
+        let mut params = vec!["DATA_BYTES".to_string(), "MAX_STACK_HEIGHT".to_string()];
+
+        for (i, key) in self.keys.iter().enumerate() {
+            match key {
+                Key::String(_) => {
+                    params.push(format!("keyLen{}", i + 1));
+                    params.push(format!("depth{}", i + 1));
+                }
+                Key::Num(_) => {
+                    params.push(format!("index{}", i + 1));
+                    params.push(format!("depth{}", i + 1));
+                }
+            }
+        }
+
+        params.push("maxValueLen".to_string());
+
+        params
+    }
+
+    pub fn inputs(&self) -> Vec<String> {
+        let mut inputs = vec![String::from("data")];
+
+        for (i, key) in self.keys.iter().enumerate() {
+            match key {
+                Key::String(_) => inputs.push(format!("key{}", i + 1)),
+                Key::Num(_) => (),
+            }
+        }
+
+        inputs
+    }
+
+    /// Builds circuit config for circomkit support.
+    pub fn build_circuit_config(
+        &self,
+        input: &[u8],
+        output_filename: &str,
+    ) -> Result<CircomkitCircuitConfig, Box<dyn Error>> {
+        let circuit_template_name = match self.value_type {
+            ValueType::String => String::from("ExtractStringValue"),
+            ValueType::Number => String::from("ExtractNumValue"),
+        };
+
+        Ok(CircomkitCircuitConfig {
+            file: format!("main/{}", output_filename),
+            template: circuit_template_name,
+            params: self.populate_params(input)?,
+        })
+    }
+
+    /// Builds circuit arguments
+    /// `[DATA_BYTES, MAX_STACK_HEIGHT, keyLen1, depth1, ..., maxValueLen]`
+    pub fn populate_params(&self, input: &[u8]) -> Result<Vec<usize>, Box<dyn Error>> {
+        let mut params = vec![input.len(), json_max_stack_height(input)];
+
+        for (i, key) in self.keys.iter().enumerate() {
+            match key {
+                Key::String(key) => params.push(key.len()),
+                Key::Num(index) => params.push(*index),
+            }
+            params.push(i);
+        }
+
+        let current_value = self.get_value(input)?;
+        params.push(current_value.as_bytes().len());
+
+        Ok(params)
+    }
+
+    pub fn get_value(&self, input: &[u8]) -> Result<String, Box<dyn Error>> {
+        let mut current_value: Value = serde_json::from_slice(input)?;
+        for key in self.keys.iter() {
+            match key {
+                Key::String(key) => {
+                    if let Some(value) = current_value.get_mut(key) {
+                        // update current object value inside key
+                        current_value = value.to_owned();
+                    } else {
+                        return Err(String::from("provided key not present in input JSON").into());
+                    }
+                }
+                Key::Num(index) => {
+                    if let Some(value) = current_value.get_mut(index) {
+                        current_value = value.to_owned();
+                    } else {
+                        return Err(String::from("provided index not present in input JSON").into());
+                    }
+                }
+            }
+        }
+
+        match current_value {
+            Value::Number(num) => Ok(num.to_string()),
+            Value::String(val) => Ok(val),
+            _ => unimplemented!(),
+        }
+    }
+}
+
+/// Returns maximum stack height for JSON parser circuit. Tracks maximum open braces and square
+/// brackets at any position.
+///
+/// # Input
+/// - `input`: input json bytes
+/// # Output
+/// - `max_stack_height`: maximum stack height needed for JSON parser circuit
+pub fn json_max_stack_height(input: &[u8]) -> usize {
+    let mut max_stack_height = 1;
+    let mut curr_stack_height = 1;
+    let mut inside_string: bool = false;
+
+    for (i, char) in input.iter().skip(1).enumerate() {
+        match char {
+            b'"' if input[i] != b'\\' => inside_string = !inside_string,
+            b'{' | b'[' if !inside_string => {
+                curr_stack_height += 1;
+                max_stack_height = max_by(max_stack_height, curr_stack_height, |x, y| x.cmp(y));
+            }
+            b'}' | b']' if !inside_string => curr_stack_height -= 1,
+            _ => {}
+        }
+    }
+
+    max_stack_height
 }
 
 fn extract_string(
@@ -52,17 +176,10 @@ fn extract_string(
     circuit_buffer: &mut String,
     debug: bool,
 ) {
-    *circuit_buffer += &format!(
-        "template {}(DATA_BYTES, MAX_STACK_HEIGHT, ",
-        config.template
-    );
-    for (i, key) in data.keys.iter().enumerate() {
-        match key {
-            Key::String(_) => *circuit_buffer += &format!("keyLen{}, depth{}, ", i + 1, i + 1),
-            Key::Num(_) => *circuit_buffer += &format!("index{}, depth{}, ", i + 1, i + 1),
-        }
-    }
-    *circuit_buffer += "maxValueLen) {\n";
+    let params = data.params();
+    let inputs = data.inputs();
+
+    *circuit_buffer += &format!("template {}({}) {{\n", config.template, params.join(", "),);
 
     *circuit_buffer += "    signal input data[DATA_BYTES];\n\n";
 
@@ -83,24 +200,11 @@ fn extract_string(
 
     // value_starting_index <== ExtractValue(DATA_BYTES, MAX_STACK_HEIGHT, keyLen1, depth1, keyLen2, depth2, index3, depth3, index4, depth4, maxValueLen)(data, key1, key2);
     {
-        *circuit_buffer +=
-            "    value_starting_index <== ExtractValue(DATA_BYTES, MAX_STACK_HEIGHT, ";
-        for (i, key) in data.keys.iter().enumerate() {
-            match key {
-                Key::String(_) => *circuit_buffer += &format!("keyLen{}, depth{}, ", i + 1, i + 1),
-                Key::Num(_) => *circuit_buffer += &format!("index{}, depth{}, ", i + 1, i + 1),
-            }
-        }
-        *circuit_buffer += "maxValueLen)(data, ";
-        for (i, key) in data.keys.iter().enumerate() {
-            match key {
-                Key::String(_) => *circuit_buffer += &format!("key{}, ", i + 1),
-                Key::Num(_) => (),
-            }
-        }
-        circuit_buffer.pop();
-        circuit_buffer.pop();
-        *circuit_buffer += ");\n";
+        *circuit_buffer += &format!(
+            "    value_starting_index <== ExtractValue({})({});\n",
+            params.join(", "),
+            inputs.join(", "),
+        );
     }
 
     *circuit_buffer += r#"
@@ -125,17 +229,10 @@ fn extract_number(
     circuit_buffer: &mut String,
     debug: bool,
 ) {
-    *circuit_buffer += &format!(
-        "template {}(DATA_BYTES, MAX_STACK_HEIGHT, ",
-        config.template
-    );
-    for (i, key) in data.keys.iter().enumerate() {
-        match key {
-            Key::String(_) => *circuit_buffer += &format!("keyLen{}, depth{}, ", i + 1, i + 1),
-            Key::Num(_) => *circuit_buffer += &format!("index{}, depth{}, ", i + 1, i + 1),
-        }
-    }
-    *circuit_buffer += "maxValueLen) {\n";
+    let params = data.params();
+    let inputs = data.inputs();
+
+    *circuit_buffer += &format!("template {}({}) {{\n", config.template, params.join(", "),);
 
     *circuit_buffer += "    signal input data[DATA_BYTES];\n\n";
 
@@ -157,24 +254,11 @@ fn extract_number(
 
     // value_starting_index <== ExtractValue(DATA_BYTES, MAX_STACK_HEIGHT, keyLen1, depth1, keyLen2, depth2, index3, depth3, index4, depth4, maxValueLen)(data, key1, key2);
     {
-        *circuit_buffer +=
-            "    value_starting_index <== ExtractValue(DATA_BYTES, MAX_STACK_HEIGHT, ";
-        for (i, key) in data.keys.iter().enumerate() {
-            match key {
-                Key::String(_) => *circuit_buffer += &format!("keyLen{}, depth{}, ", i + 1, i + 1),
-                Key::Num(_) => *circuit_buffer += &format!("index{}, depth{}, ", i + 1, i + 1),
-            }
-        }
-        *circuit_buffer += "maxValueLen)(data, ";
-        for (i, key) in data.keys.iter().enumerate() {
-            match key {
-                Key::String(_) => *circuit_buffer += &format!("key{}, ", i + 1),
-                Key::Num(_) => (),
-            }
-        }
-        circuit_buffer.pop();
-        circuit_buffer.pop();
-        *circuit_buffer += ");\n";
+        *circuit_buffer += &format!(
+            "    value_starting_index <== ExtractValue({})({});\n",
+            params.join(", "),
+            inputs.join(", "),
+        );
     }
 
     *circuit_buffer += r#"
@@ -205,9 +289,9 @@ fn extract_number(
 fn build_json_circuit(
     config: &CircomkitCircuitConfig,
     data: &Lockfile,
-    output_filename: &String,
+    output_filename: &str,
     debug: bool,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Box<dyn Error>> {
     let mut circuit_buffer = String::new();
 
     // Dump out the contents of the lockfile used into the circuit
@@ -220,14 +304,8 @@ fn build_json_circuit(
 
     // template ExtractValue(DATA_BYTES, MAX_STACK_HEIGHT, keyLen1, depth1, index2, depth2, keyLen3, depth3, index4, depth4, maxValueLen) {
     {
-        circuit_buffer += "template ExtractValue(DATA_BYTES, MAX_STACK_HEIGHT, ";
-        for (i, key) in data.keys.iter().enumerate() {
-            match key {
-                Key::String(_) => circuit_buffer += &format!("keyLen{}, depth{}, ", i + 1, i + 1),
-                Key::Num(_) => circuit_buffer += &format!("index{}, depth{}, ", i + 1, i + 1),
-            }
-        }
-        circuit_buffer += "maxValueLen) {\n";
+        let params = data.params();
+        circuit_buffer += &format!("template ExtractValue({}) {{\n", params.join(", "));
     }
 
     /*
@@ -556,104 +634,117 @@ fn build_json_circuit(
     Ok(())
 }
 
-pub fn json_max_stack_height(input: &[u8]) -> usize {
-    let mut max_stack_height = 1;
-    let mut curr_stack_height = 1;
-    let mut inside_string: bool = false;
-
-    for (i, char) in input.iter().skip(1).enumerate() {
-        match char {
-            b'"' if input[i] != b'\\' => inside_string = !inside_string,
-            b'{' | b'[' if !inside_string => {
-                curr_stack_height += 1;
-                max_stack_height = max_by(max_stack_height, curr_stack_height, |x, y| x.cmp(y));
-            }
-            b'}' | b']' if !inside_string => curr_stack_height -= 1,
-            _ => {}
-        }
-    }
-
-    max_stack_height
-}
-
-/// Builds circuit config for circomkit support.
-pub fn build_circuit_config(
+/// Builds a JSON extractor circuit from [`ExtractorArgs`]
+/// - reads [`Lockfile`]
+/// - reads input
+/// - create [`CircomkitCircuitConfig`]
+/// - builds circuit
+/// - writes file
+pub fn json_circuit_from_args(
     args: &ExtractorArgs,
-    lockfile: &Lockfile,
-    codegen_filename: &str,
-) -> Result<CircomkitCircuitConfig, Box<dyn std::error::Error>> {
-    let input = fs::read(args.input_file.clone())?;
-
-    let circuit_template_name = match lockfile.value_type {
-        ValueType::String => String::from("ExtractStringValue"),
-        ValueType::Number => String::from("ExtractNumValue"),
-    };
-
-    // build circuit arguments
-    // [DATA_BYTES, MAX_STACK_HEIGHT, keyLen1, depth1, ..., maxValueLen]
-    let mut params = vec![input.len(), json_max_stack_height(&input)];
-
-    let mut current_value: Value = serde_json::from_slice(&input)?;
-    for (i, key) in lockfile.keys.iter().enumerate() {
-        match key {
-            Key::String(key) => {
-                if let Some(value) = current_value.get_mut(key) {
-                    // update circuit params
-                    params.push(key.len());
-
-                    // update current object value inside key
-                    current_value = value.to_owned();
-                } else {
-                    return Err(String::from("provided key not present in input JSON").into());
-                }
-            }
-            Key::Num(index) => {
-                if let Some(value) = current_value.get_mut(index) {
-                    params.push(index.to_string().as_bytes().len());
-                    current_value = value.to_owned();
-                } else {
-                    return Err(String::from("provided index not present in input JSON").into());
-                }
-            }
-        }
-        params.push(i);
-    }
-
-    // get value of specified key
-    // Currently only supports number, string
-    let value_bytes = match lockfile.value_type {
-        ValueType::Number => {
-            if !current_value.is_u64() {
-                return Err(String::from("value type doesn't match").into());
-            }
-            current_value.as_u64().unwrap().to_string()
-        }
-        ValueType::String => {
-            if !current_value.is_string() {
-                return Err(String::from("value type doesn't match").into());
-            }
-            current_value.as_str().unwrap().to_string()
-        }
-    };
-    params.push(value_bytes.as_bytes().len());
-
-    Ok(CircomkitCircuitConfig {
-        file: format!("main/{}", codegen_filename),
-        template: circuit_template_name,
-        params,
-    })
-}
-
-pub fn json_circuit(args: ExtractorArgs) -> Result<(), Box<dyn std::error::Error>> {
-    let lockfile: Lockfile = serde_json::from_slice(&std::fs::read(&args.lockfile)?)?;
+) -> Result<CircomkitCircuitConfig, Box<dyn Error>> {
+    let lockfile: Lockfile = serde_json::from_slice(&fs::read(&args.lockfile)?)?;
 
     let circuit_filename = format!("json_{}", args.circuit_name);
 
-    let config = build_circuit_config(&args, &lockfile, &circuit_filename)?;
+    let input = fs::read(&args.input_file)?;
 
-    build_json_circuit(&config, &lockfile, &circuit_filename, args.debug)?;
+    let config = json_circuit_from_lockfile(&input, &lockfile, &circuit_filename, args.debug)?;
+    config.write(&args.circuit_name)?;
 
-    write_config(args.circuit_name, &config)?;
+    Ok(config)
+}
 
-    Ok(())
+pub fn json_circuit_from_lockfile(
+    input: &[u8],
+    lockfile: &Lockfile,
+    output_filename: &str,
+    debug: bool,
+) -> Result<CircomkitCircuitConfig, Box<dyn Error>> {
+    let config = lockfile.build_circuit_config(input, output_filename)?;
+
+    build_json_circuit(&config, lockfile, output_filename, debug)?;
+    Ok(config)
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn params() {
+        let lockfile: Lockfile = serde_json::from_slice(include_bytes!(
+            "../../examples/json/lockfile/value_array_object.json"
+        ))
+        .unwrap();
+
+        let params = lockfile.params();
+
+        assert_eq!(params[0], "DATA_BYTES");
+        assert_eq!(params[1], "MAX_STACK_HEIGHT");
+        assert_eq!(params.len(), 2 + 2 * lockfile.keys.len() + 1);
+    }
+
+    #[test]
+    fn inputs() {
+        let lockfile: Lockfile = serde_json::from_slice(include_bytes!(
+            "../../examples/json/lockfile/value_array_number.json"
+        ))
+        .unwrap();
+
+        let inputs = lockfile.inputs();
+
+        assert_eq!(inputs.len(), 2);
+        assert_eq!(inputs[0], "data");
+    }
+
+    #[test]
+    fn populate_params() {
+        let input = include_bytes!("../../examples/json/test/spotify.json");
+        let lockfile: Lockfile =
+            serde_json::from_slice(include_bytes!("../../examples/json/lockfile/spotify.json"))
+                .unwrap();
+
+        let params = lockfile.populate_params(input).unwrap();
+
+        assert_eq!(params.len(), lockfile.params().len());
+        assert_eq!(params[0], input.len());
+    }
+
+    #[test]
+    fn build_circuit_config() {
+        let input = include_bytes!("../../examples/json/test/spotify.json");
+        let lockfile: Lockfile =
+            serde_json::from_slice(include_bytes!("../../examples/json/lockfile/spotify.json"))
+                .unwrap();
+
+        let config = lockfile
+            .build_circuit_config(input, "output_filename")
+            .unwrap();
+
+        assert_eq!(config.template, "ExtractStringValue");
+        assert_eq!(config.file, "main/output_filename");
+    }
+
+    #[test]
+    fn json_value() {
+        let input = include_bytes!("../../examples/json/test/spotify.json");
+        let lockfile: Lockfile =
+            serde_json::from_slice(include_bytes!("../../examples/json/lockfile/spotify.json"))
+                .unwrap();
+
+        let value = lockfile.get_value(input).unwrap();
+
+        assert_eq!(value, "Taylor Swift");
+    }
+
+    #[test]
+    fn max_stack_height() {
+        let input = include_bytes!("../../examples/json/test/two_keys.json");
+
+        assert_eq!(json_max_stack_height(input), 1);
+
+        let input = include_bytes!("../../examples/json/test/spotify.json");
+        assert_eq!(json_max_stack_height(input), 5);
+    }
 }

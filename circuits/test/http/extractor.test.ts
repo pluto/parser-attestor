@@ -1,4 +1,5 @@
-import { circomkit, WitnessTester, generateDescription, readHTTPInputFile, toByte } from "../common";
+import { circomkit, WitnessTester, generateDescription, toByte } from "../common";
+import { readHTTPInputFile } from "../common/http";
 
 describe("HTTP :: body Extractor", async () => {
     let circuit: WitnessTester<["data"], ["response"]>;
@@ -74,7 +75,7 @@ describe("HTTP :: header Extractor", async () => {
 
         let parsedHttp = readHTTPInputFile("get_response.http");
 
-        generatePassCase(parsedHttp.input, toByte("Content-Length"), toByte(parsedHttp.headers["Content-Length"]), "");
+        generatePassCase(parsedHttp.input, toByte("Content-Length"), toByte(parsedHttp.headers["content-length"]), "");
     });
 });
 

@@ -206,7 +206,7 @@ template NextKVPairAtDepth(n, depth) {
     signal input currByte;
     signal output out;
 
-    var logMaxDepth = log2Ceil(n);
+    var logMaxDepth = log2Ceil(n+1);
 
     component topOfStack = GetTopOfStack(n);
     topOfStack.stack <== stack;
@@ -219,7 +219,7 @@ template NextKVPairAtDepth(n, depth) {
     component syntax = Syntax();
     signal isComma <== IsEqual()([currByte, syntax.COMMA]);
     // pointer <= depth
-    signal atLessDepth <== LessEqThan(logMaxDepth)([pointer, depth]);
+    signal atLessDepth <== LessEqThan(logMaxDepth)([pointer-1, depth]);
     // current depth is less than key depth
     signal isCommaAtDepthLessThanCurrent <== isComma * atLessDepth;
 

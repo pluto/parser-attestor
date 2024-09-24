@@ -5,6 +5,8 @@ pub mod circuit_config;
 pub mod codegen;
 pub mod witness;
 
+use crate::codegen::ExtractorArgs;
+
 #[derive(Parser, Debug)]
 #[command(name = "pabuild")]
 pub struct Args {
@@ -19,10 +21,12 @@ pub enum Command {
     Codegen(ExtractorArgs),
 }
 
+/// Lockfile file type
 #[derive(clap::ValueEnum, Clone, Debug, PartialEq)]
 pub enum FileType {
     Json,
     Http,
+    Extended,
 }
 
 #[derive(Debug, Parser)]
@@ -31,6 +35,7 @@ pub enum WitnessType {
     Extractor(ExtractorWitnessArgs),
 }
 
+/// Parser witness arguments
 #[derive(Parser, Debug)]
 pub struct ParserWitnessArgs {
     #[arg(value_enum)]
@@ -63,37 +68,14 @@ pub struct ExtractorWitnessArgs {
     lockfile: PathBuf,
 }
 
-#[derive(Parser, Debug)]
-pub struct ExtractorArgs {
-    #[arg(value_enum)]
-    subcommand: FileType,
-
-    /// Name of the circuit (to be used in circomkit config)
-    #[arg(long)]
-    circuit_name: String,
-
-    /// Path to the JSON/HTTP file
-    #[arg(long)]
-    input_file: PathBuf,
-
-    /// Path to the lockfile
-    #[arg(long)]
-    lockfile: PathBuf,
-
-    /// Optional circuit debug logs
-    #[arg(long, short, action = clap::ArgAction::SetTrue)]
-    debug: bool,
-}
-
 pub fn main() -> Result<(), Box<dyn Error>> {
     match Args::parse().command {
         Command::Witness(witness_type) => match witness_type {
-            WitnessType::Parser(args) => witness::parser_witness(args),
-            WitnessType::Extractor(args) => witness::extractor_witness(args),
+            WitnessType::Parser(args) => witness::parser_witness(args)?,
+            WitnessType::Extractor(args) => witness::extractor_witness(args)?,
         },
-        Command::Codegen(args) => match args.subcommand {
-            FileType::Http => codegen::http::http_circuit(args),
-            FileType::Json => codegen::json::json_circuit(args),
-        },
-    }
+        Command::Codegen(args) => args.build_circuit()?,
+    };
+
+    Ok(())
 }

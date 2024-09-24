@@ -129,30 +129,6 @@ This is our local Rust command line application.
 Please see the [documentation](docs/pabuild.md) for how to use this alongside the other tools.
 
 
-### Rust Example Witness JSON Creation
-To generate example input JSON files for the Circom circuits, run:
-
-```bash
-cargo install --path .
-```
-
-to install the `witness` binary.
-
-To get the basic idea, run `witness --help`. It can process and generate JSON files to be used for the circuits.
-For example, if we have a given JSON file we want to parse such as `examples/json/test/example.json` for the `extract` circuit (see `circuits.json`), then we can:
-
-```bash
-witness json --input-file examples/json/test/example.json --output-dir inputs/extract --output-filename input.json
-```
-
-For an HTTP request/response, you can generate a JSON input via:
-```bash
-witness http --input-file examples/http/get_request.http --output-dir inputs/get_request --output-filename input.json
-```
-
-Afterwards, you can run `circomkit compile get_request` then `circomkit witness get_request input`.
-
-
 ## License
 
 Licensed under the Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)

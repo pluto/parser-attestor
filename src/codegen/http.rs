@@ -1,15 +1,12 @@
-use crate::{
-    circuit_config::{write_config, CircomkitCircuitConfig},
-    witness::read_input_file_as_bytes,
-    ExtractorArgs, FileType,
-};
+use crate::{circuit_config::CircomkitCircuitConfig, ExtractorArgs, FileType};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 
 use std::{
-    collections::HashMap,
+    collections::{BTreeMap, HashMap},
     error::Error,
     fs::{self, create_dir_all},
+    path::Path,
 };
 
 #[derive(Serialize, Deserialize)]
@@ -21,30 +18,182 @@ pub enum HttpData {
 
 #[derive(Debug, Deserialize)]
 pub struct Request {
-    method: String,
-    target: String,
-    version: String,
+    pub method: String,
+    pub target: String,
+    pub version: String,
     #[serde(flatten)]
     #[serde(deserialize_with = "deserialize_headers")]
-    headers: HashMap<String, String>,
+    pub headers: BTreeMap<String, String>,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct Response {
-    version: String,
-    status: String,
-    message: String,
+    pub version: String,
+    pub status: String,
+    pub message: String,
     #[serde(flatten)]
     #[serde(deserialize_with = "deserialize_headers")]
-    headers: HashMap<String, String>,
+    pub headers: BTreeMap<String, String>,
 }
 
 impl HttpData {
-    fn headers(&self) -> HashMap<String, String> {
+    pub fn headers(&self) -> BTreeMap<String, String> {
         match self {
             HttpData::Request(request) => request.headers.clone(),
             HttpData::Response(response) => response.headers.clone(),
         }
+    }
+
+    pub fn params(&self) -> Vec<String> {
+        let mut params = vec!["DATA_BYTES".to_string()];
+        match self {
+            HttpData::Request(_) => {
+                params.append(&mut vec![
+                    "methodLen".to_string(),
+                    "targetLen".to_string(),
+                    "versionLen".to_string(),
+                ]);
+            }
+            HttpData::Response(_) => {
+                params.append(&mut vec![
+                    "maxContentLength".to_string(),
+                    "versionLen".to_string(),
+                    "statusLen".to_string(),
+                    "messageLen".to_string(),
+                ]);
+            }
+        };
+
+        for i in 0..self.headers().len() {
+            params.push(format!("headerNameLen{}", i + 1));
+            params.push(format!("headerValueLen{}", i + 1));
+        }
+
+        params
+    }
+
+    pub fn inputs(&self) -> Vec<String> {
+        let mut inputs = vec!["data".to_string()];
+
+        match self {
+            HttpData::Request(_) => inputs.append(&mut vec![
+                String::from("method"),
+                String::from("target"),
+                String::from("version"),
+            ]),
+            HttpData::Response(_) => inputs.append(&mut vec![
+                String::from("version"),
+                String::from("status"),
+                String::from("message"),
+            ]),
+        };
+
+        for (i, _header) in self.headers().iter().enumerate() {
+            inputs.push(format!("header{}", i + 1));
+            inputs.push(format!("value{}", i + 1));
+        }
+
+        inputs
+    }
+
+    pub fn parse_input(
+        &self,
+        input: Vec<u8>,
+    ) -> Result<(HttpData, Vec<u8>), Box<dyn std::error::Error>> {
+        let input_string = String::from_utf8(input)?;
+
+        let parts: Vec<&str> = input_string.split("\r\n\r\n").collect();
+        assert!(parts.len() <= 2);
+
+        let mut body = vec![];
+        if parts.len() == 2 {
+            body = parts[1].as_bytes().to_vec();
+        }
+
+        let headers: Vec<&str> = parts[0].split("\r\n").collect();
+        let start_line: Vec<&str> = headers[0].split(" ").collect();
+        assert_eq!(start_line.len(), 3);
+
+        let (_, headers) = headers.split_at(1);
+        let mut headers_map = BTreeMap::<String, String>::new();
+        let re = Regex::new(r":\s+").unwrap();
+        for &header in headers {
+            println!("header: {:?}", header);
+            let key_value: Vec<&str> = re.split(header).collect();
+            assert_eq!(key_value.len(), 2);
+            println!("key: {:?}", key_value);
+            headers_map.insert(key_value[0].to_string(), key_value[1].to_string());
+        }
+
+        let http_data = match self {
+            HttpData::Request(_) => HttpData::Request(Request {
+                method: start_line[0].to_string(),
+                target: start_line[1].to_string(),
+                version: start_line[2].to_string(),
+                headers: headers_map,
+            }),
+            HttpData::Response(_) => HttpData::Response(Response {
+                version: start_line[0].to_string(),
+                status: start_line[1].to_string(),
+                message: start_line[2].to_string(),
+                headers: headers_map,
+            }),
+        };
+
+        Ok((http_data, body))
+    }
+
+    pub fn populate_params(
+        &self,
+        input: Vec<u8>,
+    ) -> Result<Vec<usize>, Box<dyn std::error::Error>> {
+        let (_, http_body) = self.parse_input(input.clone())?;
+
+        let mut params = vec![input.len()];
+
+        match self {
+            HttpData::Request(request) => {
+                params.push(request.method.len());
+                params.push(request.target.len());
+                params.push(request.version.len());
+                for (key, value) in request.headers.iter() {
+                    params.push(key.len());
+                    params.push(value.len());
+                }
+            }
+            HttpData::Response(response) => {
+                params.push(http_body.len());
+                params.push(response.version.len());
+                params.push(response.status.len());
+                params.push(response.message.len());
+                for (key, value) in response.headers.iter() {
+                    params.push(key.len());
+                    params.push(value.len());
+                }
+            }
+        }
+
+        Ok(params)
+    }
+
+    fn build_circuit_config(
+        &self,
+        input_file: &Path,
+        codegen_filename: &str,
+    ) -> Result<CircomkitCircuitConfig, Box<dyn std::error::Error>> {
+        println!("input_ifle: {:?}", input_file);
+        let input = FileType::Http.read_input(input_file)?;
+
+        let circuit_template_name = match self {
+            HttpData::Request(_) => String::from("LockHTTPRequest"),
+            HttpData::Response(_) => String::from("LockHTTPResponse"),
+        };
+
+        Ok(CircomkitCircuitConfig {
+            file: format!("main/{}", codegen_filename),
+            template: circuit_template_name,
+            params: self.populate_params(input)?,
+        })
     }
 }
 
@@ -97,12 +246,12 @@ impl Serialize for Response {
     }
 }
 
-fn deserialize_headers<'de, D>(deserializer: D) -> Result<HashMap<String, String>, D::Error>
+fn deserialize_headers<'de, D>(deserializer: D) -> Result<BTreeMap<String, String>, D::Error>
 where
     D: serde::Deserializer<'de>,
 {
-    let mut map = HashMap::new();
-    let mut temp_map: HashMap<String, String> = HashMap::deserialize(deserializer)?;
+    let mut map = BTreeMap::new();
+    let mut temp_map: BTreeMap<String, String> = BTreeMap::deserialize(deserializer)?;
 
     let mut i = 1;
     while let (Some(name), Some(value)) = (
@@ -116,11 +265,10 @@ where
     Ok(map)
 }
 
-const PRAGMA: &str = "pragma circom 2.1.9;\n\n";
-
 fn build_http_circuit(
+    config: &CircomkitCircuitConfig,
     data: &HttpData,
-    output_filename: &String,
+    output_filename: &str,
     debug: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut circuit_buffer = String::new();
@@ -131,7 +279,7 @@ fn build_http_circuit(
     circuit_buffer += "\n*/\n";
 
     // Version and includes
-    circuit_buffer += PRAGMA;
+    circuit_buffer += "pragma circom 2.1.9;\n\n";
     circuit_buffer += "include \"../http/interpreter.circom\";\n";
     circuit_buffer += "include \"../http/parser/machine.circom\";\n";
     circuit_buffer += "include \"../utils/bytes.circom\";\n";
@@ -140,21 +288,8 @@ fn build_http_circuit(
     circuit_buffer += "include \"@zk-email/circuits/utils/array.circom\";\n\n";
 
     {
-        match data {
-            HttpData::Request(_) => {
-                circuit_buffer +=
-                    "template LockHTTPRequest(DATA_BYTES, methodLen, targetLen, versionLen";
-            }
-            HttpData::Response(_) => {
-                circuit_buffer +=
-                    "template LockHTTPResponse(DATA_BYTES, maxContentLength, versionLen, statusLen, messageLen";
-            }
-        }
-
-        for (i, _header) in data.headers().iter().enumerate() {
-            circuit_buffer += &format!(", headerNameLen{}, headerValueLen{}", i + 1, i + 1);
-        }
-        circuit_buffer += ") {";
+        let params = data.params();
+        circuit_buffer += &format!("template {}({}) {{", config.template, params.join(", "));
     }
 
     {
@@ -258,7 +393,7 @@ fn build_http_circuit(
 
     circuit_buffer += r#"
     component State[DATA_BYTES];
-    State[0]                       = StateUpdate();
+    State[0]                       = HttpStateUpdate();
     State[0].byte                <== data[0];
     State[0].parsing_start       <== 1;
     State[0].parsing_header      <== 0;
@@ -282,7 +417,7 @@ fn build_http_circuit(
     {
         circuit_buffer += r#"
     for(var data_idx = 1; data_idx < DATA_BYTES; data_idx++) {
-        State[data_idx]                       = StateUpdate();
+        State[data_idx]                       = HttpStateUpdate();
         State[data_idx].byte                <== data[data_idx];
         State[data_idx].parsing_start       <== State[data_idx - 1].next_parsing_start;
         State[data_idx].parsing_header      <== State[data_idx - 1].next_parsing_header;
@@ -489,108 +624,96 @@ fn build_http_circuit(
     Ok(())
 }
 
-fn parse_http_file(
-    locfile: &HttpData,
-    input: Vec<u8>,
-) -> Result<(HttpData, Vec<u8>), Box<dyn std::error::Error>> {
-    let input_string = String::from_utf8(input)?;
-
-    let parts: Vec<&str> = input_string.split("\r\n\r\n").collect();
-    assert!(parts.len() <= 2);
-
-    let mut body = vec![];
-    if parts.len() == 2 {
-        body = parts[1].as_bytes().to_vec();
-    }
-
-    let headers: Vec<&str> = parts[0].split("\r\n").collect();
-    let start_line: Vec<&str> = headers[0].split(" ").collect();
-    assert_eq!(start_line.len(), 3);
-
-    let (_, headers) = headers.split_at(1);
-    let mut headers_map = HashMap::<String, String>::new();
-    let re = Regex::new(r":\s(.+)").unwrap();
-    for &header in headers {
-        let key_value: Vec<&str> = re.split(header).collect();
-        assert_eq!(key_value.len(), 2);
-        headers_map.insert(key_value[0].to_string(), key_value[1].to_string());
-    }
-
-    let http_data = match locfile {
-        HttpData::Request(_) => HttpData::Request(Request {
-            method: start_line[0].to_string(),
-            target: start_line[1].to_string(),
-            version: start_line[2].to_string(),
-            headers: headers_map,
-        }),
-        HttpData::Response(_) => HttpData::Response(Response {
-            version: start_line[0].to_string(),
-            status: start_line[1].to_string(),
-            message: start_line[2].to_string(),
-            headers: headers_map,
-        }),
-    };
-
-    Ok((http_data, body))
-}
-
-fn build_circuit_config(
+pub fn http_circuit_from_args(
     args: &ExtractorArgs,
-    lockfile: &HttpData,
-    codegen_filename: String,
-) -> Result<CircomkitCircuitConfig, Box<dyn std::error::Error>> {
-    let input = read_input_file_as_bytes(&FileType::Http, args.input_file.clone())?;
-
-    let (_, http_body) = parse_http_file(lockfile, input.clone())?;
-
-    let circuit_template_name = match lockfile {
-        HttpData::Request(_) => String::from("LockHTTPRequest"),
-        HttpData::Response(_) => String::from("LockHTTPResponse"),
-    };
-
-    let mut params = vec![input.len()];
-
-    match lockfile {
-        HttpData::Request(request) => {
-            params.push(request.method.len());
-            params.push(request.target.len());
-            params.push(request.version.len());
-            for (key, value) in request.headers.iter() {
-                params.push(key.len());
-                params.push(value.len());
-            }
-        }
-        HttpData::Response(response) => {
-            params.push(http_body.len());
-            params.push(response.version.len());
-            params.push(response.status.len());
-            params.push(response.message.len());
-            for (key, value) in response.headers.iter() {
-                params.push(key.len());
-                params.push(value.len());
-            }
-        }
-    }
-
-    Ok(CircomkitCircuitConfig {
-        file: format!("main/{}", codegen_filename),
-        template: circuit_template_name,
-        params,
-    })
-}
-
-pub fn http_circuit(args: ExtractorArgs) -> Result<(), Box<dyn Error>> {
+) -> Result<CircomkitCircuitConfig, Box<dyn Error>> {
     let data = std::fs::read(&args.lockfile)?;
 
     let http_data: HttpData = serde_json::from_slice(&data)?;
 
     let codegen_filename = format!("http_{}", args.circuit_name);
 
-    build_http_circuit(&http_data, &codegen_filename, args.debug)?;
+    let config =
+        http_circuit_from_lockfile(&args.input_file, &http_data, &codegen_filename, args.debug)?;
 
-    let circomkit_circuit_input = build_circuit_config(&args, &http_data, codegen_filename)?;
+    config.write(&args.circuit_name)?;
 
-    write_config(args.circuit_name, &circomkit_circuit_input)?;
+    Ok(config)
+}
 
-    Ok(())
+pub fn http_circuit_from_lockfile(
+    input_file: &Path,
+    http_data: &HttpData,
+    codegen_filename: &str,
+    debug: bool,
+) -> Result<CircomkitCircuitConfig, Box<dyn std::error::Error>> {
+    let config = http_data.build_circuit_config(input_file, codegen_filename)?;
+
+    build_http_circuit(&config, http_data, codegen_filename, debug)?;
+
+    Ok(config)
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn params() {
+        let lockfile: HttpData = serde_json::from_slice(include_bytes!(
+            "../../examples/http/lockfile/spotify.lock.json"
+        ))
+        .unwrap();
+
+        let params = lockfile.params();
+
+        assert_eq!(params.len(), 7);
+        assert_eq!(params[0], "DATA_BYTES");
+        assert_eq!(params[1], "maxContentLength");
+    }
+
+    #[test]
+    fn inputs() {
+        let lockfile: HttpData = serde_json::from_slice(include_bytes!(
+            "../../examples/http/lockfile/spotify.lock.json"
+        ))
+        .unwrap();
+
+        let inputs = lockfile.inputs();
+
+        assert_eq!(inputs.len(), 6);
+        assert_eq!(inputs[1], "version");
+        assert_eq!(inputs[2], "status");
+        assert_eq!(inputs[3], "message");
+    }
+
+    #[test]
+    fn populate_params() {
+        let lockfile: HttpData = serde_json::from_slice(include_bytes!(
+            "../../examples/http/lockfile/request.lock.json"
+        ))
+        .unwrap();
+
+        let input = include_bytes!("../../examples/http/get_request.http");
+
+        let params = lockfile.populate_params(input.to_vec()).unwrap();
+
+        assert_eq!(params.len(), 8);
+        assert_eq!(params, [input.len(), 3, 4, 8, 6, 16, 4, 9]);
+    }
+
+    #[test]
+    fn parse_input() {
+        let lockfile: HttpData = serde_json::from_slice(include_bytes!(
+            "../../examples/http/lockfile/request.lock.json"
+        ))
+        .unwrap();
+
+        let input = include_bytes!("../../examples/http/get_request.http");
+
+        let (http, body) = lockfile.parse_input(input.to_vec()).unwrap();
+
+        assert_eq!(body.len(), 0);
+        assert_eq!(http.headers()["Accept"], "application/json");
+    }
 }

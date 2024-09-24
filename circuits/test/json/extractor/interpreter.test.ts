@@ -250,19 +250,19 @@ describe("Interpreter", async () => {
         }
 
         let input1 = { stack: [[1, 0], [2, 0], [3, 1], [1, 0]], currByte: 44 };
-        // output = 0 represents correct execution
-        let output = { out: 0 };
+        // output = 1 represents correct execution
+        let output = { out: 1 };
         generatePassCase(input1, output, 3, "");
 
         // key depth is 2, and even if new-kv pair starts at depth greater than 2, it returns 0.
         let input2 = { stack: [[1, 0], [2, 0], [1, 1], [1, 0]], currByte: 44 };
-        generatePassCase(input2, output, 2, "");
+        generatePassCase(input2, { out: 0 }, 2, "");
 
         let input3 = { stack: [[1, 0], [1, 0], [0, 0], [0, 0]], currByte: 44 };
-        generatePassCase(input3, { out: 1 }, 3, "stack height less than specified");
+        generatePassCase(input3, output, 3, "stack height less than specified");
 
         let input4 = { stack: [[1, 0], [2, 0], [1, 0], [0, 0]], currByte: 34 };
-        generatePassCase(input4, output, 2, "incorrect currByte");
+        generatePassCase(input4, { out: 0 }, 2, "incorrect currByte");
     });
 
     describe("KeyMatch", async () => {
