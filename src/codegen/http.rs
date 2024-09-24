@@ -3,7 +3,7 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 
 use std::{
-    collections::HashMap,
+    collections::{BTreeMap, HashMap},
     error::Error,
     fs::{self, create_dir_all},
     path::Path,
@@ -23,7 +23,7 @@ pub struct Request {
     pub version: String,
     #[serde(flatten)]
     #[serde(deserialize_with = "deserialize_headers")]
-    pub headers: HashMap<String, String>,
+    pub headers: BTreeMap<String, String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -33,11 +33,11 @@ pub struct Response {
     pub message: String,
     #[serde(flatten)]
     #[serde(deserialize_with = "deserialize_headers")]
-    pub headers: HashMap<String, String>,
+    pub headers: BTreeMap<String, String>,
 }
 
 impl HttpData {
-    pub fn headers(&self) -> HashMap<String, String> {
+    pub fn headers(&self) -> BTreeMap<String, String> {
         match self {
             HttpData::Request(request) => request.headers.clone(),
             HttpData::Response(response) => response.headers.clone(),
@@ -115,7 +115,7 @@ impl HttpData {
         assert_eq!(start_line.len(), 3);
 
         let (_, headers) = headers.split_at(1);
-        let mut headers_map = HashMap::<String, String>::new();
+        let mut headers_map = BTreeMap::<String, String>::new();
         let re = Regex::new(r":\s+").unwrap();
         for &header in headers {
             println!("header: {:?}", header);
@@ -246,12 +246,12 @@ impl Serialize for Response {
     }
 }
 
-fn deserialize_headers<'de, D>(deserializer: D) -> Result<HashMap<String, String>, D::Error>
+fn deserialize_headers<'de, D>(deserializer: D) -> Result<BTreeMap<String, String>, D::Error>
 where
     D: serde::Deserializer<'de>,
 {
-    let mut map = HashMap::new();
-    let mut temp_map: HashMap<String, String> = HashMap::deserialize(deserializer)?;
+    let mut map = BTreeMap::new();
+    let mut temp_map: BTreeMap<String, String> = BTreeMap::deserialize(deserializer)?;
 
     let mut i = 1;
     while let (Some(name), Some(value)) = (
@@ -699,7 +699,7 @@ mod test {
         let params = lockfile.populate_params(input.to_vec()).unwrap();
 
         assert_eq!(params.len(), 8);
-        assert_eq!(params, [input.len(), 3, 4, 8, 4, 9, 6, 16]);
+        assert_eq!(params, [input.len(), 3, 4, 8, 6, 16, 4, 9]);
     }
 
     #[test]
