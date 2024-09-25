@@ -117,8 +117,8 @@ Let's deep dive into interpreter and extractor.
 ## Interpreter
 Interpreter builds high-level circuits on top of stack to understand state better. It provides following templates:
 - `InsideKey`
-- `InsideValue` & `InsideValueAtDepth`
-- `InsideArrayIndex` & `InsideArrayIndexAtDepth`
+- `InsideValueAtTop` & `InsideValue`
+- `InsideArrayIndexAtTop` & `InsideArrayIndex`
 - `NextKVPair` & `NextKVPairAtDepth`
 - `KeyMatch` & `KeyMatchAtDepth`
 

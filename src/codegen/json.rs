@@ -208,11 +208,11 @@ fn extract_string(
     }
 
     *circuit_buffer += r#"
-    value <== SelectSubArray(DATA_BYTES, maxValueLen)(data, value_starting_index[DATA_BYTES-2]+1, maxValueLen);"#;
+    value <== SelectSubArray(DATA_BYTES, maxValueLen)(data, value_starting_index[DATA_BYTES-1]+1, maxValueLen);"#;
 
     if debug {
         *circuit_buffer += r#"
-    log("value_starting_index", value_starting_index[DATA_BYTES-2]);
+    log("value_starting_index", value_starting_index[DATA_BYTES-1]+1);
     for (var i=0 ; i<maxValueLen; i++) {
         log("value[",i,"]=", value[i]);
     }"#;
@@ -262,12 +262,12 @@ fn extract_number(
     }
 
     *circuit_buffer += r#"
-    value_string <== SelectSubArray(DATA_BYTES, maxValueLen)(data, value_starting_index[DATA_BYTES-2], maxValueLen);
+    value_string <== SelectSubArray(DATA_BYTES, maxValueLen)(data, value_starting_index[DATA_BYTES-1], maxValueLen);
 "#;
 
     if debug {
         *circuit_buffer += r#"
-    log("value_starting_index", value_starting_index[DATA_BYTES-2]);
+    log("value_starting_index", value_starting_index[DATA_BYTES-1]);
     for (var i=0 ; i<maxValueLen; i++) {
         log("value[",i,"]=", value_string[i]);
     }"#;
@@ -368,12 +368,12 @@ fn build_json_circuit(
 
     circuit_buffer += r#"    signal r <== rHasher.out;
 
+    // value starting index in `data`
     signal output value_starting_index[DATA_BYTES];
-
+    // flag determining whether this byte is matched value
+    signal is_value_match[DATA_BYTES];
+    // final mask
     signal mask[DATA_BYTES];
-    // mask[0] <== 0;
-
-    var logDataLen = log2Ceil(DATA_BYTES);
 
     component State[DATA_BYTES];
     State[0] = StateUpdate(MAX_STACK_HEIGHT);
@@ -413,18 +413,93 @@ fn build_json_circuit(
 
         for (i, key) in data.keys.iter().enumerate() {
             match key {
-            Key::String(_) => circuit_buffer += &format!("    signal is_key{}_match[DATA_BYTES];\n    signal is_key{}_match_for_value[DATA_BYTES];\n    is_key{}_match_for_value[0] <== 0;\n    signal is_next_pair_at_depth{}[DATA_BYTES];\n", i+1, i+1, i+1, i+1),
+            Key::String(_) => circuit_buffer += &format!("    signal is_key{}_match[DATA_BYTES];\n    signal is_key{}_match_for_value[DATA_BYTES+1];\n    is_key{}_match_for_value[0] <== 0;\n    signal is_next_pair_at_depth{}[DATA_BYTES];\n", i+1, i+1, i+1, i+1),
             Key::Num(_) => (),
         }
         }
     }
 
+    let mut num_objects = 0;
+
+    // initialise first iteration
+    {
+        // parsing_key and parsing_object{i}_value
+        circuit_buffer += r#"
+    // initialise first iteration
+    parsing_key[0] <== InsideKey(MAX_STACK_HEIGHT)(State[0].next_stack, State[0].next_parsing_string, State[0].next_parsing_number);
+
+"#;
+
+        for (i, key) in data.keys.iter().enumerate() {
+            match key {
+                Key::String(_) => {
+                    circuit_buffer += &format!("    parsing_object{}_value[0] <== InsideValue()(State[0].next_stack[0], State[0].next_parsing_string, State[0].next_parsing_number);\n", i+1);
+                }
+                Key::Num(_) => {
+                    circuit_buffer += &format!("    parsing_array{}[0] <== InsideArrayIndex(index{})(State[0].next_stack[0], State[0].next_parsing_string, State[0].next_parsing_number);\n", i+1, i+1);
+                }
+            }
+        }
+
+        // parsing_value[0] <== MultiAND(5)([parsing_object1_value[0], parsing_object2_value[0], parsing_array3[0], parsing_object4_value[0], parsing_object5_value[0]]);
+        circuit_buffer += &format!(
+            "     // parsing correct value = AND(all individual stack values)\n    parsing_value[0] <== MultiAND({})([",
+            data.keys.len()
+        );
+        for (i, key) in data.keys.iter().take(data.keys.len() - 1).enumerate() {
+            match key {
+                Key::String(_) => circuit_buffer += &format!("parsing_object{}_value[0], ", i + 1),
+                Key::Num(_) => circuit_buffer += &format!("parsing_array{}[0], ", i + 1),
+            }
+        }
+        match data.keys[data.keys.len() - 1] {
+            Key::String(_) => {
+                circuit_buffer += &format!("parsing_object{}_value[0]]);\n\n", data.keys.len())
+            }
+            Key::Num(_) => circuit_buffer += &format!("parsing_array{}[0]]);\n\n", data.keys.len()),
+        }
+
+        // is_key{i}_match_for_value
+        for (i, key) in data.keys.iter().enumerate() {
+            match key {
+                Key::String(_) => {
+                    num_objects += 1;
+                    circuit_buffer += &format!("    is_key{}_match[0] <== KeyMatchAtDepth(DATA_BYTES, MAX_STACK_HEIGHT, keyLen{}, depth{})(data, key{}, r, 0, parsing_key[0], State[0].next_stack);\n", i+1, i+1, i+1, i+1);
+                    circuit_buffer += &format!("    is_next_pair_at_depth{}[0] <== NextKVPairAtDepth(MAX_STACK_HEIGHT, depth{})(State[0].next_stack, data[0]);\n", i+1, i+1);
+                    circuit_buffer += &format!("    is_key{}_match_for_value[1] <== Mux1()([is_key{}_match_for_value[0] * (1-is_next_pair_at_depth{}[0]), is_key{}_match[0] * (1-is_next_pair_at_depth{}[0])], is_key{}_match[0]);\n", i+1, i+1, i+1, i+1, i+1, i+1);
+                    if debug {
+                        circuit_buffer += &format!("        // log(\"is_key{}_match_for_value\", is_key{}_match_for_value[1]);\n\n", i + 1, i + 1);
+                    }
+                }
+                Key::Num(_) => (),
+            }
+        }
+
+        // is_value_match[data_idx] <== MultiAND(2)([is_key1_match_for_value[data_idx], is_key3_match_for_value[data_idx]]);
+        {
+            circuit_buffer += &format!("    is_value_match[0] <== MultiAND({})([", num_objects);
+            for (i, key) in data.keys.iter().enumerate() {
+                match key {
+                    Key::String(_) => {
+                        circuit_buffer += &format!("is_key{}_match_for_value[1], ", i + 1)
+                    }
+                    Key::Num(_) => (),
+                }
+            }
+
+            // remove last 2 chars `, ` from string buffer
+            circuit_buffer.pop();
+            circuit_buffer.pop();
+            circuit_buffer += "]);\n";
+        }
+
+        circuit_buffer += r#"
+    mask[0] <== parsing_value[0] * is_value_match[0];
+"#;
+    }
+
     // debugging
     circuit_buffer += r#"
-    signal is_value_match[DATA_BYTES];
-    is_value_match[0] <== 0;
-    signal value_mask[DATA_BYTES];
-
     for(var data_idx = 1; data_idx < DATA_BYTES; data_idx++) {"#;
 
     if debug {
@@ -455,22 +530,22 @@ fn build_json_circuit(
         // - mask
 
         // check if inside key or not
-        parsing_key[data_idx-1] <== InsideKey(MAX_STACK_HEIGHT)(State[data_idx].stack, State[data_idx].parsing_string, State[data_idx].parsing_number);
+        parsing_key[data_idx] <== InsideKey(MAX_STACK_HEIGHT)(State[data_idx].next_stack, State[data_idx].next_parsing_string, State[data_idx].next_parsing_number);
 
 "#;
 
     /* Determining wheter parsing correct value and array index
-    parsing_object1_value[data_idx-1] <== InsideValueAtDepth(MAX_STACK_HEIGHT, depth1)(State[data_idx].stack, State[data_idx].parsing_string, State[data_idx].parsing_number);
-    parsing_array2[data_idx-1] <== InsideArrayIndexAtDepth(MAX_STACK_HEIGHT, index2, depth2)(State[data_idx].stack, State[data_idx].parsing_string, State[data_idx].parsing_number);
+    parsing_object1_value[data_idx-1] <== InsideValue(MAX_STACK_HEIGHT, depth1)(State[data_idx].stack, State[data_idx].parsing_string, State[data_idx].parsing_number);
+    parsing_array2[data_idx-1] <== InsideArrayIndex(MAX_STACK_HEIGHT, index2, depth2)(State[data_idx].stack, State[data_idx].parsing_string, State[data_idx].parsing_number);
      */
     {
         for (i, key) in data.keys.iter().enumerate() {
             match key {
                 Key::String(_) => {
-                    circuit_buffer += &format!("        parsing_object{}_value[data_idx-1] <== InsideValueAtDepth(MAX_STACK_HEIGHT, depth{})(State[data_idx].stack, State[data_idx].parsing_string, State[data_idx].parsing_number);\n", i+1, i+1);
+                    circuit_buffer += &format!("        parsing_object{}_value[data_idx] <== InsideValue()(State[data_idx].next_stack[depth{}], State[data_idx].next_parsing_string, State[data_idx].next_parsing_number);\n", i+1, i+1);
                 }
                 Key::Num(_) => {
-                    circuit_buffer += &format!("        parsing_array{}[data_idx-1] <== InsideArrayIndexAtDepth(MAX_STACK_HEIGHT, index{}, depth{})(State[data_idx].stack, State[data_idx].parsing_string, State[data_idx].parsing_number);\n", i+1, i+1, i+1);
+                    circuit_buffer += &format!("        parsing_array{}[data_idx] <== InsideArrayIndex(index{})(State[data_idx].next_stack[depth{}], State[data_idx].next_parsing_string, State[data_idx].next_parsing_number);\n", i+1, i+1, i+1);
                 }
             }
         }
@@ -480,25 +555,24 @@ fn build_json_circuit(
     //     parsing_value[data_idx-1] <== MultiAND(4)([parsing_object1_value[data_idx-1], parsing_array2[data_idx-1], parsing_object3_value[data_idx-1], parsing_array4[data_idx-1]]);
     {
         circuit_buffer += &format!(
-        "        // parsing correct value = AND(all individual stack values)\n        parsing_value[data_idx-1] <== MultiAND({})([",
-        data.keys.len()
-    );
+            "        // parsing correct value = AND(all individual stack values)\n        parsing_value[data_idx] <== MultiAND({})([",
+            data.keys.len()
+        );
 
         for (i, key) in data.keys.iter().take(data.keys.len() - 1).enumerate() {
             match key {
                 Key::String(_) => {
-                    circuit_buffer += &format!("parsing_object{}_value[data_idx-1], ", i + 1)
+                    circuit_buffer += &format!("parsing_object{}_value[data_idx], ", i + 1)
                 }
-                Key::Num(_) => circuit_buffer += &format!("parsing_array{}[data_idx-1], ", i + 1),
+                Key::Num(_) => circuit_buffer += &format!("parsing_array{}[data_idx], ", i + 1),
             }
         }
         match data.keys[data.keys.len() - 1] {
             Key::String(_) => {
-                circuit_buffer +=
-                    &format!("parsing_object{}_value[data_idx-1]]);\n", data.keys.len())
+                circuit_buffer += &format!("parsing_object{}_value[data_idx]]);\n", data.keys.len())
             }
             Key::Num(_) => {
-                circuit_buffer += &format!("parsing_array{}[data_idx-1]]);\n", data.keys.len())
+                circuit_buffer += &format!("parsing_array{}[data_idx]]);\n", data.keys.len())
             }
         }
 
@@ -508,14 +582,12 @@ fn build_json_circuit(
             for (i, key) in data.keys.iter().enumerate() {
                 match key {
                     Key::String(_) => {
-                        circuit_buffer += &format!("parsing_object{}_value[data_idx-1], ", i + 1)
+                        circuit_buffer += &format!("parsing_object{}_value[data_idx], ", i + 1)
                     }
-                    Key::Num(_) => {
-                        circuit_buffer += &format!("parsing_array{}[data_idx-1], ", i + 1)
-                    }
+                    Key::Num(_) => circuit_buffer += &format!("parsing_array{}[data_idx], ", i + 1),
                 }
             }
-            circuit_buffer += "parsing_value[data_idx-1]);\n\n";
+            circuit_buffer += "parsing_value[data_idx]);\n\n";
         }
     }
 
@@ -542,11 +614,11 @@ fn build_json_circuit(
             match key {
                 Key::String(_) => {
                     num_objects += 1;
-                    circuit_buffer += &format!("        is_key{}_match[data_idx-1] <== KeyMatchAtDepth(DATA_BYTES, MAX_STACK_HEIGHT, keyLen{}, depth{})(data, key{}, r, data_idx-1, parsing_key[data_idx-1], State[data_idx].stack);\n", i+1, i+1, i+1, i+1);
-                    circuit_buffer += &format!("        is_next_pair_at_depth{}[data_idx-1] <== NextKVPairAtDepth(MAX_STACK_HEIGHT, depth{})(State[data_idx].stack, data[data_idx-1]);\n", i+1, i+1);
-                    circuit_buffer += &format!("        is_key{}_match_for_value[data_idx] <== Mux1()([is_key{}_match_for_value[data_idx-1] * (1-is_next_pair_at_depth{}[data_idx-1]), is_key{}_match[data_idx-1] * (1-is_next_pair_at_depth{}[data_idx-1])], is_key{}_match[data_idx-1]);\n", i+1, i+1, i+1, i+1, i+1, i+1);
+                    circuit_buffer += &format!("        is_key{}_match[data_idx] <== KeyMatchAtDepth(DATA_BYTES, MAX_STACK_HEIGHT, keyLen{}, depth{})(data, key{}, r, data_idx, parsing_key[data_idx], State[data_idx].next_stack);\n", i+1, i+1, i+1, i+1);
+                    circuit_buffer += &format!("        is_next_pair_at_depth{}[data_idx] <== NextKVPairAtDepth(MAX_STACK_HEIGHT, depth{})(State[data_idx].next_stack, data[data_idx]);\n", i+1, i+1);
+                    circuit_buffer += &format!("        is_key{}_match_for_value[data_idx+1] <== Mux1()([is_key{}_match_for_value[data_idx] * (1-is_next_pair_at_depth{}[data_idx]), is_key{}_match[data_idx] * (1-is_next_pair_at_depth{}[data_idx])], is_key{}_match[data_idx]);\n", i+1, i+1, i+1, i+1, i+1, i+1);
                     if debug {
-                        circuit_buffer += &format!("        // log(\"is_key{}_match_for_value\", is_key{}_match_for_value[data_idx]);\n\n", i + 1, i + 1);
+                        circuit_buffer += &format!("        // log(\"is_key{}_match_for_value\", is_key{}_match_for_value[data_idx+1]);\n\n", i + 1, i + 1);
                     }
                 }
                 Key::Num(_) => (),
@@ -563,7 +635,7 @@ fn build_json_circuit(
         for (i, key) in data.keys.iter().enumerate() {
             match key {
                 Key::String(_) => {
-                    circuit_buffer += &format!("is_key{}_match_for_value[data_idx], ", i + 1)
+                    circuit_buffer += &format!("is_key{}_match_for_value[data_idx+1], ", i + 1)
                 }
                 Key::Num(_) => (),
             }
@@ -578,9 +650,8 @@ fn build_json_circuit(
     // debugging and output bytes
     {
         circuit_buffer += r#"
-        // mask[i] = data[i] * parsing_value[i] * is_key_match_for_value[i]
-        value_mask[data_idx-1] <== data[data_idx-1] * parsing_value[data_idx-1];
-        mask[data_idx-1] <== value_mask[data_idx-1] * is_value_match[data_idx];
+        // mask = currently parsing value and all subsequent keys matched
+        mask[data_idx] <== parsing_value[data_idx] * is_value_match[data_idx];
     }"#;
 
         // Debugging
@@ -597,11 +668,13 @@ fn build_json_circuit(
 
         circuit_buffer += r#"
 
+    // find starting index of value in data by matching mask
     signal is_zero_mask[DATA_BYTES];
     signal is_prev_starting_index[DATA_BYTES];
     value_starting_index[0] <== 0;
+    is_prev_starting_index[0] <== 0;
     is_zero_mask[0] <== IsZero()(mask[0]);
-    for (var i=1 ; i<DATA_BYTES-1 ; i++) {
+    for (var i=1 ; i<DATA_BYTES ; i++) {
         is_zero_mask[i] <== IsZero()(mask[i]);
         is_prev_starting_index[i] <== IsZero()(value_starting_index[i-1]);
         value_starting_index[i] <== value_starting_index[i-1] + i * (1-is_zero_mask[i]) * is_prev_starting_index[i];

@@ -41,13 +41,13 @@ describe("Interpreter", async () => {
         generatePassCase(input5, { out: 0 }, "parsing number as a key");
     });
 
-    describe("InsideValue", async () => {
+    describe("InsideValueAtTop", async () => {
         let circuit: WitnessTester<["stack", "parsing_string", "parsing_number"], ["out"]>;
 
         before(async () => {
-            circuit = await circomkit.WitnessTester(`InsideValue`, {
+            circuit = await circomkit.WitnessTester(`InsideValueAtTop`, {
                 file: "json/interpreter",
-                template: "InsideValue",
+                template: "InsideValueAtTop",
                 params: [4],
             });
             console.log("#constraints:", await circuit.getConstraintCount());
@@ -80,19 +80,20 @@ describe("Interpreter", async () => {
         generatePassCase(input5, { out: 0 }, "parsing number and key both");
     });
 
-    describe("InsideValueAtDepth", async () => {
+    describe("InsideValue", async () => {
         let circuit: WitnessTester<["stack", "parsing_string", "parsing_number"], ["out"]>;
 
         function generatePassCase(input: any, expected: any, depth: number, desc: string) {
             const description = generateDescription(input);
 
             it(`(valid) witness: ${description} ${desc}`, async () => {
-                circuit = await circomkit.WitnessTester(`InsideValueAtDepth`, {
+                circuit = await circomkit.WitnessTester(`InsideValue`, {
                     file: "json/interpreter",
-                    template: "InsideValueAtDepth",
-                    params: [4, depth],
+                    template: "InsideValue",
                 });
                 console.log("#constraints:", await circuit.getConstraintCount());
+
+                input.stack = input.stack[depth];
 
                 await circuit.expectPass(input, expected);
             });
@@ -117,16 +118,16 @@ describe("Interpreter", async () => {
         generatePassCase(input5, { out: 0 }, 3, "parsing number and key both");
     });
 
-    describe("InsideArrayIndex", async () => {
+    describe("InsideArrayIndexAtTop", async () => {
         let circuit: WitnessTester<["stack", "parsing_string", "parsing_number"], ["out"]>;
 
         function generatePassCase(input: any, expected: any, index: number, desc: string) {
             const description = generateDescription(input);
 
             it(`(valid) witness: ${description} ${desc}`, async () => {
-                circuit = await circomkit.WitnessTester(`InsideArrayIndex`, {
+                circuit = await circomkit.WitnessTester(`InsideArrayIndexAtTop`, {
                     file: "json/interpreter",
-                    template: "InsideArrayIndex",
+                    template: "InsideArrayIndexAtTop",
                     params: [4, index],
                 });
                 console.log("#constraints:", await circuit.getConstraintCount());
@@ -157,19 +158,21 @@ describe("Interpreter", async () => {
         generatePassCase(input6, { out: 0 }, 3, "incorrect index");
     });
 
-    describe("InsideArrayIndexAtDepth", async () => {
+    describe("InsideArrayIndex", async () => {
         let circuit: WitnessTester<["stack", "parsing_string", "parsing_number"], ["out"]>;
 
         function generatePassCase(input: any, expected: any, index: number, depth: number, desc: string) {
             const description = generateDescription(input);
 
             it(`(valid) witness: ${description} ${desc}`, async () => {
-                circuit = await circomkit.WitnessTester(`InsideArrayIndexAtDepth`, {
+                circuit = await circomkit.WitnessTester(`InsideArrayIndex`, {
                     file: "json/interpreter",
-                    template: "InsideArrayIndexAtDepth",
-                    params: [4, index, depth],
+                    template: "InsideArrayIndex",
+                    params: [index],
                 });
                 console.log("#constraints:", await circuit.getConstraintCount());
+
+                input.stack = input.stack[depth]
 
                 await circuit.expectPass(input, expected);
             });
