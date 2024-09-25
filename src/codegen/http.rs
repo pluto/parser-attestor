@@ -3,7 +3,7 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 
 use std::{
-    collections::{BTreeMap, HashMap},
+    collections::BTreeMap,
     error::Error,
     fs::{self, create_dir_all},
     path::Path,
@@ -118,10 +118,8 @@ impl HttpData {
         let mut headers_map = BTreeMap::<String, String>::new();
         let re = Regex::new(r":\s+").unwrap();
         for &header in headers {
-            println!("header: {:?}", header);
             let key_value: Vec<&str> = re.split(header).collect();
             assert_eq!(key_value.len(), 2);
-            println!("key: {:?}", key_value);
             headers_map.insert(key_value[0].to_string(), key_value[1].to_string());
         }
 
@@ -181,7 +179,6 @@ impl HttpData {
         input_file: &Path,
         codegen_filename: &str,
     ) -> Result<CircomkitCircuitConfig, Box<dyn std::error::Error>> {
-        println!("input_ifle: {:?}", input_file);
         let input = FileType::Http.read_input(input_file)?;
 
         let circuit_template_name = match self {
