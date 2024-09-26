@@ -245,7 +245,6 @@ template NextKVPairAtDepth(n, depth) {
 template KeyMatch(dataLen, keyLen) {
     signal input data[dataLen];
     signal input key[keyLen];
-    signal input r;
     signal input index;
     signal input parsing_key;
 
@@ -256,7 +255,7 @@ template KeyMatch(dataLen, keyLen) {
     signal start_of_key <== IndexSelector(dataLen)(data, index - 1);
     signal is_start_of_key_equal_to_quote <== IsEqual()([start_of_key, 34]);
 
-    signal substring_match <== SubstringMatchWithIndex(dataLen, keyLen)(data, key, r, index);
+    signal substring_match <== SubstringMatchWithIndex(dataLen, keyLen)(data, key, index);
 
     signal is_key_between_quotes <== is_start_of_key_equal_to_quote * is_end_of_key_equal_to_quote;
     signal is_parsing_correct_key <== is_key_between_quotes * parsing_key;
@@ -285,7 +284,6 @@ template KeyMatch(dataLen, keyLen) {
 template KeyMatchAtDepth(dataLen, n, keyLen, depth) {
     signal input data[dataLen];
     signal input key[keyLen];
-    signal input r;
     signal input index;
     signal input parsing_key;
     signal input stack[n][2];
@@ -306,7 +304,7 @@ template KeyMatchAtDepth(dataLen, n, keyLen, depth) {
     signal is_start_of_key_equal_to_quote <== IsEqual()([start_of_key, 34]);
 
     // key matches
-    signal substring_match <== SubstringMatchWithIndex(dataLen, keyLen)(data, key, r, index);
+    signal substring_match <== SubstringMatchWithIndex(dataLen, keyLen)(data, key, index);
 
     // key should be a string
     signal is_key_between_quotes <== is_start_of_key_equal_to_quote * is_end_of_key_equal_to_quote;

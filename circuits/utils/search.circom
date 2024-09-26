@@ -1,5 +1,6 @@
 pragma circom 2.1.9;
 
+include "circomlib/circuits/comparators.circom";
 include "circomlib/circuits/mux1.circom";
 include "./hash.circom";
 include "./operators.circom";
@@ -221,8 +222,14 @@ template SubstringMatchWithIndex(dataLen, keyLen) {
     signal input key[keyLen];
     signal input start;
 
-    signal subarray[keyLen] <== SelectSubArray(dataLen, keyLen)(data, start, keyLen);
-    signal output out <== IsEqualArray(keyLen)([key, subarray]);
+    var logDataLen = log2Ceil(dataLen + keyLen + 1);
+
+    signal isStartLessThanMaxLength <== LessThan(logDataLen)([start, dataLen]);
+    signal index <== start * isStartLessThanMaxLength;
+
+    signal subarray[keyLen] <== SelectSubArray(dataLen, keyLen)(data, index, keyLen);
+    signal isSubarrayMatch <== IsEqualArray(keyLen)([key, subarray]);
+    signal output out <== isStartLessThanMaxLength * isSubarrayMatch;
 }
 
 /*

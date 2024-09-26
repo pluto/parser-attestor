@@ -101,14 +101,12 @@ template LockStartLine(DATA_BYTES, beginningLen, middleLen, finalLen) {
     beginningLen === middle_start_counter - 1;
 
     // Check middle is correct by substring match and length check
-    // TODO: change r
-    signal middleMatch <== SubstringMatchWithIndex(DATA_BYTES, middleLen)(data, middle, 100, middle_start_counter);
+    signal middleMatch <== SubstringMatchWithIndex(DATA_BYTES, middleLen)(data, middle, middle_start_counter);
     middleMatch === 1;
     middleLen === middle_end_counter - middle_start_counter - 1;
 
     // Check final is correct by substring match and length check
-    // TODO: change r
-    signal finalMatch <== SubstringMatchWithIndex(DATA_BYTES, finalLen)(data, final, 100, middle_end_counter);
+    signal finalMatch <== SubstringMatchWithIndex(DATA_BYTES, finalLen)(data, final, middle_end_counter);
     finalMatch === 1;
     // -2 here for the CRLF
     finalLen === final_end_counter - middle_end_counter - 2;
@@ -153,12 +151,10 @@ template LockHeader(DATA_BYTES, headerNameLen, headerValueLen) {
         State[data_idx].parsing_body   <== State[data_idx - 1].next_parsing_body;
         State[data_idx].line_status    <== State[data_idx - 1].next_line_status;
 
-        // TODO: change r
         headerFieldNameValueMatch[data_idx] =  HeaderFieldNameValueMatch(DATA_BYTES, headerNameLen, headerValueLen);
         headerFieldNameValueMatch[data_idx].data <== data;
         headerFieldNameValueMatch[data_idx].headerName <== header;
         headerFieldNameValueMatch[data_idx].headerValue <== value;
-        headerFieldNameValueMatch[data_idx].r <== 100;
         headerFieldNameValueMatch[data_idx].index <== data_idx;
         isHeaderFieldNameValueMatch[data_idx] <== isHeaderFieldNameValueMatch[data_idx-1] + headerFieldNameValueMatch[data_idx].out;
 
