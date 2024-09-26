@@ -269,7 +269,7 @@ describe("Interpreter", async () => {
     });
 
     describe("KeyMatch", async () => {
-        let circuit: WitnessTester<["data", "key", "r", "index", "parsing_key"], ["out"]>;
+        let circuit: WitnessTester<["data", "key", "index", "parsing_key"], ["out"]>;
 
         function generatePassCase(input: any, expected: any, desc: string) {
             const description = generateDescription(input);
@@ -287,30 +287,28 @@ describe("Interpreter", async () => {
         }
 
         let input = readJSONInputFile("value_array_object.json", ["a"]);
-        const concatenatedInput = input[1][0].concat(input[0]);
-        const hashResult = PoseidonModular(concatenatedInput);
 
         let output = { out: 1 };
-        let input1 = { data: input[0], key: input[1][0], r: hashResult, index: 2, parsing_key: 1 };
+        let input1 = { data: input[0], key: input[1][0], index: 2, parsing_key: 1 };
         generatePassCase(input1, output, "");
 
-        let input2 = { data: input[0], key: [99], r: hashResult, index: 20, parsing_key: 1 };
+        let input2 = { data: input[0], key: [99], index: 20, parsing_key: 1 };
         generatePassCase(input2, output, "");
 
         // fail cases
 
-        let input3 = { data: input[0], key: input[1][0], r: hashResult, index: 3, parsing_key: 1 };
+        let input3 = { data: input[0], key: input[1][0], index: 3, parsing_key: 1 };
         generatePassCase(input3, { out: 0 }, "wrong index");
 
-        let input4 = { data: input[0], key: [98], r: hashResult, index: 2, parsing_key: 1 };
+        let input4 = { data: input[0], key: [98], index: 2, parsing_key: 1 };
         generatePassCase(input4, { out: 0 }, "wrong key");
 
-        let input5 = { data: input[0], key: [97], r: hashResult, index: 2, parsing_key: 0 };
+        let input5 = { data: input[0], key: [97], index: 2, parsing_key: 0 };
         generatePassCase(input5, { out: 0 }, "not parsing key");
     });
 
     describe("KeyMatchAtDepth", async () => {
-        let circuit: WitnessTester<["data", "key", "r", "index", "parsing_key", "stack"], ["out"]>;
+        let circuit: WitnessTester<["data", "key", "index", "parsing_key", "stack"], ["out"]>;
 
         function generatePassCase(input: any, expected: any, depth: number, desc: string) {
             const description = generateDescription(input);
@@ -328,33 +326,32 @@ describe("Interpreter", async () => {
         }
 
         let input = readJSONInputFile("value_array_object.json", ["a", 0, "b", 0]);
-        const concatenatedInput = input[1][0].concat(input[0]);
-        const hashResult = PoseidonModular(concatenatedInput);
 
         let output = { out: 1 };
 
-        let input1 = { data: input[0], key: input[1][0], r: hashResult, index: 2, parsing_key: 1, stack: [[1, 0], [0, 0], [0, 0], [0, 0]] };
+        let input1 = { data: input[0], key: input[1][0], index: 2, parsing_key: 1, stack: [[1, 0], [0, 0], [0, 0], [0, 0]] };
         generatePassCase(input1, output, 0, "");
 
-        let input2 = { data: input[0], key: input[1][2], r: hashResult, index: 8, parsing_key: 1, stack: [[1, 1], [2, 0], [1, 0], [0, 0]] };
+        let input2 = { data: input[0], key: input[1][2], index: 8, parsing_key: 1, stack: [[1, 1], [2, 0], [1, 0], [0, 0]] };
         generatePassCase(input2, output, 2, "");
 
-        let input3 = { data: input[0], key: [99], r: hashResult, index: 20, parsing_key: 1, stack: [[1, 1], [2, 1], [1, 1], [0, 0]] };
-        generatePassCase(input3, { out: 1 }, 2, "wrong stack");
+        let input3 = { data: input[0], key: [99], index: 20, parsing_key: 1, stack: [[1, 1], [2, 1], [1, 1], [0, 0]] };
+        generatePassCase(input3, output, 2, "wrong stack");
 
         // fail cases
 
-        let input4 = { data: input[0], key: input[1][1], r: hashResult, index: 3, parsing_key: 1, stack: [[1, 0], [2, 0], [1, 0], [0, 0]] };
+        let input4 = { data: input[0], key: input[1][1], index: 3, parsing_key: 1, stack: [[1, 0], [2, 0], [1, 0], [0, 0]] };
         generatePassCase(input4, { out: 0 }, 2, "wrong key");
 
-        let input5 = { data: input[0], key: [97], r: hashResult, index: 12, parsing_key: 0, stack: [[1, 1], [2, 0], [1, 1], [0, 0]] };
+        let input5 = { data: input[0], key: [97], index: 12, parsing_key: 0, stack: [[1, 1], [2, 0], [1, 1], [0, 0]] };
         generatePassCase(input5, { out: 0 }, 3, "not parsing key");
 
         let input6Data = input[0].slice(0);
-        let input6 = { data: input6Data.splice(1, 1, 35), key: input[1][0], r: hashResult, index: 2, parsing_key: 1, stack: [[1, 0], [0, 0], [0, 0], [0, 0]] };
+        input6Data.splice(1, 1, 35);
+        let input6 = { data: input6Data, key: input[1][0], index: 2, parsing_key: 1, stack: [[1, 0], [0, 0], [0, 0], [0, 0]] };
         generatePassCase(input6, { out: 0 }, 0, "invalid key (not surrounded by quotes)");
 
-        let input7 = { data: input[0], key: input[1][0], r: hashResult, index: 2, parsing_key: 1, stack: [[1, 0], [0, 0], [0, 0], [0, 0]] };
+        let input7 = { data: input[0], key: input[1][0], index: 2, parsing_key: 1, stack: [[1, 0], [0, 0], [0, 0], [0, 0]] };
         generatePassCase(input6, { out: 0 }, 1, "wrong depth");
     });
 });

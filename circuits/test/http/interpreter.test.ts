@@ -3,7 +3,7 @@ import { readHTTPInputFile } from "../common/http";
 
 describe("HTTP :: Interpreter", async () => {
     describe("MethodMatch", async () => {
-        let circuit: WitnessTester<["data", "method", "r", "index"], []>;
+        let circuit: WitnessTester<["data", "method", "index"], []>;
 
         function generatePassCase(input: number[], method: number[], index: number, desc: string) {
             const description = generateDescription(input);
@@ -16,7 +16,7 @@ describe("HTTP :: Interpreter", async () => {
                 });
                 console.log("#constraints:", await circuit.getConstraintCount());
 
-                await circuit.expectPass({ data: input, method: method, r: 100, index: index }, {});
+                await circuit.expectPass({ data: input, method: method, index: index }, {});
             });
         }
 
@@ -31,7 +31,7 @@ describe("HTTP :: Interpreter", async () => {
                 });
                 console.log("#constraints:", await circuit.getConstraintCount());
 
-                await circuit.expectFail({ data: input, method: method, r: 100, index: index });
+                await circuit.expectFail({ data: input, method: method, index: index });
             });
         }
 
