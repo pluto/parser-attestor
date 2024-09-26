@@ -19,20 +19,18 @@ template HttpStateUpdate() {
     signal output next_parsing_body;
     signal output next_line_status;
 
-    component HttpSyntax = HttpSyntax();
-
     //---------------------------------------------------------------------------------//
-    // check if we read space or colon
+    // check if we read space: 32 or colon: 58
     component readSP = IsEqual();
-    readSP.in <== [byte, HttpSyntax.SPACE];
+    readSP.in <== [byte, 32];
     component readColon = IsEqual();
-    readColon.in <== [byte, HttpSyntax.COLON];
+    readColon.in <== [byte, 58];
 
     // Check if what we just read is a CR / LF
     component readCR = IsEqual();
-    readCR.in      <== [byte, HttpSyntax.CR];
+    readCR.in      <== [byte, 13];
     component readLF = IsEqual();
-    readLF.in      <== [byte, HttpSyntax.LF];
+    readLF.in      <== [byte, 10];
 
     signal notCRAndLF <== (1 - readCR.out) * (1 - readLF.out);
     //---------------------------------------------------------------------------------//
