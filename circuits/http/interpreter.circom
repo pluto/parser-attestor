@@ -34,10 +34,9 @@ template MethodMatch(dataLen, methodLen) {
     signal input data[dataLen];
     signal input method[methodLen];
 
-    signal input r;
     signal input index;
 
-    signal isMatch <== SubstringMatchWithIndex(dataLen, methodLen)(data, method, r, index);
+    signal isMatch <== SubstringMatchWithIndex(dataLen, methodLen)(data, method, index);
     isMatch === 1;
 }
 
@@ -46,24 +45,21 @@ template HeaderFieldNameValueMatch(dataLen, nameLen, valueLen) {
     signal input data[dataLen];
     signal input headerName[nameLen];
     signal input headerValue[valueLen];
-    signal input r;
     signal input index;
-
-    component syntax = HttpSyntax();
 
     // signal output value[valueLen];
 
     // is name matches
-    signal headerNameMatch <== SubstringMatchWithIndex(dataLen, nameLen)(data, headerName, r, index);
+    signal headerNameMatch <== SubstringMatchWithIndex(dataLen, nameLen)(data, headerName, index);
 
     // next byte to name should be COLON
     signal endOfHeaderName <== IndexSelector(dataLen)(data, index + nameLen);
-    signal isNextByteColon <== IsEqual()([endOfHeaderName, syntax.COLON]);
+    signal isNextByteColon <== IsEqual()([endOfHeaderName, 58]);
 
     signal headerNameMatchAndNextByteColon <== headerNameMatch * isNextByteColon;
 
     // field-name: SP field-value
-    signal headerValueMatch <== SubstringMatchWithIndex(dataLen, valueLen)(data, headerValue, r, index + nameLen + 2);
+    signal headerValueMatch <== SubstringMatchWithIndex(dataLen, valueLen)(data, headerValue, index + nameLen + 2);
 
     // header name matches + header value matches
     signal output out <== headerNameMatchAndNextByteColon * headerValueMatch;
@@ -73,17 +69,14 @@ template HeaderFieldNameValueMatch(dataLen, nameLen, valueLen) {
 template HeaderFieldNameMatch(dataLen, nameLen) {
     signal input data[dataLen];
     signal input headerName[nameLen];
-    signal input r;
     signal input index;
 
-    component syntax = HttpSyntax();
-
     // is name matches
-    signal headerNameMatch <== SubstringMatchWithIndex(dataLen, nameLen)(data, headerName, r, index);
+    signal headerNameMatch <== SubstringMatchWithIndex(dataLen, nameLen)(data, headerName, index);
 
     // next byte to name should be COLON
     signal endOfHeaderName <== IndexSelector(dataLen)(data, index + nameLen);
-    signal isNextByteColon <== IsEqual()([endOfHeaderName, syntax.COLON]);
+    signal isNextByteColon <== IsEqual()([endOfHeaderName, 58]);
 
     // header name matches
     signal output out;

@@ -34,6 +34,7 @@ template InsideKey(n) {
 
     component topOfStack = GetTopOfStack(n);
     topOfStack.stack <== stack;
+    _ <== topOfStack.pointer;
     signal currentVal[2] <== topOfStack.value;
 
     signal parsingStringAndNotNumber <== parsing_string * (1 - parsing_number);
@@ -54,7 +55,7 @@ template InsideKey(n) {
 ///
 /// # Output
 /// - `out`: Returns `1` if current byte is inside a value
-template InsideValue(n) {
+template InsideValueAtTop(n) {
     signal input stack[n][2];
     signal input parsing_string;
     signal input parsing_number;
@@ -85,14 +86,14 @@ template InsideValue(n) {
 ///
 /// # Output
 /// - `out`: Returns `1` if current byte is inside a value
-template InsideValueAtDepth(n, depth) {
-    signal input stack[n][2];
+template InsideValue() {
+    signal input stack[2];
     signal input parsing_string;
     signal input parsing_number;
 
     signal output out;
 
-    signal ifParsingValue <== stack[depth][0] * stack[depth][1];
+    signal ifParsingValue <== stack[0] * stack[1];
     signal parsingStringXORNumber <== XOR()(parsing_string, parsing_number);
 
     out <== ifParsingValue * parsingStringXORNumber;
@@ -111,7 +112,7 @@ template InsideValueAtDepth(n, depth) {
 ///
 /// # Output
 /// - `out`: Returns `1` if current byte represents an array element at `index`
-template InsideArrayIndex(n, index) {
+template InsideArrayIndexAtTop(n, index) {
     signal input stack[n][2];
     signal input parsing_string;
     signal input parsing_number;
@@ -144,15 +145,15 @@ template InsideArrayIndex(n, index) {
 ///
 /// # Output
 /// - `out`: Returns `1` if current byte is inside an array index
-template InsideArrayIndexAtDepth(n, index, depth) {
-    signal input stack[n][2];
+template InsideArrayIndex(index) {
+    signal input stack[2];
     signal input parsing_string;
     signal input parsing_number;
 
     signal output out;
 
-    signal insideArray <== IsEqual()([stack[depth][0], 2]);
-    signal insideIndex <== IsEqual()([stack[depth][1], index]);
+    signal insideArray <== IsEqual()([stack[0], 2]);
+    signal insideIndex <== IsEqual()([stack[1], index]);
     signal insideArrayIndex <== insideArray * insideIndex;
     out <== insideArrayIndex * (parsing_string + parsing_number);
 }
@@ -215,10 +216,10 @@ template NextKVPairAtDepth(n, depth) {
 
     signal isNextPair <== IsEqualArray(2)([currentVal, [1, 0]]);
 
-    // `, -> 44`
-    component syntax = Syntax();
-    signal isComma <== IsEqual()([currByte, syntax.COMMA]);
+    // `,` -> 44
+    signal isComma <== IsEqual()([currByte, 44]);
     // pointer <= depth
+    // TODO: `LessThan` circuit warning
     signal atLessDepth <== LessEqThan(logMaxDepth)([pointer-1, depth]);
     // current depth is less than key depth
     signal isCommaAtDepthLessThanCurrent <== isComma * atLessDepth;
@@ -244,19 +245,17 @@ template NextKVPairAtDepth(n, depth) {
 template KeyMatch(dataLen, keyLen) {
     signal input data[dataLen];
     signal input key[keyLen];
-    signal input r;
     signal input index;
     signal input parsing_key;
 
-    component syntax = Syntax();
-
+    // `"` -> 34
     signal end_of_key <== IndexSelector(dataLen)(data, index + keyLen);
-    signal is_end_of_key_equal_to_quote <== IsEqual()([end_of_key, syntax.QUOTE]);
+    signal is_end_of_key_equal_to_quote <== IsEqual()([end_of_key, 34]);
 
     signal start_of_key <== IndexSelector(dataLen)(data, index - 1);
-    signal is_start_of_key_equal_to_quote <== IsEqual()([start_of_key, syntax.QUOTE]);
+    signal is_start_of_key_equal_to_quote <== IsEqual()([start_of_key, 34]);
 
-    signal substring_match <== SubstringMatchWithIndex(dataLen, keyLen)(data, key, r, index);
+    signal substring_match <== SubstringMatchWithIndex(dataLen, keyLen)(data, key, index);
 
     signal is_key_between_quotes <== is_start_of_key_equal_to_quote * is_end_of_key_equal_to_quote;
     signal is_parsing_correct_key <== is_key_between_quotes * parsing_key;
@@ -285,7 +284,6 @@ template KeyMatch(dataLen, keyLen) {
 template KeyMatchAtDepth(dataLen, n, keyLen, depth) {
     signal input data[dataLen];
     signal input key[keyLen];
-    signal input r;
     signal input index;
     signal input parsing_key;
     signal input stack[n][2];
@@ -293,19 +291,20 @@ template KeyMatchAtDepth(dataLen, n, keyLen, depth) {
     component topOfStack = GetTopOfStack(n);
     topOfStack.stack <== stack;
     signal pointer <== topOfStack.pointer;
+    _ <== topOfStack.value;
 
-    component syntax = Syntax();
+    // `"` -> 34
 
     // end of key equals `"`
     signal end_of_key <== IndexSelector(dataLen)(data, index + keyLen);
-    signal is_end_of_key_equal_to_quote <== IsEqual()([end_of_key, syntax.QUOTE]);
+    signal is_end_of_key_equal_to_quote <== IsEqual()([end_of_key, 34]);
 
     // start of key equals `"`
     signal start_of_key <== IndexSelector(dataLen)(data, index - 1);
-    signal is_start_of_key_equal_to_quote <== IsEqual()([start_of_key, syntax.QUOTE]);
+    signal is_start_of_key_equal_to_quote <== IsEqual()([start_of_key, 34]);
 
     // key matches
-    signal substring_match <== SubstringMatchWithIndex(dataLen, keyLen)(data, key, r, index);
+    signal substring_match <== SubstringMatchWithIndex(dataLen, keyLen)(data, key, index);
 
     // key should be a string
     signal is_key_between_quotes <== is_start_of_key_equal_to_quote * is_end_of_key_equal_to_quote;
@@ -316,7 +315,6 @@ template KeyMatchAtDepth(dataLen, n, keyLen, depth) {
     signal is_key_at_depth <== IsEqual()([pointer-1, depth]);
 
     signal is_parsing_correct_key_at_depth <== is_parsing_correct_key * is_key_at_depth;
-    // log("key match", index, end_of_key, is_end_of_key_equal_to_quote, substring_match);
 
     signal output out <== substring_match * is_parsing_correct_key_at_depth;
 }

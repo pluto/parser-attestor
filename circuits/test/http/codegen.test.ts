@@ -214,3 +214,50 @@ describe("HTTP :: Codegen :: Response", async () => {
         await circuit.expectFail(circuitInput);
     });
 });
+
+describe("spotify_top_artists_http", async () => {
+    let http_circuit: WitnessTester<["data", "version", "status", "message", "header1", "value1"], ["body"]>;
+
+    it("POST response body", async () => {
+        let httpLockfile = "spotify.lock"
+        let httpInputFile = "spotify_top_artists_response.http";
+        let httpCircuitName = "spotify_top_artists";
+
+        await executeCodegen(`${httpCircuitName}_test`, httpInputFile, `${httpLockfile}.json`);
+
+        const lockData = readLockFile<Response>(`${httpLockfile}.json`);
+
+        const http = readHTTPInputFile(`${httpInputFile}`);
+        const inputHttp = http.input;
+
+        const headers = getHeaders(lockData);
+
+        const params = [inputHttp.length, http.bodyBytes.length, lockData.version.length, lockData.status.length, lockData.message.length];
+        headers.forEach(header => {
+            params.push(header[0].length);
+            params.push(header[1].length);
+        });
+
+        http_circuit = await circomkit.WitnessTester(`Extract`, {
+            file: `main/http_${httpCircuitName}_test`,
+            template: "LockHTTPResponse",
+            params: params,
+        });
+        console.log("#constraints:", await http_circuit.getConstraintCount());
+
+        // match circuit output to original JSON value
+        const circuitInput: any = {
+            data: inputHttp,
+            version: toByte(lockData.version),
+            status: toByte(lockData.status),
+            message: toByte(lockData.message),
+        };
+
+        headers.forEach((header, index) => {
+            circuitInput[`header${index + 1}`] = toByte(header[0]);
+            circuitInput[`value${index + 1}`] = toByte(header[1]);
+        });
+
+        await http_circuit.expectPass(circuitInput, { body: http.bodyBytes });
+    });
+});

@@ -56,29 +56,28 @@ template StateUpdate(MAX_STACK_HEIGHT) {
     signal output next_parsing_string;
     signal output next_parsing_number;
 
-    component Syntax  = Syntax();
     component Command = Command();
 
     //--------------------------------------------------------------------------------------------//
     // Break down what was read
     // * read in a start brace `{` *
     component readStartBrace   = IsEqual();
-    readStartBrace.in        <== [byte, Syntax.START_BRACE];
+    readStartBrace.in        <== [byte, 123];
     // * read in an end brace `}` *
     component readEndBrace     = IsEqual();
-    readEndBrace.in          <== [byte, Syntax.END_BRACE];
+    readEndBrace.in          <== [byte, 125];
     // * read in a start bracket `[` *
     component readStartBracket = IsEqual();
-    readStartBracket.in      <== [byte, Syntax.START_BRACKET];
+    readStartBracket.in      <== [byte, 91];
     // * read in an end bracket `]` *
     component readEndBracket   = IsEqual();
-    readEndBracket.in        <== [byte, Syntax.END_BRACKET];
+    readEndBracket.in        <== [byte, 93];
     // * read in a colon `:` *
     component readColon        = IsEqual();
-    readColon.in             <== [byte, Syntax.COLON];
+    readColon.in             <== [byte, 58];
     // * read in a comma `,` *
     component readComma        = IsEqual();
-    readComma.in             <== [byte, Syntax.COMMA];
+    readComma.in             <== [byte, 44];
     // * read in some delimeter *
     signal readDelimeter     <== readStartBrace.out + readEndBrace.out + readStartBracket.out + readEndBracket.out
                                + readColon.out + readComma.out;
@@ -88,7 +87,7 @@ template StateUpdate(MAX_STACK_HEIGHT) {
     readNumber.range         <== [48, 57]; // This is the range where ASCII digits are
     // * read in a quote `"` *
     component readQuote        = IsEqual();
-    readQuote.in             <== [byte, Syntax.QUOTE];
+    readQuote.in             <== [byte, 34];
     component readOther        = IsZero();
     readOther.in             <== readDelimeter + readNumber.out + readQuote.out;
     //--------------------------------------------------------------------------------------------//
@@ -240,6 +239,7 @@ template GetTopOfStack(n) {
         atTop.vals[i]     <== stack[i];
     }
     atTop.case <== selector;
+    _ <== atTop.match;
     value      <== atTop.out;
     pointer    <== selector;
 }
@@ -283,9 +283,6 @@ template RewriteStack(n) {
     signal pointer          <== topOfStack.pointer;
     signal current_value[2] <== topOfStack.value;
     // * check if we are currently in a value of an object *
-    component inObjectValue   = IsEqualArray(2);
-    inObjectValue.in[0]     <== current_value;
-    inObjectValue.in[1]     <== [1,1];
     // * check if value indicates currently in an array *
     component inArray         = IsEqual();
     inArray.in[0]           <== current_value[0];

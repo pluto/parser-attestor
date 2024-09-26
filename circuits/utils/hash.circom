@@ -36,10 +36,16 @@ template PoseidonModular(numElements) {
 
         if (end > numElements) { // last chunk
             end = numElements;
-            var last_chunk[last_chunk_size] = Slice(numElements, start, end)(in);
+            var last_chunk[last_chunk_size];
+            for (var i=start ; i<end ; i++) {
+                last_chunk[i-start] = in[i];
+            }
             chunk_hash = Poseidon(last_chunk_size)(last_chunk);
         } else {
-            var chunk[16] = Slice(numElements, start, end)(in);
+            var chunk[16];
+            for (var i=start ; i<end ; i++) {
+                chunk[i-start] = in[i];
+            }
             chunk_hash = Poseidon(16)(chunk);
         }
 

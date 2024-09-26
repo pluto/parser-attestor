@@ -3,7 +3,7 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 
 use std::{
-    collections::{BTreeMap, HashMap},
+    collections::BTreeMap,
     error::Error,
     fs::{self, create_dir_all},
     path::Path,
@@ -118,10 +118,8 @@ impl HttpData {
         let mut headers_map = BTreeMap::<String, String>::new();
         let re = Regex::new(r":\s+").unwrap();
         for &header in headers {
-            println!("header: {:?}", header);
             let key_value: Vec<&str> = re.split(header).collect();
             assert_eq!(key_value.len(), 2);
-            println!("key: {:?}", key_value);
             headers_map.insert(key_value[0].to_string(), key_value[1].to_string());
         }
 
@@ -181,7 +179,6 @@ impl HttpData {
         input_file: &Path,
         codegen_filename: &str,
     ) -> Result<CircomkitCircuitConfig, Box<dyn std::error::Error>> {
-        println!("input_ifle: {:?}", input_file);
         let input = FileType::Http.read_input(input_file)?;
 
         let circuit_template_name = match self {
@@ -346,7 +343,6 @@ fn build_http_circuit(
     signal output body[maxContentLength];
 
     signal bodyMask[DATA_BYTES];
-    bodyMask[0] <== 0;
 "#;
         }
     }
@@ -366,9 +362,9 @@ fn build_http_circuit(
     signal targetMask[DATA_BYTES];
     signal versionMask[DATA_BYTES];
 
-    var target_start_counter = 1;
-    var target_end_counter   = 1;
-    var version_end_counter  = 1;
+    var target_start_counter = 0;
+    var target_end_counter   = 0;
+    var version_end_counter  = 0;
 "#;
             }
             HttpData::Response(_) => {
@@ -383,16 +379,24 @@ fn build_http_circuit(
     signal statusMask[DATA_BYTES];
     signal messageMask[DATA_BYTES];
 
-    var status_start_counter = 1;
-    var status_end_counter   = 1;
-    var message_end_counter  = 1;
+    var status_start_counter = 0;
+    var status_end_counter   = 0;
+    var message_end_counter  = 0;
 "#;
+            }
+        }
+
+        // Create header match signals
+        {
+            for (i, _header) in data.headers().iter().enumerate() {
+                circuit_buffer +=
+                    &format!("    signal headerNameValueMatch{}[DATA_BYTES];\n", i + 1);
+                circuit_buffer += &format!("    var hasMatchedHeaderValue{} = 0;\n\n", i + 1);
             }
         }
     }
 
-    circuit_buffer += r#"
-    component State[DATA_BYTES];
+    circuit_buffer += r#"    component State[DATA_BYTES];
     State[0]                       = HttpStateUpdate();
     State[0].byte                <== data[0];
     State[0].parsing_start       <== 1;
@@ -401,15 +405,71 @@ fn build_http_circuit(
     State[0].parsing_field_value <== 0;
     State[0].parsing_body        <== 0;
     State[0].line_status         <== 0;
-
 "#;
 
-    // Create header match signals
+    // If parsing a `Response`, create a mask of the body bytes
     {
-        for (i, _header) in data.headers().iter().enumerate() {
-            circuit_buffer += &format!("    signal headerNameValueMatch{}[DATA_BYTES];\n", i + 1);
-            circuit_buffer += &format!("    headerNameValueMatch{}[0] <== 0;\n", i + 1);
-            circuit_buffer += &format!("    var hasMatchedHeaderValue{} = 0;\n\n", i + 1);
+        if let HttpData::Response(_) = data {
+            circuit_buffer += r#"
+    // Mask if parser is in the body of response
+    bodyMask[0] <== data[0] * State[0].next_parsing_body;
+"#;
+        }
+    }
+
+    // Start line matches
+    {
+        match data {
+            HttpData::Request(_) => {
+                circuit_buffer += r#"
+    // Check remaining method bytes
+    // if(data_idx < methodLen) {
+    //     methodIsEqual[data_idx] <== IsEqual()([data[data_idx], method[data_idx]]);
+    //     methodIsEqual[data_idx] === 1;
+    // }
+
+    // Get the target bytes
+    startLineMask[0]     <== inStartLine()(State[0].next_parsing_start);
+    targetMask[0]        <== inStartMiddle()(State[0].next_parsing_start);
+    versionMask[0]       <== inStartEnd()(State[0].next_parsing_start);
+    target_start_counter += startLineMask[0] - targetMask[0] - versionMask[0];
+
+    // Get the version bytes
+    target_end_counter          += startLineMask[0] - versionMask[0];
+    version_end_counter         += startLineMask[0];
+"#;
+            }
+            HttpData::Response(_) => {
+                circuit_buffer += r#"
+    // Check remaining version bytes
+    // if(data_idx < versionLen) {
+    //     versionIsEqual[data_idx] <== IsEqual()([data[data_idx], version[data_idx]]);
+    //     versionIsEqual[data_idx] === 1;
+    // }
+
+    // Get the status bytes
+    startLineMask[0]     <== inStartLine()(State[0].next_parsing_start);
+    statusMask[0]        <== inStartMiddle()(State[0].next_parsing_start);
+    messageMask[0]       <== inStartEnd()(State[0].next_parsing_start);
+    status_start_counter += startLineMask[0] - statusMask[0] - messageMask[0];
+
+    // Get the message bytes
+    status_end_counter          += startLineMask[0] - messageMask[0];
+    message_end_counter         += startLineMask[0];
+"#;
+            }
+        }
+
+        // Header matches
+        {
+            for (i, _header) in data.headers().iter().enumerate() {
+                circuit_buffer += &format!("    headerNameValueMatch{}[0]    <== HeaderFieldNameValueMatch(DATA_BYTES, headerNameLen{}, headerValueLen{})(data, header{}, value{}, 0);\n", i + 1, i + 1, i + 1, i + 1, i + 1);
+                circuit_buffer += &format!(
+                    "    hasMatchedHeaderValue{}      += headerNameValueMatch{}[0];\n",
+                    i + 1,
+                    i + 1
+                );
+            }
         }
     }
 
@@ -451,9 +511,9 @@ fn build_http_circuit(
         }
 
         // Get the target bytes
-        startLineMask[data_idx]    <== inStartLine()(State[data_idx].parsing_start);
-        targetMask[data_idx]       <== inStartMiddle()(State[data_idx].parsing_start);
-        versionMask[data_idx]      <== inStartEnd()(State[data_idx].parsing_start);
+        startLineMask[data_idx]    <== inStartLine()(State[data_idx].next_parsing_start);
+        targetMask[data_idx]       <== inStartMiddle()(State[data_idx].next_parsing_start);
+        versionMask[data_idx]      <== inStartEnd()(State[data_idx].next_parsing_start);
         target_start_counter        += startLineMask[data_idx] - targetMask[data_idx] - versionMask[data_idx];
 
         // Get the version bytes
@@ -470,9 +530,9 @@ fn build_http_circuit(
         }
 
         // Get the status bytes
-        startLineMask[data_idx]    <== inStartLine()(State[data_idx].parsing_start);
-        statusMask[data_idx]       <== inStartMiddle()(State[data_idx].parsing_start);
-        messageMask[data_idx]      <== inStartEnd()(State[data_idx].parsing_start);
+        startLineMask[data_idx]    <== inStartLine()(State[data_idx].next_parsing_start);
+        statusMask[data_idx]       <== inStartMiddle()(State[data_idx].next_parsing_start);
+        messageMask[data_idx]      <== inStartEnd()(State[data_idx].next_parsing_start);
         status_start_counter        += startLineMask[data_idx] - statusMask[data_idx] - messageMask[data_idx];
 
         // Get the message bytes
@@ -486,7 +546,7 @@ fn build_http_circuit(
     // Header matches
     {
         for (i, _header) in data.headers().iter().enumerate() {
-            circuit_buffer += &format!("        headerNameValueMatch{}[data_idx] <== HeaderFieldNameValueMatch(DATA_BYTES, headerNameLen{}, headerValueLen{})(data, header{}, value{}, 100, data_idx);\n", i + 1,i + 1,i + 1,i + 1,i + 1);
+            circuit_buffer += &format!("        headerNameValueMatch{}[data_idx] <== HeaderFieldNameValueMatch(DATA_BYTES, headerNameLen{}, headerValueLen{})(data, header{}, value{}, data_idx);\n", i + 1, i + 1, i + 1, i + 1, i + 1);
             circuit_buffer += &format!(
                 "        hasMatchedHeaderValue{} += headerNameValueMatch{}[data_idx];\n",
                 i + 1,
@@ -509,7 +569,13 @@ fn build_http_circuit(
 "#;
     }
 
-    circuit_buffer += "   }";
+    circuit_buffer += "    }
+
+    _ <== State[DATA_BYTES-1].next_line_status;
+    _ <== State[DATA_BYTES-1].next_parsing_start;
+    _ <== State[DATA_BYTES-1].next_parsing_header;
+    _ <== State[DATA_BYTES-1].next_parsing_field_name;
+    _ <== State[DATA_BYTES-1].next_parsing_field_value;\n";
 
     // debugging
     if debug {
@@ -530,10 +596,12 @@ fn build_http_circuit(
     {
         if let HttpData::Response(_) = data {
             circuit_buffer += r#"
+
     signal bodyStartingIndex[DATA_BYTES];
     signal isZeroMask[DATA_BYTES];
     signal isPrevStartingIndex[DATA_BYTES];
     bodyStartingIndex[0] <== 0;
+    isPrevStartingIndex[0] <== 0;
     isZeroMask[0] <== IsZero()(bodyMask[0]);
     for (var i=1 ; i < DATA_BYTES; i++) {
         isZeroMask[i] <== IsZero()(bodyMask[i]);
@@ -560,17 +628,15 @@ fn build_http_circuit(
             HttpData::Request(_) => {
                 circuit_buffer += r#"
     // Verify method had correct length
-    methodLen === target_start_counter - 1;
+    methodLen === target_start_counter;
 
     // Check target is correct by substring match and length check
-    // TODO: change r
-    signal targetMatch <== SubstringMatchWithIndex(DATA_BYTES, targetLen)(data, target, 100, target_start_counter);
+    signal targetMatch <== SubstringMatchWithIndex(DATA_BYTES, targetLen)(data, target, target_start_counter + 1);
     targetMatch        === 1;
     targetLen          === target_end_counter - target_start_counter - 1;
 
     // Check version is correct by substring match and length check
-    // TODO: change r
-    signal versionMatch <== SubstringMatchWithIndex(DATA_BYTES, versionLen)(data, version, 100, target_end_counter);
+    signal versionMatch <== SubstringMatchWithIndex(DATA_BYTES, versionLen)(data, version, target_end_counter + 1);
     versionMatch === 1;
     // -2 here for the CRLF
     versionLen   === version_end_counter - target_end_counter - 2;
@@ -579,17 +645,15 @@ fn build_http_circuit(
             HttpData::Response(_) => {
                 circuit_buffer += r#"
     // Verify version had correct length
-    versionLen === status_start_counter - 1;
+    versionLen === status_start_counter;
 
     // Check status is correct by substring match and length check
-    // TODO: change r
-    signal statusMatch <== SubstringMatchWithIndex(DATA_BYTES, statusLen)(data, status, 100, status_start_counter);
+    signal statusMatch <== SubstringMatchWithIndex(DATA_BYTES, statusLen)(data, status, status_start_counter + 1);
     statusMatch        === 1;
     statusLen          === status_end_counter - status_start_counter - 1;
 
     // Check message is correct by substring match and length check
-    // TODO: change r
-    signal messageMatch <== SubstringMatchWithIndex(DATA_BYTES, messageLen)(data, message, 100, status_end_counter);
+    signal messageMatch <== SubstringMatchWithIndex(DATA_BYTES, messageLen)(data, message, status_end_counter + 1);
     messageMatch        === 1;
     // -2 here for the CRLF
     messageLen          === message_end_counter - status_end_counter - 2;
