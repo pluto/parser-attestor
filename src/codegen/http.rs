@@ -343,7 +343,6 @@ fn build_http_circuit(
     signal output body[maxContentLength];
 
     signal bodyMask[DATA_BYTES];
-    bodyMask[0] <== 0;
 "#;
         }
     }
@@ -363,9 +362,9 @@ fn build_http_circuit(
     signal targetMask[DATA_BYTES];
     signal versionMask[DATA_BYTES];
 
-    var target_start_counter = 1;
-    var target_end_counter   = 1;
-    var version_end_counter  = 1;
+    var target_start_counter = 0;
+    var target_end_counter   = 0;
+    var version_end_counter  = 0;
 "#;
             }
             HttpData::Response(_) => {
@@ -380,10 +379,19 @@ fn build_http_circuit(
     signal statusMask[DATA_BYTES];
     signal messageMask[DATA_BYTES];
 
-    var status_start_counter = 1;
-    var status_end_counter   = 1;
-    var message_end_counter  = 1;
+    var status_start_counter = 0;
+    var status_end_counter   = 0;
+    var message_end_counter  = 0;
 "#;
+            }
+        }
+
+        // Create header match signals
+        {
+            for (i, _header) in data.headers().iter().enumerate() {
+                circuit_buffer +=
+                    &format!("    signal headerNameValueMatch{}[DATA_BYTES];\n", i + 1);
+                circuit_buffer += &format!("    var hasMatchedHeaderValue{} = 0;\n\n", i + 1);
             }
         }
     }
@@ -401,12 +409,69 @@ fn build_http_circuit(
 
 "#;
 
-    // Create header match signals
+    // If parsing a `Response`, create a mask of the body bytes
     {
-        for (i, _header) in data.headers().iter().enumerate() {
-            circuit_buffer += &format!("    signal headerNameValueMatch{}[DATA_BYTES];\n", i + 1);
-            circuit_buffer += &format!("    headerNameValueMatch{}[0] <== 0;\n", i + 1);
-            circuit_buffer += &format!("    var hasMatchedHeaderValue{} = 0;\n\n", i + 1);
+        if let HttpData::Response(_) = data {
+            circuit_buffer += r#"
+        // Mask if parser is in the body of response
+        bodyMask[0] <== data[0] * State[0].next_parsing_body;
+"#;
+        }
+    }
+
+    // Start line matches
+    {
+        match data {
+            HttpData::Request(_) => {
+                circuit_buffer += r#"
+    // Check remaining method bytes
+    // if(data_idx < methodLen) {
+    //     methodIsEqual[data_idx] <== IsEqual()([data[data_idx], method[data_idx]]);
+    //     methodIsEqual[data_idx] === 1;
+    // }
+
+    // Get the target bytes
+    startLineMask[0]    <== inStartLine()(State[0].next_parsing_start);
+    targetMask[0]       <== inStartMiddle()(State[0].next_parsing_start);
+    versionMask[0]      <== inStartEnd()(State[0].next_parsing_start);
+    target_start_counter        += startLineMask[0] - targetMask[0] - versionMask[0];
+
+    // Get the version bytes
+    target_end_counter          += startLineMask[0] - versionMask[0];
+    version_end_counter         += startLineMask[0];
+"#;
+            }
+            HttpData::Response(_) => {
+                circuit_buffer += r#"
+    // Check remaining version bytes
+    // if(data_idx < versionLen) {
+    //     versionIsEqual[data_idx] <== IsEqual()([data[data_idx], version[data_idx]]);
+    //     versionIsEqual[data_idx] === 1;
+    // }
+
+    // Get the status bytes
+    startLineMask[0]    <== inStartLine()(State[0].next_parsing_start);
+    statusMask[0]       <== inStartMiddle()(State[0].next_parsing_start);
+    messageMask[0]      <== inStartEnd()(State[0].next_parsing_start);
+    status_start_counter        += startLineMask[0] - statusMask[0] - messageMask[0];
+
+    // Get the message bytes
+    status_end_counter          += startLineMask[0] - messageMask[0];
+    message_end_counter         += startLineMask[0];
+"#;
+            }
+        }
+
+        // Header matches
+        {
+            for (i, _header) in data.headers().iter().enumerate() {
+                circuit_buffer += &format!("        headerNameValueMatch{}[0] <== HeaderFieldNameValueMatch(DATA_BYTES, headerNameLen{}, headerValueLen{})(data, header{}, value{}, 0);\n", i + 1, i + 1, i + 1, i + 1, i + 1);
+                circuit_buffer += &format!(
+                    "        hasMatchedHeaderValue{} += headerNameValueMatch{}[0];\n",
+                    i + 1,
+                    i + 1
+                );
+            }
         }
     }
 
@@ -483,7 +548,7 @@ fn build_http_circuit(
     // Header matches
     {
         for (i, _header) in data.headers().iter().enumerate() {
-            circuit_buffer += &format!("        headerNameValueMatch{}[data_idx] <== HeaderFieldNameValueMatch(DATA_BYTES, headerNameLen{}, headerValueLen{})(data, header{}, value{}, data_idx);\n", i + 1,i + 1,i + 1,i + 1,i + 1);
+            circuit_buffer += &format!("        headerNameValueMatch{}[data_idx] <== HeaderFieldNameValueMatch(DATA_BYTES, headerNameLen{}, headerValueLen{})(data, header{}, value{}, data_idx);\n", i + 1, i + 1, i + 1, i + 1, i + 1);
             circuit_buffer += &format!(
                 "        hasMatchedHeaderValue{} += headerNameValueMatch{}[data_idx];\n",
                 i + 1,
@@ -506,7 +571,7 @@ fn build_http_circuit(
 "#;
     }
 
-    circuit_buffer += "   }";
+    circuit_buffer += "    }";
 
     // debugging
     if debug {
@@ -527,10 +592,17 @@ fn build_http_circuit(
     {
         if let HttpData::Response(_) = data {
             circuit_buffer += r#"
+    _ <== State[DATA_BYTES-1].next_line_status;
+    _ <== State[DATA_BYTES-1].next_parsing_start;
+    _ <== State[DATA_BYTES-1].next_parsing_header;
+    _ <== State[DATA_BYTES-1].next_parsing_field_name;
+    _ <== State[DATA_BYTES-1].next_parsing_field_value;
+
     signal bodyStartingIndex[DATA_BYTES];
     signal isZeroMask[DATA_BYTES];
     signal isPrevStartingIndex[DATA_BYTES];
     bodyStartingIndex[0] <== 0;
+    isPrevStartingIndex[0] <== 0;
     isZeroMask[0] <== IsZero()(bodyMask[0]);
     for (var i=1 ; i < DATA_BYTES; i++) {
         isZeroMask[i] <== IsZero()(bodyMask[i]);

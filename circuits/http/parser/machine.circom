@@ -39,8 +39,6 @@ template HttpStateUpdate() {
     // Check if we had read previously CR / LF or multiple
     component prevReadCR     = IsEqual();
     prevReadCR.in          <== [line_status, 1];
-    component prevReadCRLF   = IsEqual();
-    prevReadCRLF.in        <== [line_status, 2];
     component prevReadCRLFCR = IsEqual();
     prevReadCRLFCR.in      <== [line_status, 3];
 
@@ -50,7 +48,7 @@ template HttpStateUpdate() {
 
     //---------------------------------------------------------------------------------//
     // Take current state and CRLF info to update state
-    signal state[5] <== [parsing_start, parsing_header, parsing_field_name, parsing_field_value, parsing_body];
+    signal state[2] <== [parsing_start, parsing_header];
     component stateChange    = StateChange();
     stateChange.readCRLF <== readCRLF;
     stateChange.readCRLFCRLF <== readCRLFCRLF;
@@ -59,7 +57,7 @@ template HttpStateUpdate() {
     stateChange.state   <== state;
 
     component nextState   = ArrayAdd(5);
-    nextState.lhs       <== state;
+    nextState.lhs       <== [state[0], state[1], parsing_field_name, parsing_field_value, parsing_body];
     nextState.rhs       <== stateChange.out;
     //---------------------------------------------------------------------------------//
 
@@ -80,7 +78,7 @@ template StateChange() {
     signal input readCRLFCRLF;
     signal input readSP;
     signal input readColon;
-    signal input state[5];
+    signal input state[2];
     signal output out[5];
 
     // GreaterEqThan(2) because start line can have at most 3 values for request or response
@@ -93,7 +91,7 @@ template StateChange() {
     // enable parsing header on reading CRLF
     signal enableParsingHeader <== readCRLF * isParsingStart;
     // check if we are parsing header
-    signal isParsingHeader <== GreaterEqThan(10)([state[1], 1]);
+    signal isParsingHeader <== GreaterEqThan(3)([state[1], 1]);
     // increment parsing header counter on CRLF and parsing header
     signal incrementParsingHeader <== readCRLF * isParsingHeader;
     // disable parsing header on reading CRLF-CRLF
