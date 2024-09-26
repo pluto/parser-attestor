@@ -198,3 +198,35 @@ describe("ExtractValueArrayObject", () => {
         await circuit.expectPass({ data: input, key1: keyUnicode[0], key3: keyUnicode[2] }, { value: num });
     });
 });
+
+describe("spotify_top_artists_json", async () => {
+    let json_circuit: WitnessTester<["data", "key1", "key2", "key4", "key5"], ["value"]>;
+
+    it("response matcher", async () => {
+        let jsonFilename = "spotify";
+
+        await executeCodegen(`${jsonFilename}_test`, `${jsonFilename}.json`, `${jsonFilename}.json`);
+
+        let index_0 = 0;
+
+        let [inputJson, key, output] = readJSONInputFile(
+            `${jsonFilename}.json`,
+            [
+                "data",
+                "items",
+                index_0,
+                "profile",
+                "name"
+            ]
+        );
+
+        json_circuit = await circomkit.WitnessTester(`Extract`, {
+            file: `main/json_${jsonFilename}_test`,
+            template: "ExtractStringValue",
+            params: [inputJson.length, 5, 4, 0, 5, 1, index_0, 2, 7, 3, 4, 4, 12],
+        });
+        console.log("#constraints:", await json_circuit.getConstraintCount());
+
+        await json_circuit.expectPass({ data: inputJson, key1: key[0], key2: key[1], key4: key[3], key5: key[4] }, { value: output });
+    });
+});
