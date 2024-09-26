@@ -4,6 +4,7 @@ include "circomlib/circuits/mux1.circom";
 include "./hash.circom";
 include "./operators.circom";
 include "./array.circom";
+include "@zk-email/circuits/utils/array.circom";
 
 /*
 SubstringSearch
@@ -84,8 +85,6 @@ template SubstringSearch(dataLen, keyLen) {
 }
 
 /*
-SubstringMatchWithIndex
-
 RLC algorithm for matching substring at index.
 - Creates a mask for `data` at `[start, start + keyLen]`
 - apply mask to data
@@ -107,7 +106,7 @@ RLC algorithm for matching substring at index.
 
 NOTE: Modified from https://github.com/zkemail/zk-email-verify/tree/main/packages/circuits
 */
-template SubstringMatchWithIndex(dataLen, keyLen) {
+template SubstringMatchWithHasher(dataLen, keyLen) {
     signal input data[dataLen];
     signal input key[keyLen];
     signal input r;
@@ -204,6 +203,29 @@ template SubstringMatchWithIndex(dataLen, keyLen) {
 }
 
 /*
+SubstringMatchWithIndex
+
+matching substring at index by selecting a subarray and matching arrays
+
+# Parameters
+- `dataLen`: The maximum length of the input string
+- `keyLen`: The maximum length of the substring to be matched
+
+# Inputs
+- `data`: Array of ASCII characters as input string
+- `key`: Array of ASCII characters as substring to be searched in `data`
+- `position`: Index of `key` in `data`
+*/
+template SubstringMatchWithIndex(dataLen, keyLen) {
+    signal input data[dataLen];
+    signal input key[keyLen];
+    signal input start;
+
+    signal subarray[keyLen] <== SelectSubArray(dataLen, keyLen)(data, start, keyLen);
+    signal output out <== IsEqualArray(keyLen)([key, subarray]);
+}
+
+/*
 SubstringMatch: Matches a substring with an input string and returns the position
 
 # Parameters
@@ -238,7 +260,7 @@ template SubstringMatch(dataLen, keyLen) {
 
     // matches a `key` in `data` at `pos`
     // NOTE: constrained verification assures correctness
-    signal isMatch <== SubstringMatchWithIndex(dataLen, keyLen)(data, key, r, start);
+    signal isMatch <== SubstringMatchWithHasher(dataLen, keyLen)(data, key, r, start);
     isMatch === 1;
 
     position <== start;

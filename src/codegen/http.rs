@@ -483,7 +483,7 @@ fn build_http_circuit(
     // Header matches
     {
         for (i, _header) in data.headers().iter().enumerate() {
-            circuit_buffer += &format!("        headerNameValueMatch{}[data_idx] <== HeaderFieldNameValueMatch(DATA_BYTES, headerNameLen{}, headerValueLen{})(data, header{}, value{}, 100, data_idx);\n", i + 1,i + 1,i + 1,i + 1,i + 1);
+            circuit_buffer += &format!("        headerNameValueMatch{}[data_idx] <== HeaderFieldNameValueMatch(DATA_BYTES, headerNameLen{}, headerValueLen{})(data, header{}, value{}, data_idx);\n", i + 1,i + 1,i + 1,i + 1,i + 1);
             circuit_buffer += &format!(
                 "        hasMatchedHeaderValue{} += headerNameValueMatch{}[data_idx];\n",
                 i + 1,
@@ -560,14 +560,12 @@ fn build_http_circuit(
     methodLen === target_start_counter - 1;
 
     // Check target is correct by substring match and length check
-    // TODO: change r
-    signal targetMatch <== SubstringMatchWithIndex(DATA_BYTES, targetLen)(data, target, 100, target_start_counter);
+    signal targetMatch <== SubstringMatchWithIndex(DATA_BYTES, targetLen)(data, target, target_start_counter);
     targetMatch        === 1;
     targetLen          === target_end_counter - target_start_counter - 1;
 
     // Check version is correct by substring match and length check
-    // TODO: change r
-    signal versionMatch <== SubstringMatchWithIndex(DATA_BYTES, versionLen)(data, version, 100, target_end_counter);
+    signal versionMatch <== SubstringMatchWithIndex(DATA_BYTES, versionLen)(data, version, target_end_counter);
     versionMatch === 1;
     // -2 here for the CRLF
     versionLen   === version_end_counter - target_end_counter - 2;
@@ -579,14 +577,12 @@ fn build_http_circuit(
     versionLen === status_start_counter - 1;
 
     // Check status is correct by substring match and length check
-    // TODO: change r
-    signal statusMatch <== SubstringMatchWithIndex(DATA_BYTES, statusLen)(data, status, 100, status_start_counter);
+    signal statusMatch <== SubstringMatchWithIndex(DATA_BYTES, statusLen)(data, status, status_start_counter);
     statusMatch        === 1;
     statusLen          === status_end_counter - status_start_counter - 1;
 
     // Check message is correct by substring match and length check
-    // TODO: change r
-    signal messageMatch <== SubstringMatchWithIndex(DATA_BYTES, messageLen)(data, message, 100, status_end_counter);
+    signal messageMatch <== SubstringMatchWithIndex(DATA_BYTES, messageLen)(data, message, status_end_counter);
     messageMatch        === 1;
     // -2 here for the CRLF
     messageLen          === message_end_counter - status_end_counter - 2;
