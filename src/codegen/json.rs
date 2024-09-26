@@ -5,7 +5,6 @@ use std::{
     collections::HashMap,
     error::Error,
     fs::{self, create_dir_all},
-    str::FromStr,
 };
 
 use crate::{circuit_config::CircomkitCircuitConfig, ExtractorArgs};
@@ -326,49 +325,7 @@ fn build_json_circuit(
             }
         }
     }
-
-    /*
-    component rHasher = PoseidonModular(dataLen + keyLen1 + keyLen3);
-    for (var i = 0; i < keyLen1; i++) {
-        rHasher.in[i] <== key1[i];
-    }
-    for (var i = 0; i < keyLen3; i++) {
-        rHasher.in[keyLen1 + i] <== key3[i];
-    }
-    for (var i = 0; i < dataLen; i++) {
-        rHasher.in[i + keyLen1 + keyLen3] <== data[i];
-    }
-    signal r <== rHasher.out;
-     */
-    {
-        circuit_buffer += "\n    // r must be secret, so either has to be derived from hash in the circuit or off the circuit\n    component rHasher = PoseidonModular(DATA_BYTES + ";
-        for (i, key) in data.keys.iter().enumerate() {
-            match key {
-                Key::String(_) => circuit_buffer += &format!(" keyLen{} +", i + 1),
-                Key::Num(_) => (),
-            }
-        }
-        circuit_buffer.pop();
-        circuit_buffer.pop();
-        circuit_buffer += ");\n";
-
-        let mut key_len_counter_str = String::from_str("i")?;
-        for (i, key) in data.keys.iter().enumerate() {
-            match key {
-                Key::String(_) => {
-                    circuit_buffer += &format!("    for (var i = 0 ; i < keyLen{} ; i++) {{\n        rHasher.in[{}] <== key{}[i];\n    }}\n", i+1, key_len_counter_str, i+1);
-                    key_len_counter_str += &format!(" + keyLen{}", i + 1);
-                }
-                Key::Num(_) => (),
-            }
-        }
-
-        circuit_buffer += &format!("    for (var i = 0 ; i < DATA_BYTES ; i++) {{\n        rHasher.in[{}] <== data[i];\n    }}\n", key_len_counter_str);
-    }
-
-    circuit_buffer += r#"    signal r <== rHasher.out;
-
-    // value starting index in `data`
+    circuit_buffer += r#"    // value starting index in `data`
     signal output value_starting_index[DATA_BYTES];
     // flag determining whether this byte is matched value
     signal is_value_match[DATA_BYTES];
@@ -464,7 +421,7 @@ fn build_json_circuit(
             match key {
                 Key::String(_) => {
                     num_objects += 1;
-                    circuit_buffer += &format!("    is_key{}_match[0] <== KeyMatchAtDepth(DATA_BYTES, MAX_STACK_HEIGHT, keyLen{}, depth{})(data, key{}, r, 0, parsing_key[0], State[0].next_stack);\n", i+1, i+1, i+1, i+1);
+                    circuit_buffer += &format!("    is_key{}_match[0] <== KeyMatchAtDepth(DATA_BYTES, MAX_STACK_HEIGHT, keyLen{}, depth{})(data, key{}, 0, parsing_key[0], State[0].next_stack);\n", i+1, i+1, i+1, i+1);
                     circuit_buffer += &format!("    is_next_pair_at_depth{}[0] <== NextKVPairAtDepth(MAX_STACK_HEIGHT, depth{})(State[0].next_stack, data[0]);\n", i+1, i+1);
                     circuit_buffer += &format!("    is_key{}_match_for_value[1] <== Mux1()([is_key{}_match_for_value[0] * (1-is_next_pair_at_depth{}[0]), is_key{}_match[0] * (1-is_next_pair_at_depth{}[0])], is_key{}_match[0]);\n", i+1, i+1, i+1, i+1, i+1, i+1);
                     if debug {
@@ -598,7 +555,7 @@ fn build_json_circuit(
     - key matches at current index and depth of key is as specified
     - whether next KV pair starts
     - whether key matched for a value (propogate key match until new KV pair of lower depth starts)
-    is_key1_match[data_idx-1] <== KeyMatchAtDepth(DATA_BYTES, MAX_STACK_HEIGHT, keyLen1, depth1)(data, key1, r, data_idx-1, parsing_key[data_idx-1], State[data_idx].stack);
+    is_key1_match[data_idx-1] <== KeyMatchAtDepth(DATA_BYTES, MAX_STACK_HEIGHT, keyLen1, depth1)(data, key1, data_idx-1, parsing_key[data_idx-1], State[data_idx].stack);
     is_next_pair_at_depth1[data_idx-1] <== NextKVPairAtDepth(MAX_STACK_HEIGHT, depth1)(State[data_idx].stack, data[data_idx-1]);
     is_key1_match_for_value[data_idx] <== Mux1()([is_key1_match_for_value[data_idx-1] * (1-is_next_pair_at_depth1[data_idx-1]), is_key1_match[data_idx-1] * (1-is_next_pair_at_depth1[data_idx-1])], is_key1_match[data_idx-1]);
     */
@@ -614,7 +571,7 @@ fn build_json_circuit(
             match key {
                 Key::String(_) => {
                     num_objects += 1;
-                    circuit_buffer += &format!("        is_key{}_match[data_idx] <== KeyMatchAtDepth(DATA_BYTES, MAX_STACK_HEIGHT, keyLen{}, depth{})(data, key{}, r, data_idx, parsing_key[data_idx], State[data_idx].next_stack);\n", i+1, i+1, i+1, i+1);
+                    circuit_buffer += &format!("        is_key{}_match[data_idx] <== KeyMatchAtDepth(DATA_BYTES, MAX_STACK_HEIGHT, keyLen{}, depth{})(data, key{}, data_idx, parsing_key[data_idx], State[data_idx].next_stack);\n", i+1, i+1, i+1, i+1);
                     circuit_buffer += &format!("        is_next_pair_at_depth{}[data_idx] <== NextKVPairAtDepth(MAX_STACK_HEIGHT, depth{})(State[data_idx].next_stack, data[data_idx]);\n", i+1, i+1);
                     circuit_buffer += &format!("        is_key{}_match_for_value[data_idx+1] <== Mux1()([is_key{}_match_for_value[data_idx] * (1-is_next_pair_at_depth{}[data_idx]), is_key{}_match[data_idx] * (1-is_next_pair_at_depth{}[data_idx])], is_key{}_match[data_idx]);\n", i+1, i+1, i+1, i+1, i+1, i+1);
                     if debug {

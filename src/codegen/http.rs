@@ -396,8 +396,7 @@ fn build_http_circuit(
         }
     }
 
-    circuit_buffer += r#"
-    component State[DATA_BYTES];
+    circuit_buffer += r#"    component State[DATA_BYTES];
     State[0]                       = HttpStateUpdate();
     State[0].byte                <== data[0];
     State[0].parsing_start       <== 1;
@@ -406,15 +405,14 @@ fn build_http_circuit(
     State[0].parsing_field_value <== 0;
     State[0].parsing_body        <== 0;
     State[0].line_status         <== 0;
-
 "#;
 
     // If parsing a `Response`, create a mask of the body bytes
     {
         if let HttpData::Response(_) = data {
             circuit_buffer += r#"
-        // Mask if parser is in the body of response
-        bodyMask[0] <== data[0] * State[0].next_parsing_body;
+    // Mask if parser is in the body of response
+    bodyMask[0] <== data[0] * State[0].next_parsing_body;
 "#;
         }
     }
@@ -431,10 +429,10 @@ fn build_http_circuit(
     // }
 
     // Get the target bytes
-    startLineMask[0]    <== inStartLine()(State[0].next_parsing_start);
-    targetMask[0]       <== inStartMiddle()(State[0].next_parsing_start);
-    versionMask[0]      <== inStartEnd()(State[0].next_parsing_start);
-    target_start_counter        += startLineMask[0] - targetMask[0] - versionMask[0];
+    startLineMask[0]     <== inStartLine()(State[0].next_parsing_start);
+    targetMask[0]        <== inStartMiddle()(State[0].next_parsing_start);
+    versionMask[0]       <== inStartEnd()(State[0].next_parsing_start);
+    target_start_counter += startLineMask[0] - targetMask[0] - versionMask[0];
 
     // Get the version bytes
     target_end_counter          += startLineMask[0] - versionMask[0];
@@ -450,10 +448,10 @@ fn build_http_circuit(
     // }
 
     // Get the status bytes
-    startLineMask[0]    <== inStartLine()(State[0].next_parsing_start);
-    statusMask[0]       <== inStartMiddle()(State[0].next_parsing_start);
-    messageMask[0]      <== inStartEnd()(State[0].next_parsing_start);
-    status_start_counter        += startLineMask[0] - statusMask[0] - messageMask[0];
+    startLineMask[0]     <== inStartLine()(State[0].next_parsing_start);
+    statusMask[0]        <== inStartMiddle()(State[0].next_parsing_start);
+    messageMask[0]       <== inStartEnd()(State[0].next_parsing_start);
+    status_start_counter += startLineMask[0] - statusMask[0] - messageMask[0];
 
     // Get the message bytes
     status_end_counter          += startLineMask[0] - messageMask[0];
@@ -465,9 +463,9 @@ fn build_http_circuit(
         // Header matches
         {
             for (i, _header) in data.headers().iter().enumerate() {
-                circuit_buffer += &format!("        headerNameValueMatch{}[0] <== HeaderFieldNameValueMatch(DATA_BYTES, headerNameLen{}, headerValueLen{})(data, header{}, value{}, 0);\n", i + 1, i + 1, i + 1, i + 1, i + 1);
+                circuit_buffer += &format!("    headerNameValueMatch{}[0]    <== HeaderFieldNameValueMatch(DATA_BYTES, headerNameLen{}, headerValueLen{})(data, header{}, value{}, 0);\n", i + 1, i + 1, i + 1, i + 1, i + 1);
                 circuit_buffer += &format!(
-                    "        hasMatchedHeaderValue{} += headerNameValueMatch{}[0];\n",
+                    "    hasMatchedHeaderValue{}      += headerNameValueMatch{}[0];\n",
                     i + 1,
                     i + 1
                 );
@@ -513,9 +511,9 @@ fn build_http_circuit(
         }
 
         // Get the target bytes
-        startLineMask[data_idx]    <== inStartLine()(State[data_idx].parsing_start);
-        targetMask[data_idx]       <== inStartMiddle()(State[data_idx].parsing_start);
-        versionMask[data_idx]      <== inStartEnd()(State[data_idx].parsing_start);
+        startLineMask[data_idx]    <== inStartLine()(State[data_idx].next_parsing_start);
+        targetMask[data_idx]       <== inStartMiddle()(State[data_idx].next_parsing_start);
+        versionMask[data_idx]      <== inStartEnd()(State[data_idx].next_parsing_start);
         target_start_counter        += startLineMask[data_idx] - targetMask[data_idx] - versionMask[data_idx];
 
         // Get the version bytes
@@ -532,9 +530,9 @@ fn build_http_circuit(
         }
 
         // Get the status bytes
-        startLineMask[data_idx]    <== inStartLine()(State[data_idx].parsing_start);
-        statusMask[data_idx]       <== inStartMiddle()(State[data_idx].parsing_start);
-        messageMask[data_idx]      <== inStartEnd()(State[data_idx].parsing_start);
+        startLineMask[data_idx]    <== inStartLine()(State[data_idx].next_parsing_start);
+        statusMask[data_idx]       <== inStartMiddle()(State[data_idx].next_parsing_start);
+        messageMask[data_idx]      <== inStartEnd()(State[data_idx].next_parsing_start);
         status_start_counter        += startLineMask[data_idx] - statusMask[data_idx] - messageMask[data_idx];
 
         // Get the message bytes
@@ -571,7 +569,13 @@ fn build_http_circuit(
 "#;
     }
 
-    circuit_buffer += "    }";
+    circuit_buffer += "    }
+
+    _ <== State[DATA_BYTES-1].next_line_status;
+    _ <== State[DATA_BYTES-1].next_parsing_start;
+    _ <== State[DATA_BYTES-1].next_parsing_header;
+    _ <== State[DATA_BYTES-1].next_parsing_field_name;
+    _ <== State[DATA_BYTES-1].next_parsing_field_value;\n";
 
     // debugging
     if debug {
@@ -592,11 +596,6 @@ fn build_http_circuit(
     {
         if let HttpData::Response(_) = data {
             circuit_buffer += r#"
-    _ <== State[DATA_BYTES-1].next_line_status;
-    _ <== State[DATA_BYTES-1].next_parsing_start;
-    _ <== State[DATA_BYTES-1].next_parsing_header;
-    _ <== State[DATA_BYTES-1].next_parsing_field_name;
-    _ <== State[DATA_BYTES-1].next_parsing_field_value;
 
     signal bodyStartingIndex[DATA_BYTES];
     signal isZeroMask[DATA_BYTES];
@@ -629,15 +628,15 @@ fn build_http_circuit(
             HttpData::Request(_) => {
                 circuit_buffer += r#"
     // Verify method had correct length
-    methodLen === target_start_counter - 1;
+    methodLen === target_start_counter;
 
     // Check target is correct by substring match and length check
-    signal targetMatch <== SubstringMatchWithIndex(DATA_BYTES, targetLen)(data, target, target_start_counter);
+    signal targetMatch <== SubstringMatchWithIndex(DATA_BYTES, targetLen)(data, target, target_start_counter + 1);
     targetMatch        === 1;
     targetLen          === target_end_counter - target_start_counter - 1;
 
     // Check version is correct by substring match and length check
-    signal versionMatch <== SubstringMatchWithIndex(DATA_BYTES, versionLen)(data, version, target_end_counter);
+    signal versionMatch <== SubstringMatchWithIndex(DATA_BYTES, versionLen)(data, version, target_end_counter + 1);
     versionMatch === 1;
     // -2 here for the CRLF
     versionLen   === version_end_counter - target_end_counter - 2;
@@ -646,15 +645,15 @@ fn build_http_circuit(
             HttpData::Response(_) => {
                 circuit_buffer += r#"
     // Verify version had correct length
-    versionLen === status_start_counter - 1;
+    versionLen === status_start_counter;
 
     // Check status is correct by substring match and length check
-    signal statusMatch <== SubstringMatchWithIndex(DATA_BYTES, statusLen)(data, status, status_start_counter);
+    signal statusMatch <== SubstringMatchWithIndex(DATA_BYTES, statusLen)(data, status, status_start_counter + 1);
     statusMatch        === 1;
     statusLen          === status_end_counter - status_start_counter - 1;
 
     // Check message is correct by substring match and length check
-    signal messageMatch <== SubstringMatchWithIndex(DATA_BYTES, messageLen)(data, message, status_end_counter);
+    signal messageMatch <== SubstringMatchWithIndex(DATA_BYTES, messageLen)(data, message, status_end_counter + 1);
     messageMatch        === 1;
     // -2 here for the CRLF
     messageLen          === message_end_counter - status_end_counter - 2;
