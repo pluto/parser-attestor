@@ -52,7 +52,8 @@ export function readJSONInputFile(filename: string, key: any[]): [number[], numb
     input = byteArray;
 
     let jsonFile = JSON.parse(data);
-    let value: string = key.reduce((acc, key) => acc && acc[key], jsonFile).toString();
+    let value = key.reduce((acc, key) => acc && acc[key], jsonFile);
+    value = value.toString();
     for (let i = 0; i < value.length; i++) {
         output.push(value.charCodeAt(i));
     }
