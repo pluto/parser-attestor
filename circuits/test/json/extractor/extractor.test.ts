@@ -1,4 +1,4 @@
-import { circomkit, WitnessTester, readJSONInputFile } from "../../common";
+import { circomkit, WitnessTester, readJSONInputFile, toByte } from "../../common";
 import { join } from "path";
 import { spawn } from "child_process";
 
@@ -228,5 +228,158 @@ describe("spotify_top_artists_json", async () => {
         console.log("#constraints:", await json_circuit.getConstraintCount());
 
         await json_circuit.expectPass({ data: inputJson, key1: key[0], key2: key[1], key4: key[3], key5: key[4] }, { value: output });
+    });
+});
+
+describe("array-only", async () => {
+    let circuit: WitnessTester<["data", "index"], ["value"]>;
+    let jsonFilename = "array_only";
+    let inputJson: number[] = [];
+    let maxValueLen = 30;
+
+    before(async () => {
+        let [jsonFile, key, output] = readJSONInputFile(
+            `${jsonFilename}.json`,
+            [
+                0
+            ]
+        );
+        inputJson = jsonFile;
+
+        circuit = await circomkit.WitnessTester(`Extract`, {
+            file: `json/extractor`,
+            template: "ArrayIndexExtractor",
+            params: [inputJson.length, 2, maxValueLen],
+        });
+        console.log("#constraints:", await circuit.getConstraintCount());
+    });
+
+    it("response-matcher index: 0", async () => {
+        let outputs = [52, 50, 44];
+        outputs.fill(0, outputs.length, maxValueLen);
+
+        await circuit.expectPass({ data: inputJson, index: 0 }, { value: outputs });
+    });
+
+    it("response-matcher index: 1", async () => {
+        let outputs = [123, 10, 32, 32, 32, 32, 32, 32, 32, 32, 34, 97, 34, 58, 32, 34, 98, 34, 10, 32, 32, 32, 32, 125];
+        outputs.fill(0, outputs.length, maxValueLen);
+
+        await circuit.expectPass({ data: inputJson, index: 1 }, { value: outputs });
+    });
+
+    it("response-matcher index: 2", async () => {
+        /*
+    [
+        0,
+        1
+    ]
+        */
+        let outputs = [91, 10, 32, 32, 32, 32, 32, 32, 32, 32, 48, 44, 10, 32, 32, 32, 32, 32, 32, 32, 32, 49, 10, 32, 32, 32, 32, 93];
+        outputs.fill(0, outputs.length, maxValueLen);
+
+        await circuit.expectPass({ data: inputJson, index: 2 }, { value: outputs });
+    });
+
+    it("response-matcher index: 3", async () => {
+        // "foobar"
+        let outputs = [34, 102, 111, 111, 98, 97, 114, 34];
+        outputs.fill(0, outputs.length, maxValueLen);
+
+        await circuit.expectPass({ data: inputJson, index: 3 }, { value: outputs });
+    });
+});
+
+describe("object-extractor", async () => {
+    let circuit: WitnessTester<["data", "key"], ["value"]>;
+    let jsonFilename = "value_object";
+    let maxValueLen = 30;
+
+    it("key: \"a\", value: \"{ \"d\" : \"e\", \"e\": \"c\" }\"", async () => {
+        let [inputJson, key, output] = readJSONInputFile(
+            `${jsonFilename}.json`,
+            [
+                "a"
+            ]
+        );
+
+        circuit = await circomkit.WitnessTester(`Extract`, {
+            file: `json/extractor`,
+            template: "ObjectExtractor",
+            params: [inputJson.length, 3, 1, maxValueLen],
+        });
+        console.log("#constraints:", await circuit.getConstraintCount());
+
+        // { "d" : "e", "e": "c" }
+        let outputs = [123, 32, 34, 100, 34, 32, 58, 32, 34, 101, 34, 44, 32, 34, 101, 34, 58, 32, 34, 99, 34, 32, 125];
+        outputs.fill(0, outputs.length, maxValueLen);
+
+        await circuit.expectPass({ data: inputJson, key: key }, { value: outputs });
+    });
+
+    it("key: \"g\", value: \"{ \"h\": { \"a\": \"c\" }}\"", async () => {
+        let [inputJson, key, output] = readJSONInputFile(
+            `${jsonFilename}.json`,
+            [
+                "g"
+            ]
+        );
+
+        circuit = await circomkit.WitnessTester(`Extract`, {
+            file: `json/extractor`,
+            template: "ObjectExtractor",
+            params: [inputJson.length, 3, 1, maxValueLen],
+        });
+        console.log("#constraints:", await circuit.getConstraintCount());
+
+        // { "h": { "a": "c" }}
+        let outputs = [123, 32, 34, 104, 34, 58, 32, 123, 32, 34, 97, 34, 58, 32, 34, 99, 34, 32, 125, 125];
+        outputs.fill(0, outputs.length, maxValueLen);
+
+        await circuit.expectPass({ data: inputJson, key: key }, { value: outputs });
+    });
+
+    it("key: \"ab\", value: \"foobar\"", async () => {
+        let [inputJson, key, output] = readJSONInputFile(
+            `${jsonFilename}.json`,
+            [
+                "ab"
+            ]
+        );
+
+        circuit = await circomkit.WitnessTester(`Extract`, {
+            file: `json/extractor`,
+            template: "ObjectExtractor",
+            params: [inputJson.length, 3, 2, maxValueLen],
+        });
+        console.log("#constraints:", await circuit.getConstraintCount());
+
+        // "foobar"
+        let outputs = [34, 102, 111, 111, 98, 97, 114, 34];
+        outputs.fill(0, outputs.length, maxValueLen);
+
+        await circuit.expectPass({ data: inputJson, key: key }, { value: outputs });
+    });
+
+    it("key: \"ab\", value: 42", async () => {
+        let [inputJson, key, output] = readJSONInputFile(
+            `${jsonFilename}.json`,
+            [
+                "bc"
+            ]
+        );
+
+        circuit = await circomkit.WitnessTester(`Extract`, {
+            file: `json/extractor`,
+            template: "ObjectExtractor",
+            params: [inputJson.length, 3, 2, maxValueLen],
+        });
+        console.log("#constraints:", await circuit.getConstraintCount());
+
+        // "foobar"
+        let outputs = [52, 50];
+        outputs.fill(0, outputs.length, maxValueLen);
+
+        await circuit.expectPass({ data: inputJson, key: key }, { value: outputs });
     });
 });

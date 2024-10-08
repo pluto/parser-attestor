@@ -7,10 +7,26 @@ describe("json-parser", () => {
         let filename = "array_only";
         let [input, keyUnicode, output] = readJSONInputFile(`${filename}.json`, [0]);
 
-        circuit = await circomkit.WitnessTester(`StateUpdate`, {
-            file: "json/parser/machine",
-            template: "StateUpdate",
+        circuit = await circomkit.WitnessTester(`Parser`, {
+            file: "json/parser/parser",
+            template: "Parser",
             params: [input.length, 2],
+        });
+        console.log("#constraints:", await circuit.getConstraintCount());
+
+        await circuit.expectPass({
+            data: input
+        });
+    });
+
+    it(`object input`, async () => {
+        let filename = "value_object";
+        let [input, keyUnicode, output] = readJSONInputFile(`${filename}.json`, ["a"]);
+
+        circuit = await circomkit.WitnessTester(`Parser`, {
+            file: "json/parser/parser",
+            template: "Parser",
+            params: [input.length, 3],
         });
         console.log("#constraints:", await circuit.getConstraintCount());
 

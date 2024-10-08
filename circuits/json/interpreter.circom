@@ -75,10 +75,6 @@ template InsideValueAtTop(n) {
 
 /// Checks if current byte is inside a JSON value at specified depth
 ///
-/// # Arguments
-/// - `n`: maximum stack depth
-/// - `depth`: stack height of parsed byte
-///
 /// # Inputs
 /// - `stack`: current stack state
 /// - `parsing_string`: whether current byte is inside a string or not
@@ -97,6 +93,34 @@ template InsideValue() {
     signal parsingStringXORNumber <== XOR()(parsing_string, parsing_number);
 
     out <== ifParsingValue * parsingStringXORNumber;
+}
+
+/// Checks if current byte is inside a JSON value at specified depth
+///
+/// # Inputs
+/// - `stack`: current stack state
+/// - `parsing_string`: whether current byte is inside a string or not
+/// - `parsing_number`: wheter current byte is inside a number or not
+///
+/// # Output
+/// - `out`: Returns `1` if current byte is inside a value
+template InsideValueObject() {
+    signal input prev_stack[2];
+    signal input curr_stack[2];
+    signal input parsing_string;
+    signal input parsing_number;
+
+    signal output out;
+
+    signal insideObject <== IsEqual()([curr_stack[0], 1]);
+    signal insideArrayArray <== IsEqual()([curr_stack[0], 2]);
+
+    signal ifParsingValue <== prev_stack[0] * prev_stack[1];
+    signal parsingStringXORNumber <== XOR()(parsing_string, parsing_number);
+    signal insideObjectXORArray <== XOR()(insideObject, insideArrayArray);
+    signal isInsideObjectOrStringValue <== Mux1()([parsingStringXORNumber, insideObjectXORArray], insideObjectXORArray);
+
+    out <== ifParsingValue * isInsideObjectOrStringValue;
 }
 
 /// Checks if current byte is inside an array at specified index
@@ -134,9 +158,7 @@ template InsideArrayIndexAtTop(n, index) {
 /// Checks if current byte is inside an array index at specified depth
 ///
 /// # Arguments
-/// - `n`: maximum stack depth
 /// - `index`: array element index
-/// - `depth`: stack height of parsed byte
 ///
 /// # Inputs
 /// - `stack`: current stack state
@@ -156,6 +178,39 @@ template InsideArrayIndex(index) {
     signal insideIndex <== IsEqual()([stack[1], index]);
     signal insideArrayIndex <== insideArray * insideIndex;
     out <== insideArrayIndex * (parsing_string + parsing_number);
+}
+
+/// Checks if current byte is inside an array index at specified depth
+///
+/// # Arguments
+/// - `index`: array element index
+///
+/// # Inputs
+/// - `stack`: current stack state
+/// - `parsing_string`: whether current byte is inside a string or not
+/// - `parsing_number`: wheter current byte is inside a number or not
+///
+/// # Output
+/// - `out`: Returns `1` if current byte is inside an array index
+template InsideArrayIndexObject() {
+    signal input prev_stack[2];
+    signal input curr_stack[2];
+    signal input parsing_string;
+    signal input parsing_number;
+    signal input index;
+
+    signal output out;
+
+    signal insideArray <== IsEqual()([prev_stack[0], 2]);
+    signal insideIndex <== IsEqual()([prev_stack[1], index]);
+    signal insideObject <== IsEqual()([curr_stack[0], 1]);
+    signal insideArrayArray <== IsEqual()([curr_stack[0], 2]);
+
+    signal parsingStringXORNumber <== XOR()(parsing_string, parsing_number);
+    signal insideObjectXORArray <== XOR()(insideObject, insideArrayArray);
+    signal isInsideObjectOrStringValue <== Mux1()([parsingStringXORNumber, insideObjectXORArray], insideObjectXORArray);
+    signal insideArrayIndex <== insideArray * insideIndex;
+    out <== insideArrayIndex * isInsideObjectOrStringValue;
 }
 
 /// Returns whether next key-value pair starts.
