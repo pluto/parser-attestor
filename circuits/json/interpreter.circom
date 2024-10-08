@@ -373,3 +373,60 @@ template KeyMatchAtDepth(dataLen, n, keyLen, depth) {
 
     signal output out <== substring_match * is_parsing_correct_key_at_depth;
 }
+
+/// Matches a JSON key at an `index` using Substring Matching at specified depth
+///
+/// # Arguments
+/// - `dataLen`: parsed data length
+/// - `n`: maximum stack height
+/// - `keyLen`: key length
+/// - `depth`: depth of key to be matched
+///
+/// # Inputs
+/// - `data`: data bytes
+/// - `key`: key bytes
+/// - `r`: random number for substring matching. **Need to be chosen carefully.**
+/// - `index`: data index to match from
+/// - `parsing_key`: if current byte is inside a key
+/// - `stack`: parser stack output
+///
+/// # Output
+/// - `out`: Returns `1` if `key` matches `data` at `index`
+template KeyMatchAtDepthWithIndex(dataLen, n, maxKeyLen, depth) {
+    signal input data[dataLen];
+    signal input key[maxKeyLen];
+    signal input keyLen;
+    signal input index;
+    signal input parsing_key;
+    signal input stack[n][2];
+
+    component topOfStack = GetTopOfStack(n);
+    topOfStack.stack <== stack;
+    signal pointer <== topOfStack.pointer;
+    _ <== topOfStack.value;
+
+    // `"` -> 34
+
+    // end of key equals `"`
+    signal end_of_key <== IndexSelector(dataLen)(data, index + keyLen);
+    signal is_end_of_key_equal_to_quote <== IsEqual()([end_of_key, 34]);
+
+    // start of key equals `"`
+    signal start_of_key <== IndexSelector(dataLen)(data, index - 1);
+    signal is_start_of_key_equal_to_quote <== IsEqual()([start_of_key, 34]);
+
+    // key matches
+    signal substring_match <== SubstringMatchWithIndexx(dataLen, maxKeyLen)(data, key, keyLen, index);
+
+    // key should be a string
+    signal is_key_between_quotes <== is_start_of_key_equal_to_quote * is_end_of_key_equal_to_quote;
+
+    // is the index given correct?
+    signal is_parsing_correct_key <== is_key_between_quotes * parsing_key;
+    // is the key given by index at correct depth?
+    signal is_key_at_depth <== IsEqual()([pointer-1, depth]);
+
+    signal is_parsing_correct_key_at_depth <== is_parsing_correct_key * is_key_at_depth;
+
+    signal output out <== substring_match * is_parsing_correct_key_at_depth;
+}

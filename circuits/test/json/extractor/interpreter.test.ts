@@ -354,4 +354,60 @@ describe("Interpreter", async () => {
         let input7 = { data: input[0], key: input[1][0], index: 2, parsing_key: 1, stack: [[1, 0], [0, 0], [0, 0], [0, 0]] };
         generatePassCase(input6, { out: 0 }, 1, "wrong depth");
     });
+
+    describe("KeyMatchAtDepthWithIndex", async () => {
+        let circuit: WitnessTester<["data", "key", "keyLen", "index", "parsing_key", "stack"], ["out"]>;
+        let maxKeyLen = 10;
+
+        function generatePassCase(input: any, expected: any, depth: number, desc: string) {
+            const description = generateDescription(input);
+
+            it(`(valid) witness: ${description} ${desc}`, async () => {
+                // pad key with 0's
+                let padded_key = input.key.concat(Array(maxKeyLen - input.key.length).fill(0));
+                input.key = padded_key;
+
+                circuit = await circomkit.WitnessTester(`KeyMatchAtDepthWithIndex`, {
+                    file: "json/interpreter",
+                    template: "KeyMatchAtDepthWithIndex",
+                    params: [input.data.length, 4, maxKeyLen, depth],
+                });
+                console.log("#constraints:", await circuit.getConstraintCount());
+
+                await circuit.expectPass(input, expected);
+            });
+        }
+
+        let input = readJSONInputFile("value_array_object.json", ["a", 0, "b", 0]);
+
+        let output = { out: 1 };
+
+        let key1 = input[1][0];
+        let input1 = { data: input[0], key: key1, keyLen: key1.length, index: 2, parsing_key: 1, stack: [[1, 0], [0, 0], [0, 0], [0, 0]] };
+        generatePassCase(input1, output, 0, "");
+
+        let key2 = input[1][2];
+        let input2 = { data: input[0], key: key2, keyLen: key2.length, index: 8, parsing_key: 1, stack: [[1, 1], [2, 0], [1, 0], [0, 0]] };
+        generatePassCase(input2, output, 2, "");
+
+        let input3 = { data: input[0], key: [99], keyLen: 1, index: 20, parsing_key: 1, stack: [[1, 1], [2, 1], [1, 1], [0, 0]] };
+        generatePassCase(input3, output, 2, "wrong stack");
+
+        // fail cases
+
+        let key4 = input[1][1];
+        let input4 = { data: input[0], key: key4, keyLen: key4.length, index: 3, parsing_key: 1, stack: [[1, 0], [2, 0], [1, 0], [0, 0]] };
+        generatePassCase(input4, { out: 0 }, 2, "wrong key");
+
+        let input5 = { data: input[0], key: [97], keyLen: 1, index: 12, parsing_key: 0, stack: [[1, 1], [2, 0], [1, 1], [0, 0]] };
+        generatePassCase(input5, { out: 0 }, 3, "not parsing key");
+
+        let input6Data = input[0].slice(0);
+        input6Data.splice(1, 1, 35);
+        let input6 = { data: input6Data, key: input[1][0], keyLen: input[1][0].length, index: 2, parsing_key: 1, stack: [[1, 0], [0, 0], [0, 0], [0, 0]] };
+        generatePassCase(input6, { out: 0 }, 0, "invalid key (not surrounded by quotes)");
+
+        let input7 = { data: input[0], key: input[1][0], keyLen: input[1][0].length, index: 2, parsing_key: 1, stack: [[1, 0], [0, 0], [0, 0], [0, 0]] };
+        generatePassCase(input6, { out: 0 }, 1, "wrong depth");
+    });
 });

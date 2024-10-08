@@ -2,10 +2,13 @@ pragma circom 2.1.9;
 
 include "interpreter.circom";
 
-template ObjectExtractor(DATA_BYTES, MAX_STACK_HEIGHT, keyLen, maxValueLen) {
+template ObjectExtractor(DATA_BYTES, MAX_STACK_HEIGHT, maxKeyLen, maxValueLen) {
+    assert(MAX_STACK_HEIGHT >= 2);
+
     // Declaration of signals.
     signal input data[DATA_BYTES];
-    signal input key[keyLen];
+    signal input key[maxKeyLen];
+    signal input keyLen;
 
     signal output value[maxValueLen];
 
@@ -40,7 +43,7 @@ template ObjectExtractor(DATA_BYTES, MAX_STACK_HEIGHT, keyLen, maxValueLen) {
     parsing_key[0] <== InsideKey(MAX_STACK_HEIGHT)(State[0].next_stack, State[0].next_parsing_string, State[0].next_parsing_number);
     parsing_value[0] <== InsideValueObject()(State[0].next_stack[0], State[0].next_stack[1], State[0].next_parsing_string, State[0].next_parsing_number);
 
-    is_key_match[0] <== KeyMatchAtDepth(DATA_BYTES, MAX_STACK_HEIGHT, keyLen, 0)(data, key, 0, parsing_key[0], State[0].next_stack);
+    is_key_match[0] <== KeyMatchAtDepthWithIndex(DATA_BYTES, MAX_STACK_HEIGHT, maxKeyLen, 0)(data, key, keyLen, 0, parsing_key[0], State[0].next_stack);
     is_next_pair_at_depth[0] <== NextKVPairAtDepth(MAX_STACK_HEIGHT, 0)(State[0].next_stack, data[0]);
     is_key_match_for_value[1] <== Mux1()([is_key_match_for_value[0] * (1-is_next_pair_at_depth[0]), is_key_match[0] * (1-is_next_pair_at_depth[0])], is_key_match[0]);
     is_value_match[0] <== parsing_value[0] * is_key_match_for_value[1];
@@ -71,7 +74,7 @@ template ObjectExtractor(DATA_BYTES, MAX_STACK_HEIGHT, keyLen, maxValueLen) {
         // - key matches at current index and depth of key is as specified
         // - whether next KV pair starts
         // - whether key matched for a value (propogate key match until new KV pair of lower depth starts)
-        is_key_match[data_idx] <== KeyMatchAtDepth(DATA_BYTES, MAX_STACK_HEIGHT, keyLen, 0)(data, key, data_idx, parsing_key[data_idx], State[data_idx].next_stack);
+        is_key_match[data_idx] <== KeyMatchAtDepthWithIndex(DATA_BYTES, MAX_STACK_HEIGHT, maxKeyLen, 0)(data, key, keyLen, data_idx, parsing_key[data_idx], State[data_idx].next_stack);
         is_next_pair_at_depth[data_idx] <== NextKVPairAtDepth(MAX_STACK_HEIGHT, 0)(State[data_idx].next_stack, data[data_idx]);
         is_key_match_for_value[data_idx+1] <== Mux1()([is_key_match_for_value[data_idx] * (1-is_next_pair_at_depth[data_idx]), is_key_match[data_idx] * (1-is_next_pair_at_depth[data_idx])], is_key_match[data_idx]);
         is_value_match[data_idx] <== is_key_match_for_value[data_idx+1] * parsing_value[data_idx];

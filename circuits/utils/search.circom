@@ -232,6 +232,22 @@ template SubstringMatchWithIndex(dataLen, keyLen) {
     signal output out <== isStartLessThanMaxLength * isSubarrayMatch;
 }
 
+template SubstringMatchWithIndexx(dataLen, maxKeyLen) {
+    signal input data[dataLen];
+    signal input key[maxKeyLen];
+    signal input keyLen;
+    signal input start;
+
+    var logDataLen = log2Ceil(dataLen + maxKeyLen + 1);
+
+    signal isStartLessThanMaxLength <== LessThan(logDataLen)([start, dataLen]);
+    signal index <== start * isStartLessThanMaxLength;
+
+    signal subarray[maxKeyLen] <== SelectSubArray(dataLen, maxKeyLen)(data, index, keyLen);
+    signal isSubarrayMatch <== IsEqualArray(maxKeyLen)([key, subarray]);
+    signal output out <== isStartLessThanMaxLength * isSubarrayMatch;
+}
+
 /*
 SubstringMatch: Matches a substring with an input string and returns the position
 

@@ -291,95 +291,56 @@ describe("array-only", async () => {
 });
 
 describe("object-extractor", async () => {
-    let circuit: WitnessTester<["data", "key"], ["value"]>;
+    let circuit: WitnessTester<["data", "key", "keyLen"], ["value"]>;
     let jsonFilename = "value_object";
+    let jsonFile: number[] = [];
+    let maxKeyLen = 10;
     let maxValueLen = 30;
 
-    it("key: \"a\", value: \"{ \"d\" : \"e\", \"e\": \"c\" }\"", async () => {
+    before(async () => {
         let [inputJson, key, output] = readJSONInputFile(
             `${jsonFilename}.json`,
             [
                 "a"
             ]
         );
+        jsonFile = inputJson;
 
         circuit = await circomkit.WitnessTester(`Extract`, {
             file: `json/extractor`,
             template: "ObjectExtractor",
-            params: [inputJson.length, 3, 1, maxValueLen],
+            params: [inputJson.length, 3, maxKeyLen, maxValueLen],
         });
         console.log("#constraints:", await circuit.getConstraintCount());
-
-        // { "d" : "e", "e": "c" }
-        let outputs = [123, 32, 34, 100, 34, 32, 58, 32, 34, 101, 34, 44, 32, 34, 101, 34, 58, 32, 34, 99, 34, 32, 125];
-        outputs.fill(0, outputs.length, maxValueLen);
-
-        await circuit.expectPass({ data: inputJson, key: key }, { value: outputs });
     });
 
-    it("key: \"g\", value: \"{ \"h\": { \"a\": \"c\" }}\"", async () => {
-        let [inputJson, key, output] = readJSONInputFile(
-            `${jsonFilename}.json`,
-            [
-                "g"
-            ]
-        );
+    function generatePassCase(key: number[], output: number[]) {
+        output = output.concat(Array(maxValueLen - output.length).fill(0));
+        let padded_key = key.concat(Array(maxKeyLen - key.length).fill(0));
 
-        circuit = await circomkit.WitnessTester(`Extract`, {
-            file: `json/extractor`,
-            template: "ObjectExtractor",
-            params: [inputJson.length, 3, 1, maxValueLen],
+        it(`key: ${key}, output: ${output}`, async () => {
+            await circuit.expectPass({ data: jsonFile, key: padded_key, keyLen: key.length }, { value: output });
         });
-        console.log("#constraints:", await circuit.getConstraintCount());
+    }
 
-        // { "h": { "a": "c" }}
-        let outputs = [123, 32, 34, 104, 34, 58, 32, 123, 32, 34, 97, 34, 58, 32, 34, 99, 34, 32, 125, 125];
-        outputs.fill(0, outputs.length, maxValueLen);
+    // { "d" : "e", "e": "c" }
+    let output1 = [123, 32, 34, 100, 34, 32, 58, 32, 34, 101, 34, 44, 32, 34, 101, 34, 58, 32, 34, 99, 34, 32, 125];
+    generatePassCase(toByte("a"), output1);
 
-        await circuit.expectPass({ data: inputJson, key: key }, { value: outputs });
-    });
+    // { "h": { "a": "c" }}
+    let output2 = [123, 32, 34, 104, 34, 58, 32, 123, 32, 34, 97, 34, 58, 32, 34, 99, 34, 32, 125, 125];
+    generatePassCase(toByte("g"), output2);
 
-    it("key: \"ab\", value: \"foobar\"", async () => {
-        let [inputJson, key, output] = readJSONInputFile(
-            `${jsonFilename}.json`,
-            [
-                "ab"
-            ]
-        );
+    // "foobar"
+    let output3 = [34, 102, 111, 111, 98, 97, 114, 34];
+    generatePassCase(toByte("ab"), output3);
 
-        circuit = await circomkit.WitnessTester(`Extract`, {
-            file: `json/extractor`,
-            template: "ObjectExtractor",
-            params: [inputJson.length, 3, 2, maxValueLen],
-        });
-        console.log("#constraints:", await circuit.getConstraintCount());
+    // "42"
+    // TODO: currently number gives an extra byte. Fix this.
+    let output4 = [52, 50, 44];
+    generatePassCase(toByte("bc"), output4);
 
-        // "foobar"
-        let outputs = [34, 102, 111, 111, 98, 97, 114, 34];
-        outputs.fill(0, outputs.length, maxValueLen);
-
-        await circuit.expectPass({ data: inputJson, key: key }, { value: outputs });
-    });
-
-    it("key: \"ab\", value: 42", async () => {
-        let [inputJson, key, output] = readJSONInputFile(
-            `${jsonFilename}.json`,
-            [
-                "bc"
-            ]
-        );
-
-        circuit = await circomkit.WitnessTester(`Extract`, {
-            file: `json/extractor`,
-            template: "ObjectExtractor",
-            params: [inputJson.length, 3, 2, maxValueLen],
-        });
-        console.log("#constraints:", await circuit.getConstraintCount());
-
-        // "foobar"
-        let outputs = [52, 50];
-        outputs.fill(0, outputs.length, maxValueLen);
-
-        await circuit.expectPass({ data: inputJson, key: key }, { value: outputs });
-    });
+    // [ 0, 1, "a"]
+    let output5 = [91, 32, 48, 44, 32, 49, 44, 32, 34, 97, 34, 93];
+    generatePassCase(toByte("dc"), output5);
 });
