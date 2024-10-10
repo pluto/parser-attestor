@@ -36,6 +36,29 @@ template IsEqualArray(n) {
     out <== totalEqual.out;
 }
 
+template IsEqualArrayPaddedLHS(n) {
+    signal input in[2][n];
+    signal output out;
+
+    var accum = 0;
+    component equalComponent[n];
+    component isPaddedElement[n];
+
+    for(var i = 0; i < n; i++) {
+        isPaddedElement[i] = IsZero();
+        isPaddedElement[i].in <== in[0][i];
+        equalComponent[i] = IsEqual();
+        equalComponent[i].in[0] <== in[0][i];
+        equalComponent[i].in[1] <== in[1][i] * (1-isPaddedElement[i].out);
+        accum += equalComponent[i].out;
+    }
+
+    component totalEqual = IsEqual();
+    totalEqual.in[0] <== n;
+    totalEqual.in[1] <== accum;
+    out <== totalEqual.out;
+}
+
 // TODO: There should be a way to have the below assertion come from the field itself.
 /*
 This template is an indicator for if an array contains an element.
