@@ -9,10 +9,6 @@ include "circomlib/circuits/gates.circom";
 include "@zk-email/circuits/utils/functions.circom";
 include "@zk-email/circuits/utils/array.circom";
 
-// TODOs:
-// - remove use of random_signal in key match from 100
-//
-
 /// Checks if current byte is inside a JSON key or not
 ///
 /// # Arguments
@@ -25,7 +21,7 @@ include "@zk-email/circuits/utils/array.circom";
 ///
 /// # Output
 /// - `out`: Returns `1` if current byte is inside a key
-template InsideKey(n) {
+template InsideKeyAtTop(n) {
     signal input stack[n][2];
     signal input parsing_string;
     signal input parsing_number;
@@ -39,6 +35,28 @@ template InsideKey(n) {
 
     signal parsingStringAndNotNumber <== parsing_string * (1 - parsing_number);
     signal ifParsingKey <== currentVal[0] * (1-currentVal[1]);
+
+    out <== ifParsingKey * parsingStringAndNotNumber;
+}
+
+/// Checks if current byte is inside a JSON key or not
+///
+/// # Inputs
+/// - `stack`: current stack state
+/// - `parsing_string`: whether current byte is inside a string or not
+/// - `parsing_number`: wheter current byte is inside a number or not
+///
+/// # Output
+/// - `out`: Returns `1` if current byte is inside a key
+template InsideKey() {
+    signal input stack[2];
+    signal input parsing_string;
+    signal input parsing_number;
+
+    signal output out;
+
+    signal parsingStringAndNotNumber <== parsing_string * (1 - parsing_number);
+    signal ifParsingKey <== stack[0] * (1-stack[1]);
 
     out <== ifParsingKey * parsingStringAndNotNumber;
 }
@@ -374,59 +392,74 @@ template KeyMatchAtDepth(dataLen, n, keyLen, depth) {
     signal output out <== substring_match * is_parsing_correct_key_at_depth;
 }
 
+template MatchPaddedKey(n) {
+    signal input in[2][n];
+    signal input keyLen;
+    signal output out;
+
+    var accum = 0;
+    component equalComponent[n];
+    component isPaddedElement[n];
+
+    signal isEndOfKey[n];
+    signal isQuote[n];
+    signal endOfKeyAccum[n+1];
+    endOfKeyAccum[0] <== 0;
+
+    for(var i = 0; i < n; i++) {
+        isEndOfKey[i] <== IsEqual()([i, keyLen]);
+        isQuote[i] <== IsEqual()([in[1][i], 34]);
+        endOfKeyAccum[i+1] <== endOfKeyAccum[i] + isEndOfKey[i] * isQuote[i];
+
+        isPaddedElement[i] = IsZero();
+        isPaddedElement[i].in <== in[0][i];
+        equalComponent[i] = IsEqual();
+        equalComponent[i].in[0] <== in[0][i];
+        equalComponent[i].in[1] <== in[1][i] * (1-isPaddedElement[i].out);
+        accum += equalComponent[i].out;
+    }
+
+    signal isEndOfKeyEqualToQuote <== IsEqual()([endOfKeyAccum[n], 1]);
+
+    component totalEqual = IsEqual();
+    totalEqual.in[0] <== n;
+    totalEqual.in[1] <== accum;
+    out <== totalEqual.out * isEndOfKeyEqualToQuote;
+}
+
 /// Matches a JSON key at an `index` using Substring Matching at specified depth
 ///
 /// # Arguments
 /// - `dataLen`: parsed data length
-/// - `n`: maximum stack height
-/// - `keyLen`: key length
-/// - `depth`: depth of key to be matched
+/// - `maxKeyLen`: maximum possible key length
+/// - `index`: index of key in `data`
 ///
 /// # Inputs
 /// - `data`: data bytes
 /// - `key`: key bytes
-/// - `r`: random number for substring matching. **Need to be chosen carefully.**
-/// - `index`: data index to match from
 /// - `parsing_key`: if current byte is inside a key
-/// - `stack`: parser stack output
 ///
 /// # Output
 /// - `out`: Returns `1` if `key` matches `data` at `index`
-template KeyMatchAtDepthWithIndex(dataLen, n, maxKeyLen, depth) {
+template KeyMatchAtIndex(dataLen, maxKeyLen, index) {
     signal input data[dataLen];
     signal input key[maxKeyLen];
     signal input keyLen;
-    signal input index;
     signal input parsing_key;
-    signal input stack[n][2];
-
-    component topOfStack = GetTopOfStack(n);
-    topOfStack.stack <== stack;
-    signal pointer <== topOfStack.pointer;
-    _ <== topOfStack.value;
 
     // `"` -> 34
 
-    // end of key equals `"`
-    signal end_of_key <== IndexSelector(dataLen)(data, index + keyLen);
-    signal is_end_of_key_equal_to_quote <== IsEqual()([end_of_key, 34]);
-
-    // start of key equals `"`
-    signal start_of_key <== IndexSelector(dataLen)(data, index - 1);
-    signal is_start_of_key_equal_to_quote <== IsEqual()([start_of_key, 34]);
+    // start of key equal to quote
+    signal startOfKeyEqualToQuote <== IsEqual()([data[index - 1], 34]);
+    signal isParsingCorrectKey <== parsing_key * startOfKeyEqualToQuote;
 
     // key matches
-    signal substring_match <== SubstringMatchWithIndexx(dataLen, maxKeyLen)(data, key, keyLen, index);
+    component isSubstringMatch       = MatchPaddedKey(maxKeyLen);
+    isSubstringMatch.in[0] <== key;
+    isSubstringMatch.keyLen <== keyLen;
+    for(var matcher_idx = 0; matcher_idx < maxKeyLen; matcher_idx++) {
+        isSubstringMatch.in[1][matcher_idx] <== data[index + matcher_idx];
+    }
 
-    // key should be a string
-    signal is_key_between_quotes <== is_start_of_key_equal_to_quote * is_end_of_key_equal_to_quote;
-
-    // is the index given correct?
-    signal is_parsing_correct_key <== is_key_between_quotes * parsing_key;
-    // is the key given by index at correct depth?
-    signal is_key_at_depth <== IsEqual()([pointer-1, depth]);
-
-    signal is_parsing_correct_key_at_depth <== is_parsing_correct_key * is_key_at_depth;
-
-    signal output out <== substring_match * is_parsing_correct_key_at_depth;
+    signal output out <== isSubstringMatch.out * isParsingCorrectKey;
 }

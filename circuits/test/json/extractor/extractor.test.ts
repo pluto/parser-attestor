@@ -294,7 +294,8 @@ describe("object-extractor", async () => {
     let circuit: WitnessTester<["data", "key", "keyLen"], ["value"]>;
     let jsonFilename = "value_object";
     let jsonFile: number[] = [];
-    let maxKeyLen = 10;
+    let maxDataLen = 200;
+    let maxKeyLen = 3;
     let maxValueLen = 30;
 
     before(async () => {
@@ -304,12 +305,12 @@ describe("object-extractor", async () => {
                 "a"
             ]
         );
-        jsonFile = inputJson;
+        jsonFile = inputJson.concat(Array(maxDataLen - inputJson.length).fill(0));
 
         circuit = await circomkit.WitnessTester(`Extract`, {
             file: `json/extractor`,
             template: "ObjectExtractor",
-            params: [inputJson.length, 3, maxKeyLen, maxValueLen],
+            params: [maxDataLen, 3, maxKeyLen, maxValueLen],
         });
         console.log("#constraints:", await circuit.getConstraintCount());
     });

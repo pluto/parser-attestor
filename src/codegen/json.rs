@@ -383,7 +383,7 @@ fn build_json_circuit(
         // parsing_key and parsing_object{i}_value
         circuit_buffer += r#"
     // initialise first iteration
-    parsing_key[0] <== InsideKey(MAX_STACK_HEIGHT)(State[0].next_stack, State[0].next_parsing_string, State[0].next_parsing_number);
+    parsing_key[0] <== InsideKeyAtTop(MAX_STACK_HEIGHT)(State[0].next_stack, State[0].next_parsing_string, State[0].next_parsing_number);
 
 "#;
 
@@ -487,7 +487,7 @@ fn build_json_circuit(
         // - mask
 
         // check if inside key or not
-        parsing_key[data_idx] <== InsideKey(MAX_STACK_HEIGHT)(State[data_idx].next_stack, State[data_idx].next_parsing_string, State[data_idx].next_parsing_number);
+        parsing_key[data_idx] <== InsideKeyAtTop(MAX_STACK_HEIGHT)(State[data_idx].next_stack, State[data_idx].next_parsing_string, State[data_idx].next_parsing_number);
 
 "#;
 
