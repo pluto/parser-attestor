@@ -275,9 +275,10 @@ template NextKVPair(n) {
 ///
 /// # Output
 /// - `out`: Returns `1` for next key-value pair at specified depth.
-template NextKVPairAtDepth(n, depth) {
+template NextKVPairAtDepth(n) {
     signal input stack[n][2];
     signal input currByte;
+    signal input depth;
     signal output out;
 
     var logMaxDepth = log2Ceil(n+1);
