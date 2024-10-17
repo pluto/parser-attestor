@@ -422,7 +422,7 @@ fn build_json_circuit(
                 Key::String(_) => {
                     num_objects += 1;
                     circuit_buffer += &format!("    is_key{}_match[0] <== KeyMatchAtDepth(DATA_BYTES, MAX_STACK_HEIGHT, keyLen{}, depth{})(data, key{}, 0, parsing_key[0], State[0].next_stack);\n", i+1, i+1, i+1, i+1);
-                    circuit_buffer += &format!("    is_next_pair_at_depth{}[0] <== NextKVPairAtDepth(MAX_STACK_HEIGHT, depth{})(State[0].next_stack, data[0]);\n", i+1, i+1);
+                    circuit_buffer += &format!("    is_next_pair_at_depth{}[0] <== NextKVPairAtDepth(MAX_STACK_HEIGHT)(State[0].next_stack, data[0], depth{});\n", i+1, i+1);
                     circuit_buffer += &format!("    is_key{}_match_for_value[1] <== Mux1()([is_key{}_match_for_value[0] * (1-is_next_pair_at_depth{}[0]), is_key{}_match[0] * (1-is_next_pair_at_depth{}[0])], is_key{}_match[0]);\n", i+1, i+1, i+1, i+1, i+1, i+1);
                     if debug {
                         circuit_buffer += &format!("        // log(\"is_key{}_match_for_value\", is_key{}_match_for_value[1]);\n\n", i + 1, i + 1);
@@ -572,7 +572,7 @@ fn build_json_circuit(
                 Key::String(_) => {
                     num_objects += 1;
                     circuit_buffer += &format!("        is_key{}_match[data_idx] <== KeyMatchAtDepth(DATA_BYTES, MAX_STACK_HEIGHT, keyLen{}, depth{})(data, key{}, data_idx, parsing_key[data_idx], State[data_idx].next_stack);\n", i+1, i+1, i+1, i+1);
-                    circuit_buffer += &format!("        is_next_pair_at_depth{}[data_idx] <== NextKVPairAtDepth(MAX_STACK_HEIGHT, depth{})(State[data_idx].next_stack, data[data_idx]);\n", i+1, i+1);
+                    circuit_buffer += &format!("        is_next_pair_at_depth{}[data_idx] <== NextKVPairAtDepth(MAX_STACK_HEIGHT)(State[data_idx].next_stack, data[data_idx], depth{});\n", i+1, i+1);
                     circuit_buffer += &format!("        is_key{}_match_for_value[data_idx+1] <== Mux1()([is_key{}_match_for_value[data_idx] * (1-is_next_pair_at_depth{}[data_idx]), is_key{}_match[data_idx] * (1-is_next_pair_at_depth{}[data_idx])], is_key{}_match[data_idx]);\n", i+1, i+1, i+1, i+1, i+1, i+1);
                     if debug {
                         circuit_buffer += &format!("        // log(\"is_key{}_match_for_value\", is_key{}_match_for_value[data_idx+1]);\n\n", i + 1, i + 1);

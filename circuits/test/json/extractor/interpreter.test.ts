@@ -267,16 +267,16 @@ describe("Interpreter", async () => {
     });
 
     describe("NextKVPairAtDepth", async () => {
-        let circuit: WitnessTester<["stack", "currByte"], ["out"]>;
+        let circuit: WitnessTester<["stack", "currByte", "depth"], ["out"]>;
 
-        function generatePassCase(input: any, expected: any, depth: number, desc: string) {
+        function generatePassCase(input: any, expected: any, desc: string) {
             const description = generateDescription(input);
 
             it(`(valid) witness: ${description} ${desc}`, async () => {
                 circuit = await circomkit.WitnessTester(`NextKVPairAtDepth`, {
                     file: "json/interpreter",
                     template: "NextKVPairAtDepth",
-                    params: [4, depth],
+                    params: [4],
                 });
                 console.log("#constraints:", await circuit.getConstraintCount());
 
@@ -284,20 +284,20 @@ describe("Interpreter", async () => {
             });
         }
 
-        let input1 = { stack: [[1, 0], [2, 0], [3, 1], [1, 0]], currByte: 44 };
+        let input1 = { stack: [[1, 0], [2, 0], [3, 1], [1, 0]], currByte: 44, depth: 3 };
         // output = 1 represents correct execution
         let output = { out: 1 };
-        generatePassCase(input1, output, 3, "");
+        generatePassCase(input1, output, "");
 
         // key depth is 2, and even if new-kv pair starts at depth greater than 2, it returns 0.
-        let input2 = { stack: [[1, 0], [2, 0], [1, 1], [1, 0]], currByte: 44 };
-        generatePassCase(input2, { out: 0 }, 2, "");
+        let input2 = { stack: [[1, 0], [2, 0], [1, 1], [1, 0]], currByte: 44, depth: 2 };
+        generatePassCase(input2, { out: 0 }, "");
 
-        let input3 = { stack: [[1, 0], [1, 0], [0, 0], [0, 0]], currByte: 44 };
-        generatePassCase(input3, output, 3, "stack height less than specified");
+        let input3 = { stack: [[1, 0], [1, 0], [0, 0], [0, 0]], currByte: 44, depth: 3 };
+        generatePassCase(input3, output, "stack height less than specified");
 
-        let input4 = { stack: [[1, 0], [2, 0], [1, 0], [0, 0]], currByte: 34 };
-        generatePassCase(input4, { out: 0 }, 2, "incorrect currByte");
+        let input4 = { stack: [[1, 0], [2, 0], [1, 0], [0, 0]], currByte: 34, depth: 2 };
+        generatePassCase(input4, { out: 0 }, "incorrect currByte");
     });
 
     describe("KeyMatch", async () => {

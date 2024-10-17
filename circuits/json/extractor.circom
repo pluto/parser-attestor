@@ -44,7 +44,7 @@ template ObjectExtractor(DATA_BYTES, MAX_STACK_HEIGHT, maxKeyLen, maxValueLen) {
     parsing_value[0] <== InsideValueObject()(State[0].next_stack[0], State[0].next_stack[1], State[0].next_parsing_string, State[0].next_parsing_number);
 
     is_key_match[0] <== 0;
-    is_next_pair_at_depth[0] <== NextKVPairAtDepth(MAX_STACK_HEIGHT, 0)(State[0].next_stack, data[0]);
+    is_next_pair_at_depth[0] <== NextKVPairAtDepth(MAX_STACK_HEIGHT)(State[0].next_stack, data[0], 0);
     is_key_match_for_value[1] <== Mux1()([is_key_match_for_value[0] * (1-is_next_pair_at_depth[0]), is_key_match[0] * (1-is_next_pair_at_depth[0])], is_key_match[0]);
     is_value_match[0] <== parsing_value[0] * is_key_match_for_value[1];
 
@@ -75,7 +75,7 @@ template ObjectExtractor(DATA_BYTES, MAX_STACK_HEIGHT, maxKeyLen, maxValueLen) {
         // - whether next KV pair starts
         // - whether key matched for a value (propogate key match until new KV pair of lower depth starts)
         is_key_match[data_idx] <== KeyMatchAtIndex(DATA_BYTES, maxKeyLen, data_idx)(data, key, keyLen, parsing_key[data_idx]);
-        is_next_pair_at_depth[data_idx] <== NextKVPairAtDepth(MAX_STACK_HEIGHT, 0)(State[data_idx].next_stack, data[data_idx]);
+        is_next_pair_at_depth[data_idx] <== NextKVPairAtDepth(MAX_STACK_HEIGHT)(State[data_idx].next_stack, data[data_idx], 0);
         is_key_match_for_value[data_idx+1] <== Mux1()([is_key_match_for_value[data_idx] * (1-is_next_pair_at_depth[data_idx]), is_key_match[data_idx] * (1-is_next_pair_at_depth[data_idx])], is_key_match[data_idx]);
         is_value_match[data_idx] <== is_key_match_for_value[data_idx+1] * parsing_value[data_idx];
 
