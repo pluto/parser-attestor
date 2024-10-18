@@ -9,10 +9,6 @@ include "circomlib/circuits/gates.circom";
 include "@zk-email/circuits/utils/functions.circom";
 include "@zk-email/circuits/utils/array.circom";
 
-// TODOs:
-// - remove use of random_signal in key match from 100
-//
-
 /// Checks if current byte is inside a JSON key or not
 ///
 /// # Arguments
@@ -25,7 +21,7 @@ include "@zk-email/circuits/utils/array.circom";
 ///
 /// # Output
 /// - `out`: Returns `1` if current byte is inside a key
-template InsideKey(n) {
+template InsideKeyAtTop(n) {
     signal input stack[n][2];
     signal input parsing_string;
     signal input parsing_number;
@@ -39,6 +35,28 @@ template InsideKey(n) {
 
     signal parsingStringAndNotNumber <== parsing_string * (1 - parsing_number);
     signal ifParsingKey <== currentVal[0] * (1-currentVal[1]);
+
+    out <== ifParsingKey * parsingStringAndNotNumber;
+}
+
+/// Checks if current byte is inside a JSON key or not
+///
+/// # Inputs
+/// - `stack`: current stack state
+/// - `parsing_string`: whether current byte is inside a string or not
+/// - `parsing_number`: wheter current byte is inside a number or not
+///
+/// # Output
+/// - `out`: Returns `1` if current byte is inside a key
+template InsideKey() {
+    signal input stack[2];
+    signal input parsing_string;
+    signal input parsing_number;
+
+    signal output out;
+
+    signal parsingStringAndNotNumber <== parsing_string * (1 - parsing_number);
+    signal ifParsingKey <== stack[0] * (1-stack[1]);
 
     out <== ifParsingKey * parsingStringAndNotNumber;
 }
@@ -75,10 +93,6 @@ template InsideValueAtTop(n) {
 
 /// Checks if current byte is inside a JSON value at specified depth
 ///
-/// # Arguments
-/// - `n`: maximum stack depth
-/// - `depth`: stack height of parsed byte
-///
 /// # Inputs
 /// - `stack`: current stack state
 /// - `parsing_string`: whether current byte is inside a string or not
@@ -97,6 +111,34 @@ template InsideValue() {
     signal parsingStringXORNumber <== XOR()(parsing_string, parsing_number);
 
     out <== ifParsingValue * parsingStringXORNumber;
+}
+
+/// Checks if current byte is inside a JSON value at specified depth
+///
+/// # Inputs
+/// - `stack`: current stack state
+/// - `parsing_string`: whether current byte is inside a string or not
+/// - `parsing_number`: wheter current byte is inside a number or not
+///
+/// # Output
+/// - `out`: Returns `1` if current byte is inside a value
+template InsideValueObject() {
+    signal input prev_stack[2];
+    signal input curr_stack[2];
+    signal input parsing_string;
+    signal input parsing_number;
+
+    signal output out;
+
+    signal insideObject <== IsEqual()([curr_stack[0], 1]);
+    signal insideArrayArray <== IsEqual()([curr_stack[0], 2]);
+
+    signal ifParsingValue <== prev_stack[0] * prev_stack[1];
+    signal parsingStringXORNumber <== XOR()(parsing_string, parsing_number);
+    signal insideObjectXORArray <== XOR()(insideObject, insideArrayArray);
+    signal isInsideObjectOrStringValue <== Mux1()([parsingStringXORNumber, insideObjectXORArray], insideObjectXORArray);
+
+    out <== ifParsingValue * isInsideObjectOrStringValue;
 }
 
 /// Checks if current byte is inside an array at specified index
@@ -134,9 +176,7 @@ template InsideArrayIndexAtTop(n, index) {
 /// Checks if current byte is inside an array index at specified depth
 ///
 /// # Arguments
-/// - `n`: maximum stack depth
 /// - `index`: array element index
-/// - `depth`: stack height of parsed byte
 ///
 /// # Inputs
 /// - `stack`: current stack state
@@ -156,6 +196,39 @@ template InsideArrayIndex(index) {
     signal insideIndex <== IsEqual()([stack[1], index]);
     signal insideArrayIndex <== insideArray * insideIndex;
     out <== insideArrayIndex * (parsing_string + parsing_number);
+}
+
+/// Checks if current byte is inside an array index at specified depth
+///
+/// # Arguments
+/// - `index`: array element index
+///
+/// # Inputs
+/// - `stack`: current stack state
+/// - `parsing_string`: whether current byte is inside a string or not
+/// - `parsing_number`: wheter current byte is inside a number or not
+///
+/// # Output
+/// - `out`: Returns `1` if current byte is inside an array index
+template InsideArrayIndexObject() {
+    signal input prev_stack[2];
+    signal input curr_stack[2];
+    signal input parsing_string;
+    signal input parsing_number;
+    signal input index;
+
+    signal output out;
+
+    signal insideArray <== IsEqual()([prev_stack[0], 2]);
+    signal insideIndex <== IsEqual()([prev_stack[1], index]);
+    signal insideObject <== IsEqual()([curr_stack[0], 1]);
+    signal insideArrayArray <== IsEqual()([curr_stack[0], 2]);
+
+    signal parsingStringXORNumber <== XOR()(parsing_string, parsing_number);
+    signal insideObjectXORArray <== XOR()(insideObject, insideArrayArray);
+    signal isInsideObjectOrStringValue <== Mux1()([parsingStringXORNumber, insideObjectXORArray], insideObjectXORArray);
+    signal insideArrayIndex <== insideArray * insideIndex;
+    out <== insideArrayIndex * isInsideObjectOrStringValue;
 }
 
 /// Returns whether next key-value pair starts.
@@ -202,9 +275,10 @@ template NextKVPair(n) {
 ///
 /// # Output
 /// - `out`: Returns `1` for next key-value pair at specified depth.
-template NextKVPairAtDepth(n, depth) {
+template NextKVPairAtDepth(n) {
     signal input stack[n][2];
     signal input currByte;
+    signal input depth;
     signal output out;
 
     var logMaxDepth = log2Ceil(n+1);
@@ -317,4 +391,76 @@ template KeyMatchAtDepth(dataLen, n, keyLen, depth) {
     signal is_parsing_correct_key_at_depth <== is_parsing_correct_key * is_key_at_depth;
 
     signal output out <== substring_match * is_parsing_correct_key_at_depth;
+}
+
+template MatchPaddedKey(n) {
+    signal input in[2][n];
+    signal input keyLen;
+    signal output out;
+
+    var accum = 0;
+    component equalComponent[n];
+    component isPaddedElement[n];
+
+    signal isEndOfKey[n];
+    signal isQuote[n];
+    signal endOfKeyAccum[n+1];
+    endOfKeyAccum[0] <== 0;
+
+    for(var i = 0; i < n; i++) {
+        isEndOfKey[i] <== IsEqual()([i, keyLen]);
+        isQuote[i] <== IsEqual()([in[1][i], 34]);
+        endOfKeyAccum[i+1] <== endOfKeyAccum[i] + isEndOfKey[i] * isQuote[i];
+
+        isPaddedElement[i] = IsZero();
+        isPaddedElement[i].in <== in[0][i];
+        equalComponent[i] = IsEqual();
+        equalComponent[i].in[0] <== in[0][i];
+        equalComponent[i].in[1] <== in[1][i] * (1-isPaddedElement[i].out);
+        accum += equalComponent[i].out;
+    }
+
+    signal isEndOfKeyEqualToQuote <== IsEqual()([endOfKeyAccum[n], 1]);
+
+    component totalEqual = IsEqual();
+    totalEqual.in[0] <== n;
+    totalEqual.in[1] <== accum;
+    out <== totalEqual.out * isEndOfKeyEqualToQuote;
+}
+
+/// Matches a JSON key at an `index` using Substring Matching at specified depth
+///
+/// # Arguments
+/// - `dataLen`: parsed data length
+/// - `maxKeyLen`: maximum possible key length
+/// - `index`: index of key in `data`
+///
+/// # Inputs
+/// - `data`: data bytes
+/// - `key`: key bytes
+/// - `parsing_key`: if current byte is inside a key
+///
+/// # Output
+/// - `out`: Returns `1` if `key` matches `data` at `index`
+template KeyMatchAtIndex(dataLen, maxKeyLen, index) {
+    signal input data[dataLen];
+    signal input key[maxKeyLen];
+    signal input keyLen;
+    signal input parsing_key;
+
+    // `"` -> 34
+
+    // start of key equal to quote
+    signal startOfKeyEqualToQuote <== IsEqual()([data[index - 1], 34]);
+    signal isParsingCorrectKey <== parsing_key * startOfKeyEqualToQuote;
+
+    // key matches
+    component isSubstringMatch       = MatchPaddedKey(maxKeyLen);
+    isSubstringMatch.in[0] <== key;
+    isSubstringMatch.keyLen <== keyLen;
+    for(var matcher_idx = 0; matcher_idx < maxKeyLen; matcher_idx++) {
+        isSubstringMatch.in[1][matcher_idx] <== data[index + matcher_idx];
+    }
+
+    signal output out <== isSubstringMatch.out * isParsingCorrectKey;
 }

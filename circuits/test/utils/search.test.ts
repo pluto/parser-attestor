@@ -152,6 +152,48 @@ describe("search", () => {
         });
     });
 
+    describe("SubstringMatchWithIndexx", () => {
+        let circuit: WitnessTester<["data", "key", "keyLen", "start"], ["out"]>;
+        let maxKeyLen = 30;
+
+        before(async () => {
+            circuit = await circomkit.WitnessTester(`SubstringSearch`, {
+                file: "utils/search",
+                template: "SubstringMatchWithIndexx",
+                params: [787, maxKeyLen],
+            });
+            console.log("#constraints:", await circuit.getConstraintCount());
+        });
+
+        it("data = witness.json:data, key = witness.json:key, r = hash(key+data)", async () => {
+            let key = witness["key"];
+            let pad_key = key.concat(Array(maxKeyLen - key.length).fill(0));
+            await circuit.expectPass(
+                {
+                    data: witness["data"],
+                    key: pad_key,
+                    keyLen: witness["key"].length,
+                    start: 6
+                },
+                { out: 1 },
+            );
+        });
+
+        it("data = witness.json:data, key = witness.json:key, r = hash(key+data),  output false", async () => {
+            let key = witness["key"];
+            let pad_key = key.concat(Array(maxKeyLen - key.length).fill(0));
+            await circuit.expectPass(
+                {
+                    data: witness["data"],
+                    key: pad_key,
+                    keyLen: witness["key"].length,
+                    start: 98
+                },
+                { out: 0 }
+            );
+        });
+    });
+
     describe("SubstringMatch", () => {
         let circuit: WitnessTester<["data", "key"], ["position"]>;
 
