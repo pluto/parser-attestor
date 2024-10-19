@@ -37,7 +37,7 @@ let json_input = [123, 13, 10, 32, 32, 32, 34, 100, 97, 116, 97, 34, 58, 32, 123
 let nivc_parse = readJsonFile<NIVCData>(join(__dirname, "..", "nivc/nivc_parse.json"));
 let nivc_extract_key0 = readJsonFile<NIVCData>(join(__dirname, "..", "nivc/nivc_extract_key0.json"));
 let nivc_extract_key1 = readJsonFile<NIVCData>(join(__dirname, "..", "nivc/nivc_extract_key1.json"));
-
+let nivc_extract_arr = readJsonFile<NIVCData>(join(__dirname, "..", "nivc/nivc_extract_arr.json"));
 
 describe("JsonParseNIVC", async () => {
     let circuit: WitnessTester<["step_in"], ["step_out"]>;
@@ -105,4 +105,33 @@ describe("JsonMaskObjectNIVC", async () => {
     let key1 = [105, 116, 101, 109, 115, 0, 0]; // "items"
     let key1Len = 5;
     generatePassCase({ step_in: nivc_extract_key0.step_out, key: key1, keyLen: key1Len }, { step_out: nivc_extract_key1.step_out }, "masking json object at depth 0");
+});
+
+describe("JsonMaskArrayIndexNIVC", async () => {
+    let circuit: WitnessTester<["step_in", "index"], ["step_out"]>;
+
+    let DATA_BYTES = 202;
+    let MAX_STACK_HEIGHT = 5;
+    let MAX_KEY_LENGTH = 7;
+
+    before(async () => {
+        circuit = await circomkit.WitnessTester(`JsonMaskArrayIndexNIVC`, {
+            file: "json/nivc/masker",
+            template: "JsonMaskArrayIndexNIVC",
+            params: [DATA_BYTES, MAX_STACK_HEIGHT],
+        });
+        console.log("#constraints:", await circuit.getConstraintCount());
+    });
+
+    function generatePassCase(input: any, expected: any, desc: string) {
+        const description = generateDescription(input);
+
+        it(`(valid) witness: ${description} ${desc}`, async () => {
+            console.log(JSON.stringify(await circuit.compute(input, ["step_out"])))
+            await circuit.expectPass(input, expected);
+        });
+    }
+
+    let index = 0;
+    generatePassCase({ step_in: nivc_extract_key1.step_out, index: index }, { step_out: nivc_extract_arr.step_out }, "masking json object at depth 0");
 });

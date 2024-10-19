@@ -105,19 +105,19 @@ template JsonMaskObjectNIVC(DATA_BYTES, MAX_STACK_HEIGHT, MAX_KEY_LENGTH) {
     step_out[TOTAL_BYTES_ACROSS_NIVC - 1] <== step_in[TOTAL_BYTES_ACROSS_NIVC - 1] + 1;
 }
 
-template JsonMaskArrayIndexNIVC(TOTAL_BYTES, DATA_BYTES, MAX_STACK_HEIGHT) {
+template JsonMaskArrayIndexNIVC(DATA_BYTES, MAX_STACK_HEIGHT) {
     // ------------------------------------------------------------------------------------------------------------------ //
     // ~~ Set sizes at compile time ~~
     // Total number of variables in the parser for each byte of data
     assert(MAX_STACK_HEIGHT >= 2);
     var PER_ITERATION_DATA_LENGTH = MAX_STACK_HEIGHT * 2 + 2;
-    var TOTAL_BYTES_USED          = DATA_BYTES * (PER_ITERATION_DATA_LENGTH + 1);
+    var TOTAL_BYTES_ACROSS_NIVC   = DATA_BYTES * (PER_ITERATION_DATA_LENGTH + 1) + 1;
     // ------------------------------------------------------------------------------------------------------------------ //
 
     // ------------------------------------------------------------------------------------------------------------------ //
     // ~ Unravel from previous NIVC step ~
     // Read in from previous NIVC step (JsonParseNIVC)
-    signal input step_in[TOTAL_BYTES + 1]; // ADD 1 FOR CURRENT STACK POINTER
+    signal input step_in[TOTAL_BYTES_ACROSS_NIVC]; // ADD 1 FOR CURRENT STACK POINTER
 
     // Grab the raw data bytes from the `step_in` variable
     signal data[DATA_BYTES];
@@ -152,12 +152,12 @@ template JsonMaskArrayIndexNIVC(TOTAL_BYTES, DATA_BYTES, MAX_STACK_HEIGHT) {
     component stackSelector[DATA_BYTES];
     stackSelector[0] = ArraySelector(MAX_STACK_HEIGHT, 2);
     stackSelector[0].in <== stack[0];
-    stackSelector[0].index <== step_in[TOTAL_BYTES];
+    stackSelector[0].index <== step_in[TOTAL_BYTES_ACROSS_NIVC - 1];
 
     component nextStackSelector[DATA_BYTES];
     nextStackSelector[0]   = ArraySelector(MAX_STACK_HEIGHT, 2);
     nextStackSelector[0].in    <== stack[0];
-    nextStackSelector[0].index <== step_in[TOTAL_BYTES] + 1;
+    nextStackSelector[0].index <== step_in[TOTAL_BYTES_ACROSS_NIVC - 1] + 1;
 
     parsing_array[0] <== InsideArrayIndexObject()(stackSelector[0].out, nextStackSelector[0].out, parsingData[0][0], parsingData[0][1], index);
     mask[0]          <== data[0] * parsing_array[0];
@@ -165,11 +165,11 @@ template JsonMaskArrayIndexNIVC(TOTAL_BYTES, DATA_BYTES, MAX_STACK_HEIGHT) {
     for(var data_idx = 1; data_idx < DATA_BYTES; data_idx++) {
         stackSelector[data_idx]       = ArraySelector(MAX_STACK_HEIGHT, 2);
         stackSelector[data_idx].in    <== stack[data_idx];
-        stackSelector[data_idx].index <== step_in[TOTAL_BYTES];
+        stackSelector[data_idx].index <== step_in[TOTAL_BYTES_ACROSS_NIVC - 1];
 
         nextStackSelector[data_idx]       = ArraySelector(MAX_STACK_HEIGHT, 2);
         nextStackSelector[data_idx].in    <== stack[data_idx];
-        nextStackSelector[data_idx].index <== step_in[TOTAL_BYTES] + 1;
+        nextStackSelector[data_idx].index <== step_in[TOTAL_BYTES_ACROSS_NIVC - 1] + 1;
 
         parsing_array[data_idx] <== InsideArrayIndexObject()(stackSelector[data_idx].out, nextStackSelector[data_idx].out, parsingData[data_idx][0], parsingData[data_idx][1], index);
 
@@ -178,16 +178,16 @@ template JsonMaskArrayIndexNIVC(TOTAL_BYTES, DATA_BYTES, MAX_STACK_HEIGHT) {
     }
 
     // Write the `step_out` with masked data
-    signal output step_out[TOTAL_BYTES + 1];
+    signal output step_out[TOTAL_BYTES_ACROSS_NIVC];
     for (var i = 0 ; i < DATA_BYTES ; i++) {
         step_out[i] <== mask[i];
     }
     // Append the parser state back on `step_out`
-    for (var i = DATA_BYTES ; i < TOTAL_BYTES ; i++) {
+    for (var i = DATA_BYTES ; i < TOTAL_BYTES_ACROSS_NIVC - 1 ; i++) {
         step_out[i] <== step_in[i];
     }
     // No need to pad as this is currently when TOTAL_BYTES == TOTAL_BYTES_USED
-    step_out[TOTAL_BYTES] <== step_in[TOTAL_BYTES] + 1;
+    step_out[TOTAL_BYTES_ACROSS_NIVC - 1] <== step_in[TOTAL_BYTES_ACROSS_NIVC - 1] + 1;
 }
 
 template ArraySelector(m, n) {
