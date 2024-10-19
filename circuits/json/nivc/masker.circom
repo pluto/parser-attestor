@@ -76,9 +76,15 @@ template JsonMaskObjectNIVC(DATA_BYTES, MAX_STACK_HEIGHT, MAX_KEY_LENGTH) {
         stackSelector[data_idx].in    <== stack[data_idx];
         stackSelector[data_idx].index <== step_in[TOTAL_BYTES_ACROSS_NIVC - 1];
 
+        log("stackSelector[", data_idx, "].out[0]     = ", stackSelector[data_idx].out[0]);
+        log("stackSelector[", data_idx, "].out[1]     = ", stackSelector[data_idx].out[1]);
+
         // Detect if we are parsing
         parsing_key[data_idx]   <== InsideKey()(stackSelector[data_idx].out, parsingData[data_idx][0], parsingData[data_idx][1]);
         parsing_value[data_idx] <== InsideValueObject()(stackSelector[data_idx].out, stack[data_idx][1], parsingData[data_idx][0], parsingData[data_idx][1]);
+
+        log("parsing_key[", data_idx, "]   = ", parsing_key[data_idx]);
+        log("parsing_value[", data_idx, "] = ", parsing_value[data_idx]);
 
         // to get correct value, check:
         // - key matches at current index and depth of key is as specified
@@ -86,6 +92,10 @@ template JsonMaskObjectNIVC(DATA_BYTES, MAX_STACK_HEIGHT, MAX_KEY_LENGTH) {
         // - whether key matched for a value (propogate key match until new KV pair of lower depth starts)
         is_key_match[data_idx]             <== KeyMatchAtIndex(DATA_BYTES, MAX_KEY_LENGTH, data_idx)(data, key, keyLen, parsing_key[data_idx]);
         is_next_pair_at_depth[data_idx]    <== NextKVPairAtDepth(MAX_STACK_HEIGHT)(stack[data_idx], data[data_idx], step_in[TOTAL_BYTES_ACROSS_NIVC - 1]);
+
+        log("is_key_match[", data_idx, "]          = ", is_key_match[data_idx]);
+        log("is_next_pair_at_depth[", data_idx, "] = ", is_next_pair_at_depth[data_idx]);
+
         is_key_match_for_value[data_idx+1] <== Mux1()([is_key_match_for_value[data_idx] * (1-is_next_pair_at_depth[data_idx]), is_key_match[data_idx] * (1-is_next_pair_at_depth[data_idx])], is_key_match[data_idx]);
         is_value_match[data_idx]           <== is_key_match_for_value[data_idx+1] * parsing_value[data_idx];
         
@@ -147,15 +157,15 @@ template JsonMaskArrayIndexNIVC(DATA_BYTES, MAX_STACK_HEIGHT) {
     signal mask[DATA_BYTES];
 
     signal parsing_array[DATA_BYTES];
-    signal or[DATA_BYTES];
+    signal or[DATA_BYTES]; // Maybe don't need
 
     component stackSelector[DATA_BYTES];
-    stackSelector[0] = ArraySelector(MAX_STACK_HEIGHT, 2);
-    stackSelector[0].in <== stack[0];
+    stackSelector[0]         = ArraySelector(MAX_STACK_HEIGHT, 2);
+    stackSelector[0].in    <== stack[0];
     stackSelector[0].index <== step_in[TOTAL_BYTES_ACROSS_NIVC - 1];
 
     component nextStackSelector[DATA_BYTES];
-    nextStackSelector[0]   = ArraySelector(MAX_STACK_HEIGHT, 2);
+    nextStackSelector[0]         = ArraySelector(MAX_STACK_HEIGHT, 2);
     nextStackSelector[0].in    <== stack[0];
     nextStackSelector[0].index <== step_in[TOTAL_BYTES_ACROSS_NIVC - 1] + 1;
 
@@ -163,13 +173,18 @@ template JsonMaskArrayIndexNIVC(DATA_BYTES, MAX_STACK_HEIGHT) {
     mask[0]          <== data[0] * parsing_array[0];
 
     for(var data_idx = 1; data_idx < DATA_BYTES; data_idx++) {
-        stackSelector[data_idx]       = ArraySelector(MAX_STACK_HEIGHT, 2);
+        stackSelector[data_idx]         = ArraySelector(MAX_STACK_HEIGHT, 2);
         stackSelector[data_idx].in    <== stack[data_idx];
         stackSelector[data_idx].index <== step_in[TOTAL_BYTES_ACROSS_NIVC - 1];
 
-        nextStackSelector[data_idx]       = ArraySelector(MAX_STACK_HEIGHT, 2);
+        nextStackSelector[data_idx]         = ArraySelector(MAX_STACK_HEIGHT, 2);
         nextStackSelector[data_idx].in    <== stack[data_idx];
         nextStackSelector[data_idx].index <== step_in[TOTAL_BYTES_ACROSS_NIVC - 1] + 1;
+
+        log("stackSelector[", data_idx, "].out[0]     = ", stackSelector[data_idx].out[0]);
+        log("stackSelector[", data_idx, "].out[1]     = ", stackSelector[data_idx].out[1]);
+        log("nextStackSelector[", data_idx, "].out[0] = ", nextStackSelector[data_idx].out[0]);
+        log("nextStackSelector[", data_idx, "].out[1] = ", nextStackSelector[data_idx].out[1]);
 
         parsing_array[data_idx] <== InsideArrayIndexObject()(stackSelector[data_idx].out, nextStackSelector[data_idx].out, parsingData[data_idx][0], parsingData[data_idx][1], index);
 

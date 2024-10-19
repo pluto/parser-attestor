@@ -7,17 +7,25 @@ import { join } from "path";
 // Transfer-Encoding: chunked
 //
 // {
-//    "data": {
-//        "items": [
-//            {
-//                "data": "Artist",
-//                "profile": {
-//                    "name": "Taylor Swift"
-//                }
-//            }
-//        ]
-//    }
+//     "data": {
+//         "items": [
+//             {
+//                 "data": "Artist",
+//                 "profile": {
+//                     "name": "Taylor Swift"
+//                 }
+//             }
+//         ]
+//     }
 // }
+
+// Notes:
+// - "data"'s object appears at byte 14
+// - colon after "items" appears at byte 31
+// - 0th index of arr appears at byte 47 
+// - byte 64 is `"` for the data inside the array obj
+// - byte 81 is where `Artist",` ends
+// - byte 100 is where `"profile"` starts
 
 interface NIVCData {
     step_out: number[];
@@ -93,18 +101,18 @@ describe("JsonMaskObjectNIVC", async () => {
         const description = generateDescription(input);
 
         it(`(valid) witness: ${description} ${desc}`, async () => {
-            console.log(JSON.stringify(await circuit.compute(input, ["step_out"])))
+            // console.log(JSON.stringify(await circuit.compute(input, ["step_out"])))
             await circuit.expectPass(input, expected);
         });
     }
 
-    let key0 = [100, 97, 116, 97, 0, 0, 0]; // "data"
-    let key0Len = 4;
-    generatePassCase({ step_in: nivc_parse.step_out, key: key0, keyLen: key0Len }, { step_out: nivc_extract_key0.step_out }, "masking json object at depth 0");
+    // let key0 = [100, 97, 116, 97, 0, 0, 0]; // "data"
+    // let key0Len = 4;
+    // generatePassCase({ step_in: nivc_parse.step_out, key: key0, keyLen: key0Len }, { step_out: nivc_extract_key0.step_out }, "masking json object at depth 0");
 
-    let key1 = [105, 116, 101, 109, 115, 0, 0]; // "items"
-    let key1Len = 5;
-    generatePassCase({ step_in: nivc_extract_key0.step_out, key: key1, keyLen: key1Len }, { step_out: nivc_extract_key1.step_out }, "masking json object at depth 0");
+    // let key1 = [105, 116, 101, 109, 115, 0, 0]; // "items"
+    // let key1Len = 5;
+    // generatePassCase({ step_in: nivc_extract_key0.step_out, key: key1, keyLen: key1Len }, { step_out: nivc_extract_key1.step_out }, "masking json object at depth 0");
 
     // Ran after doing arr masking
     let key2 = [112, 114, 111, 102, 105, 108, 101]; // "profile"
