@@ -39,22 +39,19 @@ template JsonMaskObjectNIVC(DATA_BYTES, MAX_STACK_HEIGHT, MAX_KEY_LENGTH) {
     // ~ Object masking ~
     // Key data to use to point to which object to extract
     signal input key[MAX_KEY_LENGTH];
-    signal input keyLen;
-
-    // flag determining whether this byte is matched value
-    signal is_value_match[DATA_BYTES - MAX_KEY_LENGTH];
-    // final mask
-    signal mask[DATA_BYTES - MAX_KEY_LENGTH];
-
-    // signal parsing_object_value[DATA_BYTES - MAX_KEY_LENGTH];
-    signal is_key_match[DATA_BYTES - MAX_KEY_LENGTH];
-    signal is_key_match_for_value[DATA_BYTES + 1 - MAX_KEY_LENGTH];
-    is_key_match_for_value[0] <== 0;
-    signal is_next_pair_at_depth[DATA_BYTES - MAX_KEY_LENGTH];
+    signal input keyLen;    
 
     // Signals to detect if we are parsing a key or value with initial setup
     signal parsing_key[DATA_BYTES - MAX_KEY_LENGTH];
     signal parsing_value[DATA_BYTES - MAX_KEY_LENGTH];
+
+    // Flags at each byte to indicate if we are matching correct key and in subsequent value
+    signal is_key_match[DATA_BYTES - MAX_KEY_LENGTH];
+    signal is_value_match[DATA_BYTES - MAX_KEY_LENGTH];
+
+    signal is_next_pair_at_depth[DATA_BYTES - MAX_KEY_LENGTH];
+    signal is_key_match_for_value[DATA_BYTES + 1 - MAX_KEY_LENGTH];
+    is_key_match_for_value[0] <== 0;
 
     // Initialize values knowing 0th bit of data will never be a key/value
     parsing_key[0]   <== 0;
@@ -62,41 +59,38 @@ template JsonMaskObjectNIVC(DATA_BYTES, MAX_STACK_HEIGHT, MAX_KEY_LENGTH) {
     is_key_match[0]  <== 0; 
 
     component stackSelector[DATA_BYTES];
-    stackSelector[0] = ArraySelector(MAX_STACK_HEIGHT, 2);
-    stackSelector[0].in <== stack[0];
+    stackSelector[0]         = ArraySelector(MAX_STACK_HEIGHT, 2);
+    stackSelector[0].in    <== stack[0];
     stackSelector[0].index <== step_in[TOTAL_BYTES_ACROSS_NIVC - 1];
 
     is_next_pair_at_depth[0]  <== NextKVPairAtDepth(MAX_STACK_HEIGHT)(stack[0], data[0],step_in[TOTAL_BYTES_ACROSS_NIVC - 1]);
     is_key_match_for_value[1] <== Mux1()([is_key_match_for_value[0] * (1-is_next_pair_at_depth[0]), is_key_match[0] * (1-is_next_pair_at_depth[0])], is_key_match[0]);
     is_value_match[0]         <== parsing_value[0] * is_key_match_for_value[1];
 
-    mask[0] <== data[0] * is_value_match[0];
+    signal output step_out[TOTAL_BYTES_ACROSS_NIVC];
+    step_out[0] <== data[0] * is_value_match[0];
 
     for(var data_idx = 1; data_idx < DATA_BYTES - MAX_KEY_LENGTH; data_idx++) {
-        stackSelector[data_idx] = ArraySelector(MAX_STACK_HEIGHT, 2);
-        stackSelector[data_idx].in <== stack[data_idx];
+        // Grab the stack at the indicated height (from `step_in`)
+        stackSelector[data_idx]         = ArraySelector(MAX_STACK_HEIGHT, 2);
+        stackSelector[data_idx].in    <== stack[data_idx];
         stackSelector[data_idx].index <== step_in[TOTAL_BYTES_ACROSS_NIVC - 1];
-        parsing_key[data_idx] <== InsideKey()(stackSelector[data_idx].out, parsingData[data_idx][0], parsingData[data_idx][1]);
+
+        // Detect if we are parsing
+        parsing_key[data_idx]   <== InsideKey()(stackSelector[data_idx].out, parsingData[data_idx][0], parsingData[data_idx][1]);
         parsing_value[data_idx] <== InsideValueObject()(stackSelector[data_idx].out, stack[data_idx][1], parsingData[data_idx][0], parsingData[data_idx][1]);
 
         // to get correct value, check:
         // - key matches at current index and depth of key is as specified
         // - whether next KV pair starts
         // - whether key matched for a value (propogate key match until new KV pair of lower depth starts)
-        is_key_match[data_idx] <== KeyMatchAtIndex(DATA_BYTES, MAX_KEY_LENGTH, data_idx)(data, key, keyLen, parsing_key[data_idx]);
-        is_next_pair_at_depth[data_idx] <== NextKVPairAtDepth(MAX_STACK_HEIGHT)(stack[data_idx], data[data_idx], step_in[TOTAL_BYTES_ACROSS_NIVC - 1]);
+        is_key_match[data_idx]             <== KeyMatchAtIndex(DATA_BYTES, MAX_KEY_LENGTH, data_idx)(data, key, keyLen, parsing_key[data_idx]);
+        is_next_pair_at_depth[data_idx]    <== NextKVPairAtDepth(MAX_STACK_HEIGHT)(stack[data_idx], data[data_idx], step_in[TOTAL_BYTES_ACROSS_NIVC - 1]);
         is_key_match_for_value[data_idx+1] <== Mux1()([is_key_match_for_value[data_idx] * (1-is_next_pair_at_depth[data_idx]), is_key_match[data_idx] * (1-is_next_pair_at_depth[data_idx])], is_key_match[data_idx]);
-        is_value_match[data_idx] <== is_key_match_for_value[data_idx+1] * parsing_value[data_idx];
-
-        // mask = currently parsing value and all subsequent keys matched
-        mask[data_idx] <== data[data_idx] * is_value_match[data_idx];
-
-    }
-
-    // Write the `step_out` with masked data
-    signal output step_out[TOTAL_BYTES_ACROSS_NIVC];
-    for (var i = 0 ; i < DATA_BYTES - MAX_KEY_LENGTH ; i++) {
-        step_out[i] <== mask[i];
+        is_value_match[data_idx]           <== is_key_match_for_value[data_idx+1] * parsing_value[data_idx];
+        
+        // Set the next NIVC step to only have the masked data
+        step_out[data_idx] <== data[data_idx] * is_value_match[data_idx];
     }
     for (var i = 0 ; i < MAX_KEY_LENGTH ; i++) {
         step_out[DATA_BYTES - MAX_KEY_LENGTH + i] <== 0;
@@ -105,7 +99,7 @@ template JsonMaskObjectNIVC(DATA_BYTES, MAX_STACK_HEIGHT, MAX_KEY_LENGTH) {
     for (var i = DATA_BYTES ; i < TOTAL_BYTES_ACROSS_NIVC - 1 ; i++) {
         step_out[i] <== step_in[i];
     }
-    // No need to pad as this is currently when TOTAL_BYTES == TOTAL_BYTES_USED
+    // No need to pad as this is currently when TOTAL_BYTES == TOTAL_BYTES_ACROSS_NIVC
 
     // Finally, update the current depth we are extracting from
     step_out[TOTAL_BYTES_ACROSS_NIVC - 1] <== step_in[TOTAL_BYTES_ACROSS_NIVC - 1] + 1;
@@ -224,3 +218,5 @@ template ArraySelector(m, n) {
         out[j] <== sums[j][m];
     }
 }
+
+// component main { public [step_in] } = JsonMaskObjectNIVC(320, 5, 7);

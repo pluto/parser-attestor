@@ -11,3 +11,8 @@ circuits/main/*
 # Rust generated
 inputs/**/*.json
 !inputs/search/witness.json
+
+# Circom-witnesscalc generated
+ir_log/*
+log_input_signals.txt
+*.bin
