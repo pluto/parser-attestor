@@ -105,6 +105,11 @@ describe("JsonMaskObjectNIVC", async () => {
     let key1 = [105, 116, 101, 109, 115, 0, 0]; // "items"
     let key1Len = 5;
     generatePassCase({ step_in: nivc_extract_key0.step_out, key: key1, keyLen: key1Len }, { step_out: nivc_extract_key1.step_out }, "masking json object at depth 0");
+
+    // Ran after doing arr masking
+    let key2 = [112, 114, 111, 102, 105, 108, 101]; // "profile"
+    let key2Len = 7;
+    generatePassCase({ step_in: nivc_extract_arr.step_out, key: key2, keyLen: key2Len }, { step_out: nivc_extract_key1.step_out }, "masking json object at depth 0");
 });
 
 describe("JsonMaskArrayIndexNIVC", async () => {
@@ -112,7 +117,6 @@ describe("JsonMaskArrayIndexNIVC", async () => {
 
     let DATA_BYTES = 202;
     let MAX_STACK_HEIGHT = 5;
-    let MAX_KEY_LENGTH = 7;
 
     before(async () => {
         circuit = await circomkit.WitnessTester(`JsonMaskArrayIndexNIVC`, {
