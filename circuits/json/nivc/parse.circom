@@ -1,17 +1,17 @@
 pragma circom 2.1.9;
 
-include "parser-attestor/circuits/json/parser/parser.circom";
+include "../parser/parser.circom";
 
-template JsonParseNIVC(TOTAL_BYTES, DATA_BYTES, MAX_STACK_HEIGHT) {
+template JsonParseNIVC(DATA_BYTES, MAX_STACK_HEIGHT) {
     // ------------------------------------------------------------------------------------------------------------------ //
     // ~~ Set sizes at compile time ~~    
     // Total number of variables in the parser for each byte of data
     var PER_ITERATION_DATA_LENGTH = MAX_STACK_HEIGHT * 2 + 2;
-    var TOTAL_BYTES_USED          = DATA_BYTES * (PER_ITERATION_DATA_LENGTH + 1);
+    var TOTAL_BYTES_ACROSS_NIVC   = DATA_BYTES * (PER_ITERATION_DATA_LENGTH + 1) + 1;
     // ------------------------------------------------------------------------------------------------------------------ //
 
     // Read in from previous NIVC step (AESNIVC)
-    signal input step_in[TOTAL_BYTES + 1]; // ADD 1 TO TRACK DEPTH LAATER ON
+    signal input step_in[TOTAL_BYTES_ACROSS_NIVC];
 
     // ------------------------------------------------------------------------------------------------------------------ //
     // ~ Parse JSON ~
@@ -38,7 +38,7 @@ template JsonParseNIVC(TOTAL_BYTES, DATA_BYTES, MAX_STACK_HEIGHT) {
     // ------------------------------------------------------------------------------------------------------------------ //
     // ~ Write to `step_out` for next NIVC step
     // Pass the data bytes back out in the first `step_out` signals
-    signal output step_out[TOTAL_BYTES + 1];
+    signal output step_out[TOTAL_BYTES_ACROSS_NIVC];
     for (var i = 0 ; i < DATA_BYTES ; i++) {
         step_out[i] <== step_in[i];
     }
@@ -53,9 +53,9 @@ template JsonParseNIVC(TOTAL_BYTES, DATA_BYTES, MAX_STACK_HEIGHT) {
         step_out[DATA_BYTES + i * PER_ITERATION_DATA_LENGTH + MAX_STACK_HEIGHT * 2 + 1] <== State[i].next_parsing_number;
     }
     // No need to pad as this is currently when TOTAL_BYTES == TOTAL_BYTES_USED
-    step_out[TOTAL_BYTES] <== 0; // Initial depth set to 0 for extraction
+    step_out[TOTAL_BYTES_ACROSS_NIVC - 1] <== 0; // Initial depth set to 0 for extraction
     // ------------------------------------------------------------------------------------------------------------------ //
 }
 
-component main { public [step_in] } = JsonParseNIVC(4160, 320, 5);
+// component main { public [step_in] } = JsonParseNIVC(320, 5);
 
