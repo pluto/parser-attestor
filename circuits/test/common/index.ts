@@ -61,6 +61,25 @@ export function readJSONInputFile(filename: string, key: any[]): [number[], numb
     return [input, keyUnicode, output];
 }
 
+import fs from 'fs';
+
+export function readJsonFile<T>(filePath: string): T {
+    // Read the file synchronously
+    const fileContents = fs.readFileSync(filePath, 'utf-8');
+
+    // Parse the JSON content
+    const jsonData = JSON.parse(fileContents, (key, value) => {
+        // Check if the value is a string that ends with 'n' (for BigInt)
+        if (typeof value === 'string' && value.endsWith('n')) {
+            // Convert it back to a BigInt
+            return BigInt(value.slice(0, -1));
+        }
+        return value;
+    });
+
+    return jsonData as T;
+}
+
 export function toByte(data: string): number[] {
     const byteArray = [];
     for (let i = 0; i < data.length; i++) {

@@ -196,6 +196,8 @@ template ScalarArrayMul(n) {
     }
 }
 
+// TODO: Below really needs documentation.
+
 // from: https://github.com/pluto/aes-proof/blob/main/circuits/aes-gcm/helper_functions.circom
 template SumMultiple(n) {
     signal input nums[n];
@@ -229,4 +231,33 @@ template IndexSelector(total) {
     }
 
     out <== calcTotal.sum;
+}
+
+template ArraySelector(m, n) {
+    signal input in[m][n];
+    signal input index;
+    signal output out[n];
+    assert(index >= 0 && index < m);
+
+    signal selector[m];
+    component Equal[m];
+    for (var i = 0; i < m; i++) {
+        selector[i] <== IsEqual()([index, i]);
+    }
+
+    var sum = 0;
+    for (var i = 0; i < m; i++) {
+        sum += selector[i];
+    }
+    sum === 1;
+
+    signal sums[n][m+1];
+    // note: loop order is column-wise, not row-wise
+    for (var j = 0; j < n; j++) {
+        sums[j][0] <== 0;
+        for (var i = 0; i < m; i++) {
+            sums[j][i+1] <== sums[j][i] + in[i][j] * selector[i];
+        }
+        out[j] <== sums[j][m];
+    }
 }
