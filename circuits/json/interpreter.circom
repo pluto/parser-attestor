@@ -393,7 +393,10 @@ template KeyMatchAtDepth(dataLen, n, keyLen, depth) {
     signal output out <== substring_match * is_parsing_correct_key_at_depth;
 }
 
+// TODO: Not checking start of key is quote since that is handled by `parsing_key`?
 template MatchPaddedKey(n) {
+    // TODO: If key is not padded at all, then `in[1]` will not contain an end quote.
+    // Perhaps we modify this to handle that, or just always pad the key at least once.
     signal input in[2][n];
     signal input keyLen;
     signal output out;

@@ -46,6 +46,7 @@ let nivc_parse = readJsonFile<NIVCData>(join(__dirname, "..", "nivc/nivc_parse.j
 let nivc_extract_key0 = readJsonFile<NIVCData>(join(__dirname, "..", "nivc/nivc_extract_key0.json"));
 let nivc_extract_key1 = readJsonFile<NIVCData>(join(__dirname, "..", "nivc/nivc_extract_key1.json"));
 let nivc_extract_arr = readJsonFile<NIVCData>(join(__dirname, "..", "nivc/nivc_extract_arr.json"));
+let nivc_extract_key2 = readJsonFile<NIVCData>(join(__dirname, "..", "nivc/nivc_extract_key2.json"));
 let nivc_extract_key3 = readJsonFile<NIVCData>(join(__dirname, "..", "nivc/nivc_extract_key3.json"));
 
 describe("JsonParseNIVC", async () => {
@@ -70,7 +71,7 @@ describe("JsonParseNIVC", async () => {
     function generatePassCase(input: any, expected: any, desc: string) {
         const description = generateDescription(input);
 
-        it(`(valid) witness: ${description} ${desc}`, async () => {
+        it(`(valid) witness: ${desc}`, async () => {
             await circuit.expectPass(input, expected);
         });
 
@@ -87,7 +88,7 @@ describe("JsonMaskObjectNIVC", async () => {
 
     let DATA_BYTES = 202;
     let MAX_STACK_HEIGHT = 5;
-    let MAX_KEY_LENGTH = 7;
+    let MAX_KEY_LENGTH = 8;
     let step_out: bigint[] = [];
 
     before(async () => {
@@ -105,28 +106,28 @@ describe("JsonMaskObjectNIVC", async () => {
         it(`(valid) witness: ${desc}`, async () => {
             // console.log(JSON.stringify(await circuit.compute(input, ["step_out"])))
             let wit = await circuit.calculateWitness(input);
-            console.log("wit", wit.slice(0, 100));
+            // console.log("wit", wit.slice(0, 100));
             // step_out = wit;
-            // await circuit.expectPass(input, expected);
+            await circuit.expectPass(input, expected);
         });
     }
 
-    // let key0 = [100, 97, 116, 97, 0, 0, 0]; // "data"
-    // let key0Len = 4;
-    // generatePassCase({ step_in: nivc_parse.step_out, key: key0, keyLen: key0Len }, { step_out: nivc_extract_key0.step_out }, "masking json object at depth 0");
+    let key0 = [100, 97, 116, 97, 0, 0, 0, 0]; // "data"
+    let key0Len = 4;
+    generatePassCase({ step_in: nivc_parse.step_out, key: key0, keyLen: key0Len }, { step_out: nivc_extract_key0.step_out }, "masking json object at depth 0");
 
-    let key1 = [105, 116, 101, 109, 115, 0, 0]; // "items"
+    let key1 = [105, 116, 101, 109, 115, 0, 0, 0]; // "items"
     let key1Len = 5;
-    generatePassCase({ step_in: nivc_extract_key0.step_out, key: key1, keyLen: key1Len }, { step_out: nivc_extract_key1.step_out }, "masking json object at depth 0");
+    generatePassCase({ step_in: nivc_extract_key0.step_out, key: key1, keyLen: key1Len }, { step_out: nivc_extract_key1.step_out }, "masking json object at depth 1");
 
     // Ran after doing arr masking
-    // let key2 = [112, 114, 111, 102, 105, 108, 101]; // "profile"
-    // let key2Len = 7;
-    // generatePassCase({ step_in: nivc_extract_arr.step_out, key: key2, keyLen: key2Len }, { step_out: nivc_extract_key1.step_out }, "masking json object at depth 0");
+    let key2 = [112, 114, 111, 102, 105, 108, 101, 0]; // "profile"
+    let key2Len = 7;
+    generatePassCase({ step_in: nivc_extract_arr.step_out, key: key2, keyLen: key2Len }, { step_out: nivc_extract_key2.step_out }, "masking json object at depth 3");
 
-    // let key3 = [110, 97, 109, 101, 0, 0, 0]; // "name"
-    // let key3Len = 4;
-    // generatePassCase({ step_in: nivc_extract_key3.step_out, key: key3, keyLen: key3Len }, {}, "masking json at depth 4");
+    let key3 = [110, 97, 109, 101, 0, 0, 0, 0]; // "name"
+    let key3Len = 4;
+    generatePassCase({ step_in: nivc_extract_key2.step_out, key: key3, keyLen: key3Len }, { step_out: nivc_extract_key3.step_out }, "masking json object at depth 4");
 });
 
 describe("JsonMaskArrayIndexNIVC", async () => {
@@ -147,12 +148,41 @@ describe("JsonMaskArrayIndexNIVC", async () => {
     function generatePassCase(input: any, expected: any, desc: string) {
         const description = generateDescription(input);
 
-        it(`(valid) witness: ${description} ${desc}`, async () => {
-            console.log(JSON.stringify(await circuit.compute(input, ["step_out"])))
+        it(`(valid) witness: ${desc}`, async () => {
+            // console.log(JSON.stringify(await circuit.compute(input, ["step_out"])))
             await circuit.expectPass(input, expected);
         });
     }
 
     let index = 0;
-    generatePassCase({ step_in: nivc_extract_key1.step_out, index: index }, { step_out: nivc_extract_arr.step_out }, "masking json object at depth 0");
+    generatePassCase({ step_in: nivc_extract_key1.step_out, index: index }, { step_out: nivc_extract_arr.step_out }, "masking json array index at depth 2");
+});
+
+
+describe("JsonExtractNIVC", async () => {
+    let circuit: WitnessTester<["step_in"], ["step_out"]>;
+
+    let DATA_BYTES = 202;
+    let MAX_STACK_HEIGHT = 5;
+
+    before(async () => {
+        circuit = await circomkit.WitnessTester(`JsonMaskExtractFinal`, {
+            file: "json/nivc/extractor",
+            template: "MaskExtractFinal",
+            params: [DATA_BYTES, MAX_STACK_HEIGHT, 14],
+        });
+        console.log("#constraints:", await circuit.getConstraintCount());
+    });
+
+    function generatePassCase(input: any, expected: any, desc: string) {
+        const description = generateDescription(input);
+
+        it(`(valid) witness: ${desc}`, async () => {
+            // console.log(JSON.stringify(await circuit.compute(input, ["step_out", "value"])))
+            await circuit.expectPass(input, expected);
+        });
+    }
+
+
+    generatePassCase({ step_in: nivc_extract_key3.step_out }, {}, "masking json at depth 4");
 });
