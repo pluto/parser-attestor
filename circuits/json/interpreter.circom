@@ -421,6 +421,7 @@ template MatchPaddedKey(n) {
     }
 
     signal isEndOfKeyEqualToQuote <== IsEqual()([endOfKeyAccum[n], 1]);
+    // log("isEndOfKeyEqualToQuote", isEndOfKeyEqualToQuote);
 
     component totalEqual = IsEqual();
     totalEqual.in[0] <== n;
@@ -448,6 +449,11 @@ template KeyMatchAtIndex(dataLen, maxKeyLen, index) {
     signal input keyLen;
     signal input parsing_key;
 
+    signal paddedKey[maxKeyLen + 1];
+    for (var i = 0 ; i < maxKeyLen ; i++) {
+        paddedKey[i] <== key[i];
+    }
+    paddedKey[maxKeyLen] <== 0;
     // `"` -> 34
 
     // start of key equal to quote
@@ -455,12 +461,14 @@ template KeyMatchAtIndex(dataLen, maxKeyLen, index) {
     signal isParsingCorrectKey <== parsing_key * startOfKeyEqualToQuote;
 
     // key matches
-    component isSubstringMatch       = MatchPaddedKey(maxKeyLen);
-    isSubstringMatch.in[0] <== key;
+    component isSubstringMatch       = MatchPaddedKey(maxKeyLen+1);
+    isSubstringMatch.in[0] <== paddedKey;
     isSubstringMatch.keyLen <== keyLen;
-    for(var matcher_idx = 0; matcher_idx < maxKeyLen; matcher_idx++) {
+    for(var matcher_idx = 0; matcher_idx <= maxKeyLen; matcher_idx++) {
+        // log("matcher_idx", index, matcher_idx, data[index + matcher_idx]);
         isSubstringMatch.in[1][matcher_idx] <== data[index + matcher_idx];
     }
+    // log("keyMatchAtIndex", isParsingCorrectKey, isSubstringMatch.out);
 
     signal output out <== isSubstringMatch.out * isParsingCorrectKey;
 }

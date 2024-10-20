@@ -8,18 +8,22 @@ template JsonMaskObjectNIVC(DATA_BYTES, MAX_STACK_HEIGHT, MAX_KEY_LENGTH) {
     // Total number of variables in the parser for each byte of data
     assert(MAX_STACK_HEIGHT >= 2);
     var PER_ITERATION_DATA_LENGTH = MAX_STACK_HEIGHT * 2 + 2;
-    var TOTAL_BYTES_ACROSS_NIVC   = DATA_BYTES * (PER_ITERATION_DATA_LENGTH + 1) + 1; 
+    var TOTAL_BYTES_ACROSS_NIVC   = DATA_BYTES * (PER_ITERATION_DATA_LENGTH + 1) + 1;
     // ------------------------------------------------------------------------------------------------------------------ //
 
     // ------------------------------------------------------------------------------------------------------------------ //
     // ~ Unravel from previous NIVC step ~
     // Read in from previous NIVC step (JsonParseNIVC)
-    signal input step_in[TOTAL_BYTES_ACROSS_NIVC]; 
+    signal input step_in[TOTAL_BYTES_ACROSS_NIVC];
 
     // Grab the raw data bytes from the `step_in` variable
-    signal data[DATA_BYTES];
+    var paddedDataLen = DATA_BYTES + MAX_KEY_LENGTH + 1;
+    signal data[paddedDataLen];
     for (var i = 0 ; i < DATA_BYTES ; i++) {
         data[i] <== step_in[i];
+    }
+    for (var i = 0 ; i <= MAX_KEY_LENGTH ; i++) {
+        data[DATA_BYTES + i] <== 0;
     }
 
     // Decode the encoded data in `step_in` back into parser variables
@@ -39,7 +43,7 @@ template JsonMaskObjectNIVC(DATA_BYTES, MAX_STACK_HEIGHT, MAX_KEY_LENGTH) {
     // ~ Object masking ~
     // Key data to use to point to which object to extract
     signal input key[MAX_KEY_LENGTH];
-    signal input keyLen;    
+    signal input keyLen;
 
     // Signals to detect if we are parsing a key or value with initial setup
     signal parsing_key[DATA_BYTES - MAX_KEY_LENGTH];
@@ -56,7 +60,7 @@ template JsonMaskObjectNIVC(DATA_BYTES, MAX_STACK_HEIGHT, MAX_KEY_LENGTH) {
     // Initialize values knowing 0th bit of data will never be a key/value
     parsing_key[0]   <== 0;
     parsing_value[0] <== 0;
-    is_key_match[0]  <== 0; 
+    is_key_match[0]  <== 0;
 
     component stackSelector[DATA_BYTES];
     stackSelector[0]         = ArraySelector(MAX_STACK_HEIGHT, 2);
@@ -76,6 +80,7 @@ template JsonMaskObjectNIVC(DATA_BYTES, MAX_STACK_HEIGHT, MAX_KEY_LENGTH) {
         stackSelector[data_idx].in    <== stack[data_idx];
         stackSelector[data_idx].index <== step_in[TOTAL_BYTES_ACROSS_NIVC - 1];
 
+        log("step_in[", data_idx, "]                  =", step_in[data_idx]);
         log("stackSelector[", data_idx, "].out[0]     = ", stackSelector[data_idx].out[0]);
         log("stackSelector[", data_idx, "].out[1]     = ", stackSelector[data_idx].out[1]);
 
@@ -90,7 +95,7 @@ template JsonMaskObjectNIVC(DATA_BYTES, MAX_STACK_HEIGHT, MAX_KEY_LENGTH) {
         // - key matches at current index and depth of key is as specified
         // - whether next KV pair starts
         // - whether key matched for a value (propogate key match until new KV pair of lower depth starts)
-        is_key_match[data_idx]             <== KeyMatchAtIndex(DATA_BYTES, MAX_KEY_LENGTH, data_idx)(data, key, keyLen, parsing_key[data_idx]);
+        is_key_match[data_idx]             <== KeyMatchAtIndex(paddedDataLen, MAX_KEY_LENGTH, data_idx)(data, key, keyLen, parsing_key[data_idx]);
         is_next_pair_at_depth[data_idx]    <== NextKVPairAtDepth(MAX_STACK_HEIGHT)(stack[data_idx], data[data_idx], step_in[TOTAL_BYTES_ACROSS_NIVC - 1]);
 
         log("is_key_match[", data_idx, "]          = ", is_key_match[data_idx]);
@@ -98,9 +103,11 @@ template JsonMaskObjectNIVC(DATA_BYTES, MAX_STACK_HEIGHT, MAX_KEY_LENGTH) {
 
         is_key_match_for_value[data_idx+1] <== Mux1()([is_key_match_for_value[data_idx] * (1-is_next_pair_at_depth[data_idx]), is_key_match[data_idx] * (1-is_next_pair_at_depth[data_idx])], is_key_match[data_idx]);
         is_value_match[data_idx]           <== is_key_match_for_value[data_idx+1] * parsing_value[data_idx];
-        
+
         // Set the next NIVC step to only have the masked data
+        log("is_value_match", is_value_match[data_idx]);
         step_out[data_idx] <== data[data_idx] * is_value_match[data_idx];
+        log("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
     }
     for (var i = 0 ; i < MAX_KEY_LENGTH ; i++) {
         step_out[DATA_BYTES - MAX_KEY_LENGTH + i] <== 0;
