@@ -105,9 +105,6 @@ describe("JsonMaskObjectNIVC", async () => {
 
         it(`(valid) witness: ${desc}`, async () => {
             // console.log(JSON.stringify(await circuit.compute(input, ["step_out"])))
-            let wit = await circuit.calculateWitness(input);
-            // console.log("wit", wit.slice(0, 100));
-            // step_out = wit;
             await circuit.expectPass(input, expected);
         });
     }
@@ -178,7 +175,7 @@ describe("JsonExtractNIVC", async () => {
         const description = generateDescription(input);
 
         it(`(valid) witness: ${desc}`, async () => {
-            console.log(JSON.stringify(await circuit.compute(input, ["step_out", "value"])))
+            // console.log(JSON.stringify(await circuit.compute(input, ["step_out", "value"])))
             await circuit.expectPass(input, expected);
         });
     }
