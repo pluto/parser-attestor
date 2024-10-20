@@ -178,11 +178,11 @@ describe("JsonExtractNIVC", async () => {
         const description = generateDescription(input);
 
         it(`(valid) witness: ${desc}`, async () => {
-            // console.log(JSON.stringify(await circuit.compute(input, ["step_out", "value"])))
+            console.log(JSON.stringify(await circuit.compute(input, ["step_out", "value"])))
             await circuit.expectPass(input, expected);
         });
     }
 
-
-    generatePassCase({ step_in: nivc_extract_key3.step_out }, {}, "masking json at depth 4");
+    let value = [34, 84, 97, 121, 108, 111, 114, 32, 83, 119, 105, 102, 116, 34] // `"Taylor Swift"
+    generatePassCase({ step_in: nivc_extract_key3.step_out }, { value: value }, "masking json at depth 4");
 });
