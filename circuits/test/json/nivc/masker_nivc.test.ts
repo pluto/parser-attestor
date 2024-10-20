@@ -19,14 +19,6 @@ import { join } from "path";
 //     }
 // }
 
-// Notes:
-// - "data"'s object appears at byte 14
-// - colon after "items" appears at byte 31
-// - 0th index of arr appears at byte 47
-// - byte 64 is `"` for the data inside the array obj
-// - byte 81 is where `Artist",` ends
-// - byte 100 is where `"profile"` starts
-
 interface NIVCData {
     step_out: number[];
 }

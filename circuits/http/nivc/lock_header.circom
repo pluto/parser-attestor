@@ -1,35 +1,46 @@
 pragma circom 2.1.9;
 
-include "parser-attestor/circuits/http/interpreter.circom";
-include "parser-attestor/circuits/utils/array.circom";
+include "../interpreter.circom";
+include "../../utils/array.circom";
 
-template LockHeader(TOTAL_BYTES, DATA_BYTES, headerNameLen, headerValueLen) {
+// TODO: should use a MAX_HEADER_NAME_LENGTH and a MAX_HEADER_VALUE_LENGTH
+template LockHeader(DATA_BYTES, MAX_STACK_HEIGHT, HEADER_NAME_LENGTH, HEADER_VALUE_LENGTH) {
     // ------------------------------------------------------------------------------------------------------------------ //
-    // ~~ Set sizes at compile time ~~    
+    // ~~ Set sizes at compile time ~~
     // Total number of variables in the parser for each byte of data
-    var PER_ITERATION_DATA_LENGTH = 5;
-    var TOTAL_BYTES_USED          = DATA_BYTES * (PER_ITERATION_DATA_LENGTH + 1); // data + parser vars
+    /* 5 is for the variables:
+        next_parsing_start
+        next_parsing_header
+        next_parsing_field_name
+        next_parsing_field_value
+        State[i].next_parsing_body
+    */
+    var TOTAL_BYTES_HTTP_STATE    = DATA_BYTES * (5 + 1); // data + parser vars
+    var PER_ITERATION_DATA_LENGTH = MAX_STACK_HEIGHT * 2 + 2;
+    var TOTAL_BYTES_ACROSS_NIVC   = DATA_BYTES * (PER_ITERATION_DATA_LENGTH + 1) + 1;
     // ------------------------------------------------------------------------------------------------------------------ //
 
     // ------------------------------------------------------------------------------------------------------------------ //
     // ~ Unravel from previous NIVC step ~
     // Read in from previous NIVC step (HttpParseAndLockStartLine or HTTPLockHeader)
-    signal input step_in[TOTAL_BYTES + 1]; // ADD ONE FOR JSON LATER ON
+    signal input step_in[TOTAL_BYTES_ACROSS_NIVC]; 
+    signal output step_out[TOTAL_BYTES_ACROSS_NIVC];
 
     signal data[DATA_BYTES];
     for (var i = 0 ; i < DATA_BYTES ; i++) {
         data[i] <== step_in[i];
     }
 
-    signal input header[headerNameLen];
-    signal input value[headerValueLen];
+    // TODO: Better naming for these variables
+    signal input header[HEADER_NAME_LENGTH];
+    signal input value[HEADER_VALUE_LENGTH];
 
-    component headerNameLocation = FirstStringMatch(DATA_BYTES, headerNameLen);
+    component headerNameLocation = FirstStringMatch(DATA_BYTES, HEADER_NAME_LENGTH);
     headerNameLocation.data      <== data;
     headerNameLocation.key       <== header;
 
     component headerFieldNameValueMatch;
-    headerFieldNameValueMatch             =  HeaderFieldNameValueMatch(DATA_BYTES, headerNameLen, headerValueLen);
+    headerFieldNameValueMatch             =  HeaderFieldNameValueMatch(DATA_BYTES, HEADER_NAME_LENGTH, HEADER_VALUE_LENGTH);
     headerFieldNameValueMatch.data        <== data;
     headerFieldNameValueMatch.headerName  <== header;
     headerFieldNameValueMatch.headerValue <== value;
@@ -41,7 +52,6 @@ template LockHeader(TOTAL_BYTES, DATA_BYTES, headerNameLen, headerValueLen) {
 
     // ------------------------------------------------------------------------------------------------------------------ //
     // ~ Write out to next NIVC step
-    signal output step_out[TOTAL_BYTES + 1];
     for (var i = 0 ; i < DATA_BYTES ; i++) {
         // add plaintext http input to step_out
         step_out[i] <== step_in[i];
@@ -54,10 +64,9 @@ template LockHeader(TOTAL_BYTES, DATA_BYTES, headerNameLen, headerValueLen) {
         step_out[DATA_BYTES + i * 5 + 4] <== step_in[DATA_BYTES + i * 5 + 4];
     }
         // Pad remaining with zeros
-    for (var i = TOTAL_BYTES_USED ; i < TOTAL_BYTES ; i++ ) {
+    for (var i = TOTAL_BYTES_HTTP_STATE ; i < TOTAL_BYTES_ACROSS_NIVC ; i++ ) {
         step_out[i] <== 0;
     }
-    step_out[TOTAL_BYTES] <== 0;
 }
 
 // TODO: Handrolled template that I haven't tested YOLO.
@@ -84,5 +93,4 @@ template FirstStringMatch(dataLen, keyLen) {
     position <== counter;
 }
 
-component main { public [step_in] } = LockHeader(4160, 320, 12, 31);
 

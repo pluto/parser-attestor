@@ -1,37 +1,48 @@
 pragma circom 2.1.9;
 
-include "parser-attestor/circuits/http/parser/machine.circom";
-include "parser-attestor/circuits/http/interpreter.circom";
-include "parser-attestor/circuits/utils/bytes.circom";
+include "../parser/machine.circom";
+include "../interpreter.circom";
+include "../../utils/bytes.circom";
 
 // TODO: Note that TOTAL_BYTES will match what we have for AESGCMFOLD step_out
 // I have not gone through to double check the sizes of everything yet.
-template LockStartLine(TOTAL_BYTES, DATA_BYTES, beginningLen, middleLen, finalLen) {
+template ParseAndLockStartLine(DATA_BYTES, MAX_STACK_HEIGHT, BEGINNING_LENGTH, MIDDLE_LENGTH, FINAL_LENGTH) {
     // ------------------------------------------------------------------------------------------------------------------ //
     // ~~ Set sizes at compile time ~~
     // Total number of variables in the parser for each byte of data
-    var AES_BYTES                 = DATA_BYTES + 50; // TODO: Might be wrong, but good enough for now
-    var PER_ITERATION_DATA_LENGTH = 5;
-    var TOTAL_BYTES_USED          = DATA_BYTES * (PER_ITERATION_DATA_LENGTH + 1); // data + parser vars
+    // var AES_BYTES                 = DATA_BYTES + 50; // TODO: Might be wrong, but good enough for now
+    /* 5 is for the variables:
+        next_parsing_start
+        next_parsing_header
+        next_parsing_field_name
+        next_parsing_field_value
+        State[i].next_parsing_body
+    */
+    var TOTAL_BYTES_HTTP_STATE    = DATA_BYTES * (5 + 1); // data + parser vars
+    var PER_ITERATION_DATA_LENGTH = MAX_STACK_HEIGHT * 2 + 2;
+    var TOTAL_BYTES_ACROSS_NIVC   = DATA_BYTES * (PER_ITERATION_DATA_LENGTH + 1) + 1;
     // ------------------------------------------------------------------------------------------------------------------ //
 
     // ------------------------------------------------------------------------------------------------------------------ //
     // ~ Unravel from previous NIVC step ~
     // Read in from previous NIVC step (JsonParseNIVC)
-    signal input step_in[TOTAL_BYTES + 1]; // ADD 1 FOR JSON STUFF LATER
+    signal input step_in[TOTAL_BYTES_ACROSS_NIVC]; 
+    signal output step_out[TOTAL_BYTES_ACROSS_NIVC];
 
     signal data[DATA_BYTES];
     for (var i = 0 ; i < DATA_BYTES ; i++) {
-        data[i] <== step_in[50 + i];
+        // data[i] <== step_in[50 + i]; // THIS WAS OFFSET FOR AES, WHICH WE NEED TO TAKE INTO ACCOUNT
+        data[i] <== step_in[i];
     }
 
     // // TODO: check if these needs to here or not
+    // DON'T THINK WE NEED THIS SINCE AES SHOULD OUTPUT ASCII OR FAIL
     // component dataASCII = ASCII(DATA_BYTES);
     // dataASCII.in <== data;
 
-    signal input beginning[beginningLen];
-    signal input middle[middleLen];
-    signal input final[finalLen];
+    signal input beginning[BEGINNING_LENGTH];
+    signal input middle[MIDDLE_LENGTH];
+    signal input final[FINAL_LENGTH];
 
     // Initialze the parser
     component State[DATA_BYTES];
@@ -46,11 +57,11 @@ template LockStartLine(TOTAL_BYTES, DATA_BYTES, beginningLen, middleLen, finalLe
 
     /*
     Note, because we know a beginning is the very first thing in a request
-    we can make this more efficient by just comparing the first `beginningLen` bytes
+    we can make this more efficient by just comparing the first `BEGINNING_LENGTH` bytes
     of the data ASCII against the beginning ASCII itself.
     */
     // Check first beginning byte
-    signal beginningIsEqual[beginningLen];
+    signal beginningIsEqual[BEGINNING_LENGTH];
     beginningIsEqual[0] <== IsEqual()([data[0],beginning[0]]);
     beginningIsEqual[0] === 1;
 
@@ -73,7 +84,7 @@ template LockStartLine(TOTAL_BYTES, DATA_BYTES, beginningLen, middleLen, finalLe
         State[data_idx].line_status         <== State[data_idx - 1].next_line_status;
 
         // Check remaining beginning bytes
-        if(data_idx < beginningLen) {
+        if(data_idx < BEGINNING_LENGTH) {
             beginningIsEqual[data_idx] <== IsEqual()([data[data_idx], beginning[data_idx]]);
             beginningIsEqual[data_idx] === 1;
         }
@@ -90,25 +101,25 @@ template LockStartLine(TOTAL_BYTES, DATA_BYTES, beginningLen, middleLen, finalLe
     }
 
     // Additionally verify beginning had correct length
-    beginningLen === middle_start_counter - 1;
+    BEGINNING_LENGTH === middle_start_counter - 1;
 
     // Check middle is correct by substring match and length check
-    signal middleMatch <== SubstringMatchWithIndex(DATA_BYTES, middleLen)(data, middle, middle_start_counter);
+    signal middleMatch <== SubstringMatchWithIndex(DATA_BYTES, MIDDLE_LENGTH)(data, middle, middle_start_counter);
     middleMatch === 1;
-    middleLen === middle_end_counter - middle_start_counter - 1;
+    MIDDLE_LENGTH === middle_end_counter - middle_start_counter - 1;
 
     // Check final is correct by substring match and length check
-    signal finalMatch <== SubstringMatchWithIndex(DATA_BYTES, finalLen)(data, final, middle_end_counter);
+    signal finalMatch <== SubstringMatchWithIndex(DATA_BYTES, FINAL_LENGTH)(data, final, middle_end_counter);
     finalMatch === 1;
     // -2 here for the CRLF
-    finalLen === final_end_counter - middle_end_counter - 2;
+    FINAL_LENGTH === final_end_counter - middle_end_counter - 2;
 
     // ------------------------------------------------------------------------------------------------------------------ //
     // ~ Write out to next NIVC step (Lock Header)
-    signal output step_out[TOTAL_BYTES + 1];
     for (var i = 0 ; i < DATA_BYTES ; i++) {
         // add plaintext http input to step_out
-        step_out[i] <== step_in[50 + i];
+        // step_out[i] <== step_in[50 + i]; // AGAIN, NEED TO ACCOUNT FOR AES VARIABLES POSSIBLY
+        step_out[i] <== step_in[i];
 
         // add parser state
         step_out[DATA_BYTES + i * 5]     <== State[i].next_parsing_start;
@@ -118,10 +129,9 @@ template LockStartLine(TOTAL_BYTES, DATA_BYTES, beginningLen, middleLen, finalLe
         step_out[DATA_BYTES + i * 5 + 4] <== State[i].next_parsing_body;
     }
     // Pad remaining with zeros
-    for (var i = TOTAL_BYTES_USED ; i < TOTAL_BYTES ; i++ ) {
+    for (var i = TOTAL_BYTES_HTTP_STATE ; i < TOTAL_BYTES_ACROSS_NIVC ; i++ ) {
         step_out[i] <== 0;
     }
-    step_out[TOTAL_BYTES] <== 0;
 }
 
-component main { public [step_in] } = LockStartLine(4160, 320, 8, 3, 2);
+// component main { public [step_in] } = LockStartLine(320, 8, 3, 2);
