@@ -69,6 +69,10 @@ template ParseAndLockStartLine(DATA_BYTES, MAX_STACK_HEIGHT, BEGINNING_LENGTH, M
     signal startLineMask[DATA_BYTES];
     signal middleMask[DATA_BYTES];
     signal finalMask[DATA_BYTES];
+    startLineMask[0] <== inStartLine()(State[0].parsing_start);
+    middleMask[0]    <== inStartMiddle()(State[0].parsing_start);
+    finalMask[0]     <== inStartEnd()(State[0].parsing_start);
+
 
     var middle_start_counter = 1;
     var middle_end_counter = 1;
@@ -133,5 +137,3 @@ template ParseAndLockStartLine(DATA_BYTES, MAX_STACK_HEIGHT, BEGINNING_LENGTH, M
         step_out[i] <== 0;
     }
 }
-
-// component main { public [step_in] } = LockStartLine(320, 8, 3, 2);
