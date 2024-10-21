@@ -47,8 +47,6 @@ template HeaderFieldNameValueMatch(dataLen, nameLen, valueLen) {
     signal input headerValue[valueLen];
     signal input index;
 
-    // signal output value[valueLen];
-
     // is name matches
     signal headerNameMatch <== SubstringMatchWithIndex(dataLen, nameLen)(data, headerName, index);
 
@@ -60,6 +58,31 @@ template HeaderFieldNameValueMatch(dataLen, nameLen, valueLen) {
 
     // field-name: SP field-value
     signal headerValueMatch <== SubstringMatchWithIndex(dataLen, valueLen)(data, headerValue, index + nameLen + 2);
+
+    // header name matches + header value matches
+    signal output out <== headerNameMatchAndNextByteColon * headerValueMatch;
+}
+
+// https://www.rfc-editor.org/rfc/rfc9112.html#name-field-syntax
+template HeaderFieldNameValueMatchPadded(dataLen, maxNameLen, maxValueLen) {
+    signal input data[dataLen];
+    signal input headerName[maxNameLen];
+    signal input nameLen;
+    signal input headerValue[maxValueLen];
+    signal input valueLen;
+    signal input index;
+
+    // is name matchesnameLen
+    signal headerNameMatch <== SubstringMatchWithIndexPadded(dataLen, maxNameLen)(data, headerName, nameLen, index);
+
+    // next byte to name should be COLON
+    signal endOfHeaderName <== IndexSelector(dataLen)(data, index + nameLen);
+    signal isNextByteColon <== IsEqual()([endOfHeaderName, 58]);
+
+    signal headerNameMatchAndNextByteColon <== headerNameMatch * isNextByteColon;
+
+    // field-name: SP field-value
+    signal headerValueMatch <== SubstringMatchWithIndexPadded(dataLen, maxValueLen)(data, headerValue, valueLen, index + nameLen + 2);
 
     // header name matches + header value matches
     signal output out <== headerNameMatchAndNextByteColon * headerValueMatch;
