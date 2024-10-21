@@ -19,10 +19,6 @@ import { join } from "path";
 //    }
 // }
 
-interface NIVCData {
-    step_out: number[];
-}
-
 // 320 bytes in the HTTP response
 let http_response_plaintext = [
     72, 84, 84, 80, 47, 49, 46, 49, 32, 50, 48, 48, 32, 79, 75, 13, 10, 99, 111, 110, 116, 101, 110,
@@ -41,113 +37,69 @@ let http_response_plaintext = [
     10, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 125, 13, 10, 32, 32, 32, 32, 32, 32, 32, 93, 13,
     10, 32, 32, 32, 125, 13, 10, 125];
 
-let http_parse_and_lock_start_line = readJsonFile<NIVCData>(join(__dirname, "..", "nivc/parse_and_lock_start_line.json"));
-let http_body_mask = readJsonFile<NIVCData>(join(__dirname, "..", "nivc/body_mask.json"));
-
 describe("HTTPParseAndLockStartLineNIVC", async () => {
-    let circuit: WitnessTester<["step_in"], ["step_out"]>;
+    let httpParseAndLockStartLineCircuit: WitnessTester<["step_in", "beginning", "middle", "final"], ["step_out"]>;
+    let lockHeaderCircuit: WitnessTester<["step_in", "header", "headerNameLength", "value", "headerValueLength"], ["step_out"]>;
+    let bodyMaskCircuit: WitnessTester<["step_in"], ["step_out"]>;
 
-    let DATA_BYTES = 320;
-    let MAX_STACK_HEIGHT = 5;
-    let PER_ITERATION_DATA_LENGTH = MAX_STACK_HEIGHT * 2 + 2;
+    const DATA_BYTES = 320;
+    const MAX_STACK_HEIGHT = 5;
+    const PER_ITERATION_DATA_LENGTH = MAX_STACK_HEIGHT * 2 + 2;
+    const TOTAL_BYTES_ACROSS_NIVC = DATA_BYTES * (PER_ITERATION_DATA_LENGTH + 1) + 1;
 
-    let TOTAL_BYTES_ACROSS_NIVC = DATA_BYTES * (PER_ITERATION_DATA_LENGTH + 1) + 1;
+    const MAX_HEADER_NAME_LENGTH = 20;
+    const MAX_HEADER_VALUE_LENGTH = 35;
 
-    let beginning = [72, 84, 84, 80, 47, 49, 46, 49]; // HTTP/1.1
-    let BEGINNING_LENGTH = 8;
-    let middle = [50, 48, 48]; // 200
-    let MIDDLE_LENGTH = 3;
-    let final = [79, 75]; // OK
-    let FINAL_LENGTH = 2;
+    const beginning = [72, 84, 84, 80, 47, 49, 46, 49]; // HTTP/1.1
+    const BEGINNING_LENGTH = 8;
+    const middle = [50, 48, 48]; // 200
+    const MIDDLE_LENGTH = 3;
+    const final = [79, 75]; // OK
+    const FINAL_LENGTH = 2;
 
     before(async () => {
-        circuit = await circomkit.WitnessTester(`ParseAndLockStartLine`, {
+        httpParseAndLockStartLineCircuit = await circomkit.WitnessTester(`ParseAndLockStartLine`, {
             file: "http/nivc/parse_and_lock_start_line",
             template: "ParseAndLockStartLine",
             params: [DATA_BYTES, MAX_STACK_HEIGHT, BEGINNING_LENGTH, MIDDLE_LENGTH, FINAL_LENGTH],
         });
-        console.log("#constraints:", await circuit.getConstraintCount());
+        console.log("#constraints:", await httpParseAndLockStartLineCircuit.getConstraintCount());
 
-    });
-
-    function generatePassCase(input: any, expected: any, desc: string) {
-        const description = generateDescription(input);
-
-        it(`(valid) witness: ${desc}`, async () => {
-            // console.log(JSON.stringify(await circuit.compute(input, ["step_out"])))
-            await circuit.expectPass(input, expected);
-        });
-
-    }
-
-    let extended_json_input = http_response_plaintext.concat(Array(Math.max(0, TOTAL_BYTES_ACROSS_NIVC - http_response_plaintext.length)).fill(0));
-
-    generatePassCase({ step_in: extended_json_input, beginning: beginning, middle: middle, final: final }, { step_out: http_parse_and_lock_start_line.step_out }, "parsing HTTP");
-});
-
-describe("HTTPLockHeaderNIVC", async () => {
-    let circuit: WitnessTester<["step_in", "header", "headerNameLength", "value", "headerValueLength"], ["step_out"]>;
-
-    let DATA_BYTES = 320;
-    let MAX_STACK_HEIGHT = 5;
-
-    let MAX_HEADER_NAME_LENGTH = 20;
-    let MAX_HEADER_VALUE_LENGTH = 35;
-
-    before(async () => {
-        circuit = await circomkit.WitnessTester(`LockHeader`, {
+        lockHeaderCircuit = await circomkit.WitnessTester(`LockHeader`, {
             file: "http/nivc/lock_header",
             template: "LockHeader",
             params: [DATA_BYTES, MAX_STACK_HEIGHT, MAX_HEADER_NAME_LENGTH, MAX_HEADER_VALUE_LENGTH],
         });
-        console.log("#constraints:", await circuit.getConstraintCount());
+        console.log("#constraints:", await lockHeaderCircuit.getConstraintCount());
 
-    });
-
-    function generatePassCase(input: any, expected: any, desc: string) {
-        const description = generateDescription(input);
-
-        input["header"] = input["header"].concat(Array(MAX_HEADER_NAME_LENGTH - input["header"].length).fill(0));
-        input["value"] = input["value"].concat(Array(MAX_HEADER_VALUE_LENGTH - input["value"].length).fill(0));
-
-        it(`(valid) witness: ${desc}`, async () => {
-            // console.log(JSON.stringify(await circuit.compute(input, ["step_out"])))
-            await circuit.expectPass(input, expected);
-        });
-
-    }
-
-    let header_name = toByte("content-type");
-    let header_value = toByte("application/json; charset=utf-8");
-
-    generatePassCase({ step_in: http_parse_and_lock_start_line.step_out, header: header_name, headerNameLength: header_name.length, value: header_value, headerValueLength: header_value.length }, { step_out: http_parse_and_lock_start_line.step_out }, "locking HTTP header");
-});
-
-describe("HTTPBodyMaskNIVC", async () => {
-    let circuit: WitnessTester<["step_in"], ["step_out"]>;
-
-    let DATA_BYTES = 320;
-    let MAX_STACK_HEIGHT = 5;
-
-    before(async () => {
-        circuit = await circomkit.WitnessTester(`BodyMask`, {
+        bodyMaskCircuit = await circomkit.WitnessTester(`BodyMask`, {
             file: "http/nivc/body_mask",
             template: "HTTPMaskBodyNIVC",
             params: [DATA_BYTES, MAX_STACK_HEIGHT],
         });
-        console.log("#constraints:", await circuit.getConstraintCount());
-
+        console.log("#constraints:", await bodyMaskCircuit.getConstraintCount());
     });
 
-    function generatePassCase(input: any, expected: any, desc: string) {
-        const description = generateDescription(input);
+    let extendedJsonInput = http_response_plaintext.concat(Array(Math.max(0, TOTAL_BYTES_ACROSS_NIVC - http_response_plaintext.length)).fill(0));
 
-        it(`(valid) witness: ${desc}`, async () => {
-            // console.log(JSON.stringify(await circuit.compute(input, ["step_out"])))
-            await circuit.expectPass(input, expected);
-        });
+    let headerName = toByte("content-type");
+    let headerValue = toByte("application/json; charset=utf-8");
 
-    }
+    let headerNamePadded = headerName.concat(Array(MAX_HEADER_NAME_LENGTH - headerName.length).fill(0));
+    let headerValuePadded = headerValue.concat(Array(MAX_HEADER_VALUE_LENGTH - headerValue.length).fill(0));
+    it("HTTPParseAndExtract", async () => {
+        let parseAndLockStartLine = await httpParseAndLockStartLineCircuit.compute({ step_in: extendedJsonInput, beginning: beginning, middle: middle, final: final }, ["step_out"]);
 
-    generatePassCase({ step_in: http_parse_and_lock_start_line.step_out }, { step_out: http_body_mask.step_out }, "locking HTTP header");
+        let lockHeader = await lockHeaderCircuit.compute({ step_in: parseAndLockStartLine.step_out, header: headerNamePadded, headerNameLength: headerName.length, value: headerValuePadded, headerValueLength: headerValue.length }, ["step_out"]);
+
+        let bodyMask = await bodyMaskCircuit.compute({ step_in: lockHeader.step_out }, ["step_out"]);
+
+        let bodyMaskOut = bodyMask.step_out as number[];
+        let idx = bodyMaskOut.indexOf('{'.charCodeAt(0));
+
+        let extended_json_input_2 = extendedJsonInput.fill(0, 0, idx);
+        extended_json_input_2 = extended_json_input_2.fill(0, 320);
+
+        bodyMaskOut === extended_json_input_2;
+    });
 });
