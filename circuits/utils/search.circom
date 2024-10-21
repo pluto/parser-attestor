@@ -232,7 +232,7 @@ template SubstringMatchWithIndex(dataLen, keyLen) {
     signal output out <== isStartLessThanMaxLength * isSubarrayMatch;
 }
 
-template SubstringMatchWithIndexx(dataLen, maxKeyLen) {
+template SubstringMatchWithIndexPadded(dataLen, maxKeyLen) {
     signal input data[dataLen];
     signal input key[maxKeyLen];
     signal input keyLen;

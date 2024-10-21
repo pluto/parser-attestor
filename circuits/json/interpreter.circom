@@ -415,8 +415,10 @@ template MatchPaddedKey(n) {
         isQuote[i] <== IsEqual()([in[1][i], 34]);
         endOfKeyAccum[i+1] <== endOfKeyAccum[i] + isEndOfKey[i] * isQuote[i];
 
+        // TODO: might not be right to check for zero, instead check for -1?
         isPaddedElement[i] = IsZero();
         isPaddedElement[i].in <== in[0][i];
+
         equalComponent[i] = IsEqual();
         equalComponent[i].in[0] <== in[0][i];
         equalComponent[i].in[1] <== in[1][i] * (1-isPaddedElement[i].out);
