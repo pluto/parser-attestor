@@ -1,4 +1,4 @@
-import { circomkit, WitnessTester, generateDescription, readJsonFile } from "../../common";
+import { circomkit, WitnessTester, generateDescription, readJsonFile, toByte } from "../../common";
 import { join } from "path";
 
 // HTTP/1.1 200 OK
@@ -86,24 +86,19 @@ describe("HTTPParseAndLockStartLineNIVC", async () => {
 });
 
 describe("HTTPLockHeaderNIVC", async () => {
-    let circuit: WitnessTester<["step_in", "header", "value"], ["step_out"]>;
+    let circuit: WitnessTester<["step_in", "header", "headerNameLength", "value", "headerValueLength"], ["step_out"]>;
 
     let DATA_BYTES = 320;
     let MAX_STACK_HEIGHT = 5;
 
-    let header_name = [99, 111, 110, 116, 101, 110, 116, 45, 116, 121, 112, 101]; // content-type
-    let HEADER_NAME_LENGTH = 12;
-    let header_value = [
-        97, 112, 112, 108, 105, 99, 97, 116, 105, 111, 110, 47, 106, 115, 111, 110, 59, 32, 99, 104, 97,
-        114, 115, 101, 116, 61, 117, 116, 102, 45, 56,
-    ]; // application/json; charset=utf-8
-    let HEADER_VALUE_LENGTH = 31;
+    let MAX_HEADER_NAME_LENGTH = 20;
+    let MAX_HEADER_VALUE_LENGTH = 35;
 
     before(async () => {
         circuit = await circomkit.WitnessTester(`LockHeader`, {
             file: "http/nivc/lock_header",
             template: "LockHeader",
-            params: [DATA_BYTES, MAX_STACK_HEIGHT, HEADER_NAME_LENGTH, HEADER_VALUE_LENGTH],
+            params: [DATA_BYTES, MAX_STACK_HEIGHT, MAX_HEADER_NAME_LENGTH, MAX_HEADER_VALUE_LENGTH],
         });
         console.log("#constraints:", await circuit.getConstraintCount());
 
@@ -112,6 +107,9 @@ describe("HTTPLockHeaderNIVC", async () => {
     function generatePassCase(input: any, expected: any, desc: string) {
         const description = generateDescription(input);
 
+        input["header"] = input["header"].concat(Array(MAX_HEADER_NAME_LENGTH - input["header"].length).fill(0));
+        input["value"] = input["value"].concat(Array(MAX_HEADER_VALUE_LENGTH - input["value"].length).fill(0));
+
         it(`(valid) witness: ${desc}`, async () => {
             // console.log(JSON.stringify(await circuit.compute(input, ["step_out"])))
             await circuit.expectPass(input, expected);
@@ -119,7 +117,10 @@ describe("HTTPLockHeaderNIVC", async () => {
 
     }
 
-    generatePassCase({ step_in: http_parse_and_lock_start_line.step_out, header: header_name, value: header_value }, { step_out: http_parse_and_lock_start_line.step_out }, "locking HTTP header");
+    let header_name = toByte("content-type");
+    let header_value = toByte("application/json; charset=utf-8");
+
+    generatePassCase({ step_in: http_parse_and_lock_start_line.step_out, header: header_name, headerNameLength: header_name.length, value: header_value, headerValueLength: header_value.length }, { step_out: http_parse_and_lock_start_line.step_out }, "locking HTTP header");
 });
 
 describe("HTTPBodyMaskNIVC", async () => {
