@@ -23,7 +23,7 @@ interface NIVCData {
     step_out: number[];
 }
 
-// // 202 bytes in the JSON
+// 202 bytes in the JSON
 let json_input = [123, 13, 10, 32, 32, 32, 34, 100, 97, 116, 97, 34, 58, 32, 123, 13, 10, 32, 32, 32, 32, 32, 32,
     32, 34, 105, 116, 101, 109, 115, 34, 58, 32, 91, 13, 10, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32,
     32, 123, 13, 10, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 34, 100, 97, 116,
@@ -172,6 +172,6 @@ describe("JsonExtractNIVC", async () => {
         });
     }
 
-    let value = [34, 84, 97, 121, 108, 111, 114, 32, 83, 119, 105, 102, 116, 34] // `"Taylor Swift"
+    let value = [34, 84, 97, 121, 108, 111, 114, 32, 83, 119, 105, 102, 116, 34] // `"Taylor Swift"`
     generatePassCase({ step_in: nivc_extract_key3.step_out }, { value: value }, "masking json at depth 4");
 });
