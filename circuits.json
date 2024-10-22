@@ -10,6 +10,25 @@
       2
     ]
   },
+  "json-parser": {
+    "file": "json/parser/parser",
+    "template": "Parser",
+    "params": [
+      157,
+      13
+    ]
+  },
+  "value_string_test": {
+    "file": "main/json_value_string_test",
+    "template": "ExtractStringValue",
+    "params": [
+      12,
+      1,
+      1,
+      0,
+      1
+    ]
+  },
   "spotify_test": {
     "file": "main/json_spotify_test",
     "template": "ExtractStringValue",
@@ -36,22 +55,97 @@
       60
     ]
   },
-  "json-parser": {
-    "file": "json/parser/parser",
-    "template": "Parser",
+  "spotify_top_artists_test": {
+    "file": "main/http_spotify_top_artists_test",
+    "template": "LockHTTPResponse",
     "params": [
-      157,
-      13
+      203,
+      85,
+      8,
+      3,
+      2,
+      12,
+      31
     ]
   },
-  "value_string_test": {
-    "file": "main/json_value_string_test",
+  "value_array_number_test": {
+    "file": "main/json_value_array_number_test",
+    "template": "ExtractNumValue",
+    "params": [
+      73,
+      2,
+      1,
+      0,
+      2,
+      1,
+      4
+    ]
+  },
+  "value_array_object_test": {
+    "file": "main/json_value_array_object_test",
+    "template": "ExtractNumValue",
+    "params": [
+      29,
+      4,
+      1,
+      0,
+      0,
+      1,
+      1,
+      2,
+      0,
+      3,
+      1
+    ]
+  },
+  "value_string": {
+    "file": "main/json_value_string",
     "template": "ExtractStringValue",
     "params": [
       12,
       1,
       1,
       0,
+      1
+    ]
+  },
+  "two_keys_test": {
+    "file": "main/json_two_keys_test",
+    "template": "ExtractStringValue",
+    "params": [
+      40,
+      1,
+      4,
+      0,
+      3
+    ]
+  },
+  "get_request_test": {
+    "file": "main/http_get_request_test",
+    "template": "LockHTTPRequest",
+    "params": [
+      60,
+      3,
+      4,
+      8,
+      6,
+      16,
+      4,
+      9
+    ]
+  },
+  "value_array_nested_test": {
+    "file": "main/json_value_array_nested_test",
+    "template": "ExtractNumValue",
+    "params": [
+      24,
+      3,
+      1,
+      0,
+      0,
+      1,
+      0,
+      2,
       1
     ]
   },
@@ -80,41 +174,17 @@
       12
     ]
   },
-  "value_string": {
-    "file": "main/json_value_string",
+  "value_object_test": {
+    "file": "main/json_value_object_test",
     "template": "ExtractStringValue",
     "params": [
-      12,
-      1,
-      1,
-      0,
-      1
-    ]
-  },
-  "value_array_nested_test": {
-    "file": "main/json_value_array_nested_test",
-    "template": "ExtractNumValue",
-    "params": [
-      24,
+      134,
       3,
       1,
       0,
-      0,
       1,
-      0,
-      2,
+      1,
       1
-    ]
-  },
-  "two_keys_test": {
-    "file": "main/json_two_keys_test",
-    "template": "ExtractStringValue",
-    "params": [
-      40,
-      1,
-      4,
-      0,
-      3
     ]
   },
   "value_array_string_test": {
@@ -130,50 +200,6 @@
       2
     ]
   },
-  "value_array_object_test": {
-    "file": "main/json_value_array_object_test",
-    "template": "ExtractNumValue",
-    "params": [
-      29,
-      4,
-      1,
-      0,
-      0,
-      1,
-      1,
-      2,
-      0,
-      3,
-      1
-    ]
-  },
-  "get_request_test": {
-    "file": "main/http_get_request_test",
-    "template": "LockHTTPRequest",
-    "params": [
-      60,
-      3,
-      4,
-      8,
-      6,
-      16,
-      4,
-      9
-    ]
-  },
-  "value_array_number_test": {
-    "file": "main/json_value_array_number_test",
-    "template": "ExtractNumValue",
-    "params": [
-      73,
-      2,
-      1,
-      0,
-      2,
-      1,
-      4
-    ]
-  },
   "get_response_test": {
     "file": "main/http_get_response_test",
     "template": "LockHTTPResponse",
@@ -185,32 +211,6 @@
       2,
       12,
       16
-    ]
-  },
-  "spotify_top_artists_test": {
-    "file": "main/http_spotify_top_artists_test",
-    "template": "LockHTTPResponse",
-    "params": [
-      203,
-      85,
-      8,
-      3,
-      2,
-      12,
-      31
-    ]
-  },
-  "value_object_test": {
-    "file": "main/json_value_object_test",
-    "template": "ExtractStringValue",
-    "params": [
-      134,
-      3,
-      1,
-      0,
-      1,
-      1,
-      1
     ]
   }
 }
