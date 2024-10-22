@@ -152,14 +152,14 @@ describe("search", () => {
         });
     });
 
-    describe("SubstringMatchWithIndexx", () => {
+    describe("SubstringMatchWithIndexPadded", () => {
         let circuit: WitnessTester<["data", "key", "keyLen", "start"], ["out"]>;
         let maxKeyLen = 30;
 
         before(async () => {
             circuit = await circomkit.WitnessTester(`SubstringSearch`, {
                 file: "utils/search",
-                template: "SubstringMatchWithIndexx",
+                template: "SubstringMatchWithIndexPadded",
                 params: [787, maxKeyLen],
             });
             console.log("#constraints:", await circuit.getConstraintCount());

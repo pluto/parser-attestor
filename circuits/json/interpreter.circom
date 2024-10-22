@@ -393,7 +393,10 @@ template KeyMatchAtDepth(dataLen, n, keyLen, depth) {
     signal output out <== substring_match * is_parsing_correct_key_at_depth;
 }
 
+// TODO: Not checking start of key is quote since that is handled by `parsing_key`?
 template MatchPaddedKey(n) {
+    // TODO: If key is not padded at all, then `in[1]` will not contain an end quote.
+    // Perhaps we modify this to handle that, or just always pad the key at least once.
     signal input in[2][n];
     signal input keyLen;
     signal output out;
@@ -412,8 +415,10 @@ template MatchPaddedKey(n) {
         isQuote[i] <== IsEqual()([in[1][i], 34]);
         endOfKeyAccum[i+1] <== endOfKeyAccum[i] + isEndOfKey[i] * isQuote[i];
 
+        // TODO: might not be right to check for zero, instead check for -1?
         isPaddedElement[i] = IsZero();
         isPaddedElement[i].in <== in[0][i];
+
         equalComponent[i] = IsEqual();
         equalComponent[i].in[0] <== in[0][i];
         equalComponent[i].in[1] <== in[1][i] * (1-isPaddedElement[i].out);
@@ -421,6 +426,7 @@ template MatchPaddedKey(n) {
     }
 
     signal isEndOfKeyEqualToQuote <== IsEqual()([endOfKeyAccum[n], 1]);
+    // log("isEndOfKeyEqualToQuote", isEndOfKeyEqualToQuote);
 
     component totalEqual = IsEqual();
     totalEqual.in[0] <== n;
@@ -448,6 +454,11 @@ template KeyMatchAtIndex(dataLen, maxKeyLen, index) {
     signal input keyLen;
     signal input parsing_key;
 
+    signal paddedKey[maxKeyLen + 1];
+    for (var i = 0 ; i < maxKeyLen ; i++) {
+        paddedKey[i] <== key[i];
+    }
+    paddedKey[maxKeyLen] <== 0;
     // `"` -> 34
 
     // start of key equal to quote
@@ -455,12 +466,14 @@ template KeyMatchAtIndex(dataLen, maxKeyLen, index) {
     signal isParsingCorrectKey <== parsing_key * startOfKeyEqualToQuote;
 
     // key matches
-    component isSubstringMatch       = MatchPaddedKey(maxKeyLen);
-    isSubstringMatch.in[0] <== key;
+    component isSubstringMatch       = MatchPaddedKey(maxKeyLen+1);
+    isSubstringMatch.in[0] <== paddedKey;
     isSubstringMatch.keyLen <== keyLen;
-    for(var matcher_idx = 0; matcher_idx < maxKeyLen; matcher_idx++) {
+    for(var matcher_idx = 0; matcher_idx <= maxKeyLen; matcher_idx++) {
+        // log("matcher_idx", index, matcher_idx, data[index + matcher_idx]);
         isSubstringMatch.in[1][matcher_idx] <== data[index + matcher_idx];
     }
+    // log("keyMatchAtIndex", isParsingCorrectKey, isSubstringMatch.out);
 
     signal output out <== isSubstringMatch.out * isParsingCorrectKey;
 }
